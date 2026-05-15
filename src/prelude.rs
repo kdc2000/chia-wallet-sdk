@@ -30,3 +30,9 @@ pub use chia_sdk_types::{
     TESTNET11_CONSTANTS, compile_chialisp, compile_rue, conditions::*, run_puzzle,
 };
 pub use chia_sdk_utils::{Address, Bech32, parse_hex, select_coins};
+
+#[cfg(feature = "chip-0057")]
+pub use chia_sdk_utils::silent_payments::{
+    LabelRegistry, SilentPaymentAddress, SilentPaymentError, SilentPaymentKeys,
+    SilentPaymentNetwork,
+};
