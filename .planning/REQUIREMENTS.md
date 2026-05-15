@@ -81,42 +81,42 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 
 ## Traceability
 
-Phase mapping is filled in by `ROADMAP.md` after roadmap creation.
+Phase mapping assigned by `ROADMAP.md` (2026-05-15).
 
 | REQ-ID | Phase | Notes |
 |--------|-------|-------|
-| ADDR-01 | TBD | — |
-| ADDR-02 | TBD | — |
-| ADDR-03 | TBD | — |
-| ADDR-04 | TBD | — |
-| ADDR-05 | TBD | — |
-| ADDR-06 | TBD | — |
-| SEND-01 | TBD | — |
-| SEND-02 | TBD | — |
-| SEND-03 | TBD | — |
-| SEND-04 | TBD | Phase-4 proof-of-concept resolves Option A vs B for deferred ECDH |
-| SEND-05 | TBD | — |
-| SEND-06 | TBD | Opcode 60/61 announcement binding — closer to correctness bug fix than feature |
-| SEND-07 | TBD | Memo-position hint guard — Chia-specific |
-| SEND-08 | TBD | Doc-only |
-| RECV-01 | TBD | — |
-| RECV-02 | TBD | — |
-| RECV-03 | TBD | — |
-| RECV-04 | TBD | Labeled k-termination rule |
-| RECV-05 | TBD | K_max DOS guard |
-| CRYPTO-01 | TBD | Signed-vs-unsigned scalar prevention — foundational |
-| CRYPTO-02 | TBD | — |
-| CRYPTO-03 | TBD | Includes bespoke k=1 vector + adversarial scalar test |
-| BIND-01 | TBD | — |
-| BIND-02 | TBD | Verify bindy-macro static-functions schema first |
-| BIND-03 | TBD | — |
-| WS-01 | TBD | — |
-| WS-02 | TBD | — |
-| WS-03 | TBD | — |
-| SIM-01 | TBD | — |
-| SIM-02 | TBD | — |
-| SIM-03 | TBD | — |
-| EX-01 | TBD | — |
+| ADDR-01 | Phase 2 | Mnemonic → SKs at fixed CHIP paths |
+| ADDR-02 | Phase 2 | bech32m round-trip against CHIP test vectors |
+| ADDR-03 | Phase 2 | Labeled-address constructor |
+| ADDR-04 | Phase 2 | `LabelRegistry` bidirectional map |
+| ADDR-05 | Phase 2 | Watch-only constructor |
+| ADDR-06 | Phase 2 | m=0 change-label hard-error |
+| SEND-01 | Phase 4 | `derive_one_time_puzzle_hash` |
+| SEND-02 | Phase 4 | `compute_input_hash` with lex-min coin_id |
+| SEND-03 | Phase 4 | Multi-party hard-error (no silent fallback) |
+| SEND-04 | Phase 4 | Phase-4 proof-of-concept resolves Option A vs B for deferred ECDH |
+| SEND-05 | Phase 4 | Multi-output `Vec<Recipient>` with per-scan_pk `k` counter |
+| SEND-06 | Phase 4 | Opcode 60/61 announcement binding — closer to correctness bug fix than feature |
+| SEND-07 | Phase 4 | Memo-position hint guard — Chia-specific |
+| SEND-08 | Phase 4 | Doc-only privacy warnings |
+| RECV-01 | Phase 3 | Transport-agnostic `TweakData` |
+| RECV-02 | Phase 3 | `scan_from_tweaks` k-iteration with labeled-termination rule |
+| RECV-03 | Phase 3 | `compute_shared_secret_from_tweak` ECDH primitive |
+| RECV-04 | Phase 3 | Labeled k-termination rule |
+| RECV-05 | Phase 3 | `K_max` DOS guard |
+| CRYPTO-01 | Phase 1 | Signed-vs-unsigned scalar prevention — foundational |
+| CRYPTO-02 | Phase 1 | Tagged-hash + tag constants |
+| CRYPTO-03 | Phase 3 | TV1/TV3/TV4 + bespoke k=1 + adversarial `[0xff;32]` |
+| BIND-01 | Phase 5 | Address/keys descriptor + facade |
+| BIND-02 | Phase 5 | Send/receive primitives in descriptor; verify bindy-macro static-functions schema first |
+| BIND-03 | Phase 6 | Cross-language E2E (uses Phase-6 simulator helper) |
+| WS-01 | Phase 1 | `chip-0057` workspace feature cascade |
+| WS-02 | Phase 1 | CI per-crate `-F chip-0057` lines |
+| WS-03 | Phase 1 | Lint policy verified across all gated code |
+| SIM-01 | Phase 6 | `tweak_data_from_simulator_block` helper |
+| SIM-02 | Phase 6 | Unlabeled E2E |
+| SIM-03 | Phase 6 | Labeled E2E |
+| EX-01 | Phase 6 | `examples/silent_payment.rs` |
 
 ---
-*Last updated: 2026-05-15 after initialization*
+*Last updated: 2026-05-15 after roadmap creation*
