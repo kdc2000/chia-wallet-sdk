@@ -130,4 +130,8 @@ pub enum DriverError {
 
     #[error("missing vault coin spend in transaction reveal")]
     MissingVaultCoinSpend,
+
+    #[cfg(feature = "chip-0057")]
+    #[error("silent payment error: {0}")]
+    SilentPayment(#[from] chia_sdk_utils::silent_payments::SilentPaymentError),
 }
