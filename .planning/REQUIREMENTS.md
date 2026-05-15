@@ -47,7 +47,7 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 ### Workspace Integration
 
 - [x] **WS-01** — A new `chip-0057` workspace feature in the root `Cargo.toml` cascades to `chia-sdk-types/chip-0057`, `chia-sdk-driver/chip-0057`, `chia-sdk-utils/chip-0057`. Bindings feature-default `chip-0057` so bindings ship enabled. Mirrors the `chip-0037` template (commit `bbc7f57f`).
-- [ ] **WS-02** — `.github/workflows/rust.yml` adds per-crate builds with `-F chip-0057` matching the existing chip-0035/chip-0037 lines. The standard `--all-features` build already covers the cumulative case.
+- [x] **WS-02** — `.github/workflows/rust.yml` adds per-crate builds with `-F chip-0057` matching the existing chip-0035/chip-0037 lines. The standard `--all-features` build already covers the cumulative case.
 - [x] **WS-03** — All `chip-0057`-gated code compiles cleanly under the workspace lint policy (`deny clippy::all`, `warn pedantic`, `warn cargo`, `deny unsafe_code`, `deny dead_code`) and passes `cargo machete`. No new entries in any crate's `[package.metadata.cargo-machete] ignored` list.
 
 ### Simulator Integration (`chia-sdk-test`)

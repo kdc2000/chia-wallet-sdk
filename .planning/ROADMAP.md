@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 01-02-PLAN.md — ScalarField newtype + GROUP_ORDER + unsigned mod-r reduction with 5 named tests
 - [x] 01-03-PLAN.md — tagged_hash primitive + Chia_SP/* tag constants + tag-pin tests (with computed pinned bytes)
 - [x] 01-04-PLAN.md — Derivation path constants (SCAN_PATH, SPEND_PATH)
-- [ ] 01-05-PLAN.md — CI matrix update + final gate verification (WS-02, WS-03 closure)
+- [x] 01-05-PLAN.md — CI matrix update + final gate verification (WS-02, WS-03 closure)
 
 ### Phase 2: Address & key types
 **Goal**: A wallet developer can derive `(scan_sk, spend_sk)` from a mnemonic (or import from raw SKs for watch-only), generate unlabeled and labeled bech32m addresses, and round-trip them through encode/decode against the CHIP test vectors.
