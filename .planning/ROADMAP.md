@@ -49,7 +49,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `SilentPaymentKeys::from_secret_keys(scan_sk, spend_sk)` reconstructs the same addresses as `from_mnemonic` would for matching SKs (watch-only/key-import path works).
   5. `labeled_address(0)` returns `Err(SilentPaymentError::ReservedChangeLabel)` (m=0 change-label guard).
   6. `LabelRegistry` round-trip: `register(scan_sk, m)` then `lookup(label_pk)` returns `Some(m)`; `forward(m)` returns the same `label_pk`.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 02-01-PLAN.md — Wiring & feature gate: chip-0057 deps on chia-sdk-utils + silent_payments module barrel
+- [ ] 02-02-PLAN.md — SilentPaymentError + SilentPaymentNetwork foundational types
+- [ ] 02-03-PLAN.md — SilentPaymentAddress encode/decode + 12 address tests (TV1 round-trip, pinned strings, 6 negative cases)
+- [ ] 02-04-PLAN.md — SilentPaymentKeys + LabelRegistry + 15 named tests (TV1 keys, TV3 labels, m=0 reject, registry round-trip)
+- [ ] 02-05-PLAN.md — CI matrix + final gate verification (per-crate `-F chip-0057` build line, prelude re-export, 5-build sweep, full Phase 2 gate)
 **UI hint**: no
 
 ### Phase 3: Receive primitive & CHIP test-vector closure
@@ -109,8 +114,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Crypto primitives & workspace integration | 0/5 | Complete    | 2026-05-15 |
-| 2. Address & key types | 0/TBD | Not started | - |
+| 1. Crypto primitives & workspace integration | 5/5 | Complete    | 2026-05-15 |
+| 2. Address & key types | 0/5 | Planned     | - |
 | 3. Receive primitive & CHIP test-vector closure | 0/TBD | Not started | - |
 | 4. Send-side action | 0/TBD | Not started | - |
 | 5. Bindings (Rust facade + JSON descriptor) | 0/TBD | Not started | - |
@@ -147,4 +152,4 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 7. **Workspace lint policy (`WS-03`)** — Every phase's code must pass `deny clippy::all`, `warn pedantic`, `deny unsafe_code`, `deny dead_code`, and `cargo machete`. Phase 1 establishes the feature-gating skeleton; later phases inherit.
 
 ---
-*Last updated: 2026-05-15 after Phase 1 plan creation*
+*Last updated: 2026-05-15 after Phase 2 plan creation*
