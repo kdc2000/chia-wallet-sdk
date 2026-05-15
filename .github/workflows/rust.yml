@@ -52,6 +52,7 @@ jobs:
           cargo build --release --all-features
           cargo build --release -p chia-sdk-driver
           cargo build --release -p chia-sdk-driver --all-features
+          cargo build --release -p chia-sdk-driver -F chip-0057
           cargo build --release -p chia-sdk-client
           cargo build --release -p chia-sdk-client --all-features
           cargo build --release -p chia-sdk-coinset
