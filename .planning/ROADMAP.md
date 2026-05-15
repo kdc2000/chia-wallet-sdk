@@ -31,7 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Tag-pin unit test passes: `chia_sha2::Sha256::digest("Chia_SP/Inputs")`, `"Chia_SP/SharedSecret"`, `"Chia_SP/Label"` each produce their pinned 32-byte SHA-256 (typos in any tag constant fail the test before any protocol code runs).
   4. `grep -r 'mod_by_group_order' crates/chia-sdk-types/src/silent_payments/` returns zero hits.
   5. `cargo machete` passes with no new `[package.metadata.cargo-machete] ignored` entries.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 01-01-PLAN.md — Workspace chip-0057 feature flag scaffolding (root + types + driver + utils Cargo.toml; new [features] block on utils)
+- [ ] 01-02-PLAN.md — ScalarField newtype + GROUP_ORDER + unsigned mod-r reduction with 5 named tests
+- [ ] 01-03-PLAN.md — tagged_hash primitive + Chia_SP/* tag constants + tag-pin tests (with computed pinned bytes)
+- [ ] 01-04-PLAN.md — Derivation path constants (SCAN_PATH, SPEND_PATH)
+- [ ] 01-05-PLAN.md — CI matrix update + final gate verification (WS-02, WS-03 closure)
 
 ### Phase 2: Address & key types
 **Goal**: A wallet developer can derive `(scan_sk, spend_sk)` from a mnemonic (or import from raw SKs for watch-only), generate unlabeled and labeled bech32m addresses, and round-trip them through encode/decode against the CHIP test vectors.
@@ -104,7 +109,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Crypto primitives & workspace integration | 0/TBD | Not started | - |
+| 1. Crypto primitives & workspace integration | 0/5 | Planned | - |
 | 2. Address & key types | 0/TBD | Not started | - |
 | 3. Receive primitive & CHIP test-vector closure | 0/TBD | Not started | - |
 | 4. Send-side action | 0/TBD | Not started | - |
@@ -142,4 +147,4 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 7. **Workspace lint policy (`WS-03`)** — Every phase's code must pass `deny clippy::all`, `warn pedantic`, `deny unsafe_code`, `deny dead_code`, and `cargo machete`. Phase 1 establishes the feature-gating skeleton; later phases inherit.
 
 ---
-*Last updated: 2026-05-15 after roadmap creation*
+*Last updated: 2026-05-15 after Phase 1 plan creation*
