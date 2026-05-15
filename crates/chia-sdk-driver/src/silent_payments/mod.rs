@@ -30,5 +30,7 @@
 
 mod protocol;
 pub use protocol::*;
+mod scanner;
+pub use scanner::*;
 mod types;
 pub use types::*;
