@@ -28,7 +28,7 @@ use chia_sdk_types::silent_payments::{CHIA_SP_LABEL, ScalarField, tagged_hash};
 ///
 /// `m = 0` is accepted at this layer — the public boundary is in
 /// [`super::SilentPaymentKeys::labeled_address`].
-pub(super) fn generate_label(scan_sk: &SecretKey, m: u32) -> (ScalarField, PublicKey) {
+pub(crate) fn generate_label(scan_sk: &SecretKey, m: u32) -> (ScalarField, PublicKey) {
     let mut data = [0u8; 36];
     data[..32].copy_from_slice(&scan_sk.to_bytes());
     data[32..].copy_from_slice(&m.to_be_bytes());

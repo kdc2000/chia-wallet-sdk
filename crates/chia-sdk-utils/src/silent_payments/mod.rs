@@ -34,3 +34,28 @@ mod keys;
 pub use keys::*;
 mod labels;
 pub use labels::*;
+
+/// Compute the CHIP-0057 label scalar and label public key for label index `m`.
+///
+/// Public reach-through over [`labels::generate_label`] (which is `pub(crate)`
+/// so cross-module consumers in this crate can reach it but external callers
+/// must go through this wrapper).
+///
+/// Used by `chia-sdk-driver`'s silent-payment scanner (Phase 3, RECV-04) to
+/// compute the labeled `onetime_sk = base_onetime_sk + label_scalar` for
+/// labeled detections. The byte-level semantics are pinned by Phase 2's
+/// `tv3_label_scalar_matches` test.
+///
+/// `m = 0` is accepted here — the public-API change-label rejection lives in
+/// [`SilentPaymentKeys::labeled_address`]. Phase 6 (SIM-03) will use `m = 0`
+/// internally to register the change label for own-change detection.
+#[must_use]
+pub fn generate_label(
+    scan_sk: &chia_bls::SecretKey,
+    m: u32,
+) -> (
+    chia_sdk_types::silent_payments::ScalarField,
+    chia_bls::PublicKey,
+) {
+    labels::generate_label(scan_sk, m)
+}
