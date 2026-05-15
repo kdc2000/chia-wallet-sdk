@@ -73,7 +73,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 03-02-PLAN.md — Protocol primitives (compute_shared_secret_from_tweak, derive_output_tweak, derive_onetime_pk, derive_onetime_sk, puzzle_hash_for_pk) + adversarial scalar test (CRYPTO-03)
 - [x] 03-03-PLAN.md — Scanner core (scan_from_tweaks + K_MAX_DEFAULT) + CHIP TV1, TV4 + identity-element guard (RECV-02, RECV-03)
 - [x] 03-04-PLAN.md — Labeled detection branch (Option A reach-through) + TV3 + bespoke k=1 + labeled k-termination rule (RECV-04)
-- [ ] 03-05-PLAN.md — DOS-guard test + SilentPaymentScan trait + CI matrix line + prelude re-exports + final phase gate (RECV-05)
+- [x] 03-05-PLAN.md — DOS-guard test + SilentPaymentScan trait + CI matrix line + prelude re-exports + final phase gate (RECV-05)
 
 ### Phase 4: Send-side action
 **Goal**: A wallet developer can call `spends.add(SilentPaymentSend { recipient, amount, memos })` (or multi-recipient equivalent), call the `Spends` finish flow, and obtain a signed `SpendBundle` whose outputs land at correctly-derived one-time puzzle hashes that a Phase-3 scanner can detect. Multi-party and footgun cases hard-error.

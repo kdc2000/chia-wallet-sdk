@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 03-04-PLAN.md (labeled-detection branch + TV3 + bespoke k=1 + labeled k-termination + unlabeled-preferred tests). RECV-04 closed; CRYPTO-03 success criteria 1/2/6 closed. Workspace test count 2393 → 2397. Ready for Plan 03-05 (DOS-guard + CI matrix + prelude re-exports + final phase gate).
-last_updated: "2026-05-15T22:50:29.102Z"
+status: verifying
+stopped_at: Completed 03-05-PLAN.md (DOS-guard cap test + SilentPaymentScan trait + chia-sdk-driver -F chip-0057 CI line + 11-symbol umbrella prelude re-export + 16-gate Phase 3 final sweep). RECV-05 closed; Phase 3 COMPLETE (RECV-01..05 + CRYPTO-03 all closed). Workspace test count 2397 → 2399. Ready for Phase 4 (send-side action).
+last_updated: "2026-05-15T23:26:23.707Z"
 last_activity: 2026-05-15
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 15
-  completed_plans: 16
+  completed_plans: 18
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 Phase: 03 (receive-primitive-chip-test-vector-closure) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-15
 
 Progress: [░░░░░░░░░░] 0%
@@ -71,6 +71,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P02 | 12 | 1 tasks | 2 files |
 | Phase 03 P03 | 19 | 1 tasks | 2 files |
 | Phase 03 P04 | 13 | 2 tasks | 3 files |
+| Phase 03 P05 | 26 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03]: Plan 03-03: silent_payments scanner.rs lands pub fn scan_from_tweaks (UNLABELED branch only) with both CHIP-spec guards the sp-client reference lacks: PublicKey::is_inf() identity-element skip (CHIP §459) at outer tweak_point loop, bounded  per CHIP §416 with K_MAX_DEFAULT = 2400 (CHIP §446 production cap, NOT 32 which is reserved for the DOS-guard test input in Plan 03-05). PLAN 03-04 APPEND POINT sentinel comment +  placeholder line establish the explicit seam for Plan 03-04's labeled-branch append. Three named tests close RECV-02 (unlabeled) + RECV-03 byte-for-byte against pinned CHIP test-vector outputs: tv1_scan_detects_unlabeled_k0 (TV1 onetime_sk = 3c399c61...0a89db37), tv4_scan_detects_multi_input_aggregation (TV4 onetime_sk = 6ccc3e13...e0f309399), identity_tweak_point_skipped (CHIP §459 guard verified). Workspace test count 2390 → 2393. Rule 1 fixes inline: candidate_ph → candidate_hash (clippy::similar_names vs candidate_pk), nested if-let collapsed via Rust 1.88 if-let-chain (clippy::collapsible_if), three doc_markdown backtick additions. UNAVOIDABLE deviation logged: function-scoped #[allow(clippy::similar_names)] on scan_from_tweaks for the spend_sk/spend_pk parameter pair — must_have #1 locks the exact signature AND Plan 03-04 references both names directly; local rebinding cannot suppress a lint that fires on parameter declaration lines. This is the only #[allow] anywhere under silent_payments/.
 - [Phase 03]: Plan 03-04: Option A reach-through (RESEARCH §13): generate_label promoted pub(super)→pub(crate) in labels.rs + pub fn generate_label wrapper in mod.rs (one-line delegate, fully-qualified return types). Cross-crate consumers cannot reach labels::generate_label directly. Future Phase-6 own-change detection (m=0) uses the same reach-through.
 - [Phase 03]: Plan 03-04: labeled-detection branch in scan_from_tweaks: if !found && let Some(label_map) = labels { for (m, label_pk) in label_map.iter() { ... break on first labeled match } }. Termination rule placed AFTER labeled branch in source. Closes RECV-04 + CRYPTO-03 success criteria 1 (TV3), 2 (bespoke k=1 via in-test derivation), 6 (labeled k-termination). Workspace tests 2393 → 2397 (+4). No new #[allow] attributes; CHIP-spec test-local names (b_scan, b_spend, b_spend_pub) used to suppress similar_names.
+- [Phase 03]: Plan 03-05: SilentPaymentScan trait + impl on SilentPaymentKeys (orphan-rule-compliant cross-crate method add per RESEARCH Open Q3). Both free fn scan_from_tweaks (hardware-split signers) and method keys.scan(...) (ergonomic bundled) coexist; silent_payment_keys_scan_method_matches_free_fn_tv1 pins byte-equality. dos_guard_caps_at_k_max forges 10,000 matches at one tweak point + k_max=32 → asserts detections.len() <= 32 (CHIP §416 cap proof, RECV-05 closure). New CI line cargo build -p chia-sdk-driver -F chip-0057 in rust.yml at 10-space indent (WS-02 equivalent for Phase 3). src/prelude.rs gains SECOND chip-0057 block re-exporting 11 driver-side symbols (5 types + 6 functions). Rule 3 inline fix: mod silent_payments → pub mod silent_payments in chia-sdk-driver/lib.rs (caught at workspace --all-features compile). 4 deviations all inline-fixed: 2x doc_markdown, 2x items_after_statements, 1x rustfmt re-wrap, 1x module visibility. Zero new #[allow]. Workspace tests 2397 → 2399 (+2 new). Phase 3 COMPLETE: 16-gate matrix green, all 6 ROADMAP success criteria PASS, all 6 requirements (RECV-01..05 + CRYPTO-03) closed.
 
 ### Pending Todos
 
@@ -113,6 +115,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-15T22:50:29.096Z
-Stopped at: Completed 03-04-PLAN.md (labeled-detection branch + TV3 + bespoke k=1 + labeled k-termination + unlabeled-preferred tests). RECV-04 closed; CRYPTO-03 success criteria 1/2/6 closed. Workspace test count 2393 → 2397. Ready for Plan 03-05 (DOS-guard + CI matrix + prelude re-exports + final phase gate).
+Last session: 2026-05-15T23:26:11.390Z
+Stopped at: Completed 03-05-PLAN.md (DOS-guard cap test + SilentPaymentScan trait + chia-sdk-driver -F chip-0057 CI line + 11-symbol umbrella prelude re-export + 16-gate Phase 3 final sweep). RECV-05 closed; Phase 3 COMPLETE (RECV-01..05 + CRYPTO-03 all closed). Workspace test count 2397 → 2399. Ready for Phase 4 (send-side action).
 Resume file: None
