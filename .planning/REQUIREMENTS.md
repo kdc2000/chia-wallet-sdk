@@ -35,7 +35,7 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 ### Cryptographic Primitives (`chia-sdk-types::silent_payments`, gated by `chip-0057`)
 
 - [x] **CRYPTO-01** — `ScalarField` newtype performs **unsigned** mod-r reduction over the BLS12-381 subgroup order using `num-bigint 0.4.6`. Distinct from the existing signed `mod_by_group_order` (in `chia-puzzle-types::derive_synthetic`); the type boundary is the prevention mechanism for the signed-vs-unsigned mixing hazard. No public constructor that accepts signed bytes.
-- [ ] **CRYPTO-02** — `tagged_hash(tag: &str, data: &[u8]) -> [u8; 32]` implements the BIP-340-style tagged hash `SHA256(SHA256(tag) || SHA256(tag) || data)` using `chia-sha2` (not bare `sha2`, per SDK convention). Domain tag constants `Chia_SP/Inputs`, `Chia_SP/SharedSecret`, `Chia_SP/Label` exposed as `&'static str` consts.
+- [x] **CRYPTO-02** — `tagged_hash(tag: &str, data: &[u8]) -> [u8; 32]` implements the BIP-340-style tagged hash `SHA256(SHA256(tag) || SHA256(tag) || data)` using `chia-sha2` (not bare `sha2`, per SDK convention). Domain tag constants `Chia_SP/Inputs`, `Chia_SP/SharedSecret`, `Chia_SP/Label` exposed as `&'static str` consts.
 - [ ] **CRYPTO-03** — All CHIP test vectors from `chip-silent-payments.md` pass as Rust unit tests: TV1 unlabeled single-input, TV3 labeled single-input, TV4 multi-input aggregation. Plus a **bespoke `k = 1` test vector** generated and added to catch `ser32(k)` endianness bugs that TV1/TV3/TV4 (all `k=0`) cannot detect. Plus an **adversarial `[0xff; 32]` scalar test** that fails on signed reduction but passes on unsigned reduction.
 
 ### Bindings (`chia-sdk-bindings` + `bindings/silent_payments.json` + `napi`/`pyo3`/`wasm`)

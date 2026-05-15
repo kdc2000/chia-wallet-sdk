@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 5 plans
 - [x] 01-01-PLAN.md — Workspace chip-0057 feature flag scaffolding (root + types + driver + utils Cargo.toml; new [features] block on utils)
 - [x] 01-02-PLAN.md — ScalarField newtype + GROUP_ORDER + unsigned mod-r reduction with 5 named tests
-- [ ] 01-03-PLAN.md — tagged_hash primitive + Chia_SP/* tag constants + tag-pin tests (with computed pinned bytes)
+- [x] 01-03-PLAN.md — tagged_hash primitive + Chia_SP/* tag constants + tag-pin tests (with computed pinned bytes)
 - [ ] 01-04-PLAN.md — Derivation path constants (SCAN_PATH, SPEND_PATH)
 - [ ] 01-05-PLAN.md — CI matrix update + final gate verification (WS-02, WS-03 closure)
 
