@@ -31,6 +31,16 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 - [x] **ADDR-05**: `SilentPaymentKeys::from_seed` derives keys from a raw seed (parallel constructor to `from_mnemonic`)
 - [x] **ADDR-06**: `labeled_address(0)` is rejected at the API boundary with `ReservedChangeLabel` (label `m = 0` is reserved per CHIP-0057)
 
+**Receive side (transport-agnostic primitive)** — Validated in Phase 3
+- [x] **RECV-01**: `TweakData { tweak_points, outputs }` is the transport-agnostic input type for the scanner — same shape that a CHIP-0058 light-wallet protocol or today's `sp-service` would supply
+- [x] **RECV-02**: `scan_from_tweaks(scan_sk, spend_sk, spend_pk, &TweakData, labels, k_max)` returns `Vec<DetectedSpCoin>` with `onetime_sk`, `k`, optional `label`, and the matching coin metadata (both unlabeled and labeled branches)
+- [x] **RECV-03**: `compute_shared_secret_from_tweak(scan_sk, tweak_point)` is the cheap wallet-side ECDH primitive (one scalar-multiply + SHA-256 per group)
+- [x] **RECV-04**: Labeled detection: when an unlabeled `k` candidate doesn't match, the scanner tries each registered `label_pk` and surfaces the labeled `(onetime_sk, label_index)` match — with the CHIP §425 k-termination rule (only break the k loop when BOTH unlabeled and every labeled candidate miss)
+- [x] **RECV-05**: Bounded compute under adversarial input: `K_MAX_DEFAULT = 2400` (CHIP §446) caps the per-tweak-point inner loop; identity-element tweak points are skipped silently (CHIP §459); 10,000 forged matches at one tweak point still terminate in bounded time
+
+**Cryptographic primitives** (gated by `chip-0057` feature) — Validated in Phase 3
+- [x] **CRYPTO-03**: All CHIP test vectors from `chip-silent-payments.md` pass as Rust unit tests — TV1 (unlabeled), TV3 (labeled), TV4 (multi-input) byte-exact; plus bespoke `k=1` (catches `ser32(k)` endianness bugs), `[0xff;32]` adversarial scalar (proves `ScalarField::from_bytes_unsigned` boundary fires end-to-end), labeled k-termination rule, unlabeled-preferred-over-labeled at same k
+
 ### Active
 
 **Send side (XCH)**
@@ -38,15 +48,6 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 - [ ] **SEND-02**: `compute_input_hash` computes the BIP-352 input hash using the lexicographically smallest spent coin id and the aggregated synthetic sender public key
 - [ ] **SEND-03**: `aggregate_sender_sks` aggregates synthetic secret keys across all wallet-controlled inputs of a transaction (single-party only — multi-party flows must aggregate at sign time)
 - [ ] **SEND-04**: A `SilentPaymentSend` action composes with the existing `Spends` action system so wallet code can `spends.add(SilentPaymentSend { recipient, amount, memos })` and have the signer/standard-layer path produce a correctly-signed spend bundle
-
-**Receive side (transport-agnostic primitive)**
-- [ ] **RECV-01**: `TweakData { tweak_points, outputs }` is the transport-agnostic input type for the scanner — same shape that a CHIP-0058 light-wallet protocol or today's `sp-service` would supply
-- [ ] **RECV-02**: `scan_from_tweaks(scan_sk, spend_sk, spend_pk, &TweakData, labels)` returns `Vec<DetectedSpCoin>` with `onetime_sk`, `k`, optional `label`, and the matching coin metadata
-- [ ] **RECV-03**: `compute_shared_secret_from_tweak(scan_sk, tweak_point)` is the cheap wallet-side ECDH primitive (one scalar-multiply + SHA-256 per group)
-- [ ] **RECV-04**: Labeled detection: when an unlabeled `k` candidate doesn't match, the scanner tries each registered `label_pk` and surfaces the labeled `(onetime_sk, label_index)` match
-
-**Cryptographic primitives** (gated by `chip-0057` feature)
-- [ ] **CRYPTO-03**: All CHIP test vectors from `chip-silent-payments.md` (TV1 unlabeled, TV3 labeled, multi-input vectors) pass as Rust unit tests
 
 **Bindings**
 - [ ] **BIND-01**: `bindings/silent_payments.json` descriptor + `chia-sdk-bindings::silent_payments` facade expose address generation (`SilentPaymentKeys::from_mnemonic`, `unlabeled_address`, `labeled_address`, `SilentPaymentAddress::encode`/`decode`) through the bindy macro
@@ -113,10 +114,10 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 |----------|-----------|---------|
 | v1 = send-side + transport-agnostic receive primitive (no WS client) | Today's `sp-service` JSON is a prototype, not a CHIP. Locking the SDK to it would force a breaking change when CHIP-0058 lands. Ship a `TweakData` input type instead so adapters can plug in. | — Pending |
 | CAT2 send deferred to v2 | Sender-side works trivially; receiver-side requires indexer-level layer-aware extraction. Shipping CAT2 sends now would produce undetectable payments — a footgun. | — Pending |
-| Labels fully supported in v1 (generation + detection) | Cheap to implement on top of unlabeled crypto; matches the CHIP's design intent for payment-source distinction. Skipping creates an asymmetric API. | — Generation side validated in Phase 2 (Plan 02-04 `LabelRegistry` + `labeled_address`); detection side pending in Phase 4 (RECV-04) |
+| Labels fully supported in v1 (generation + detection) | Cheap to implement on top of unlabeled crypto; matches the CHIP's design intent for payment-source distinction. Skipping creates an asymmetric API. | — Generation validated in Phase 2 (Plan 02-04 `LabelRegistry` + `labeled_address`); detection validated in Phase 3 (Plan 03-04 — `pub(crate)` reach-through + scanner labeled branch + TV3 + labeled k-termination) |
 | `chip-0057` feature flag (not `silent-payments`) | Matches the `chip-0035` / `chip-0037` precedent. The CHIP number is confirmed. | — Validated in Phase 1 (workspace) + Phase 2 (`chia-sdk-utils/chip-0057` cascades to `chia-sdk-types/chip-0057`) |
 | `ScalarField` is a new SDK newtype (not a reused crate type) | Existing signed `mod_by_group_order` would silently break the protocol. The unsigned reduction needs a distinct type so the compiler enforces correctness. | — Validated in Phase 1 |
-| Lives in `chia-sdk-types` + `chia-sdk-driver` + `chia-sdk-utils` (no new crate) | Mirrors how `chip-0035` and `chip-0037` integrate. Silent payments are not a transport, not a new puzzle layer — they're a key-derivation + driver action layered on the standard p2. | — Validated through Phase 2 (`chia-sdk-types` houses primitives; `chia-sdk-utils` houses address/key/label surface). Driver side still pending Phase 3+ |
+| Lives in `chia-sdk-types` + `chia-sdk-driver` + `chia-sdk-utils` (no new crate) | Mirrors how `chip-0035` and `chip-0037` integrate. Silent payments are not a transport, not a new puzzle layer — they're a key-derivation + driver action layered on the standard p2. | — Validated through Phase 3 (`chia-sdk-types` houses primitives; `chia-sdk-utils` houses address/key/label surface; `chia-sdk-driver/src/silent_payments/` houses receive primitive + `SilentPaymentScan` trait). |
 | Bindings ship in v1, not deferred | Sage and other JS/Python wallets are the primary consumers. Shipping a Rust-only v1 would gate adoption on a separate "bindings phase" with no functional reason. | — Pending |
 | Full simulator round-trip (mocked tweak source) is the v1 test target | Test-vectors-only would validate crypto but not the wallet integration shape. The simulator round-trip is the cheapest way to prove the API actually composes with `Spends` + `StandardLayer` + the signer. | — Pending |
 | `puzzle_hash_for_pk` from the prototype is dropped in favor of `StandardArgs::curry_tree_hash(pk.derive_synthetic())` | The SDK already has the helper. Re-shipping it would be redundant and would risk drift. | — Pending |
@@ -139,4 +140,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 after Phase 2 (address & key types) complete*
+*Last updated: 2026-05-15 after Phase 3 (receive primitive & CHIP test-vector closure) complete*
