@@ -13,7 +13,7 @@ Six phases deliver send-side + transport-agnostic-receive silent-payment support
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Crypto primitives & workspace integration** — `ScalarField` newtype, `tagged_hash` + Chia_SP/* tag constants, derivation paths, `chip-0057` feature cascade across types/utils/driver, CI lines, lint policy verification. (completed 2026-05-15)
-- [ ] **Phase 2: Address & key types** — `SilentPaymentKeys` (mnemonic + watch-only), `SilentPaymentAddress` (bech32m), labels generation, `LabelRegistry`, `m=0` change-label guard.
+- [x] **Phase 2: Address & key types** — `SilentPaymentKeys` (mnemonic + watch-only), `SilentPaymentAddress` (bech32m), labels generation, `LabelRegistry`, `m=0` change-label guard. (completed 2026-05-15)
 - [ ] **Phase 3: Receive primitive & CHIP test-vector closure** — `TweakData`/`DetectedSpCoin`/`OutputMeta`, `compute_shared_secret_from_tweak`, `scan_from_tweaks` with labeled k-termination + `K_max` DOS guard, all CHIP TVs + bespoke `k=1` + adversarial `[0xff;32]` tests pass.
 - [ ] **Phase 4: Send-side action** — `derive_one_time_puzzle_hash`, `compute_input_hash`, `aggregate_sender_sks` (multi-party hard-error), `SilentPaymentSend` action with `Spends` integration, multi-output `Vec<Recipient>`, opcode 60/61 announcement binding, 32-byte memo-hint guard, doc-comment privacy warnings.
 - [ ] **Phase 5: Bindings (Rust facade + JSON descriptor)** — `bindings/silent_payments.json` descriptor, `chia-sdk-bindings::silent_payments` re-export facade, `Action::silent_payment_send` entry in `action_system.json`, napi/pyo3/wasm builds green, AVA address round-trip test.
@@ -54,7 +54,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 02-02-PLAN.md — SilentPaymentError + SilentPaymentNetwork foundational types
 - [x] 02-03-PLAN.md — SilentPaymentAddress encode/decode + 12 address tests (TV1 round-trip, pinned strings, 6 negative cases)
 - [x] 02-04-PLAN.md — SilentPaymentKeys + LabelRegistry + 15 named tests (TV1 keys, TV3 labels, m=0 reject, registry round-trip)
-- [ ] 02-05-PLAN.md — CI matrix + final gate verification (per-crate `-F chip-0057` build line, prelude re-export, 5-build sweep, full Phase 2 gate)
+- [x] 02-05-PLAN.md — CI matrix + final gate verification (per-crate `-F chip-0057` build line, prelude re-export, 5-build sweep, full Phase 2 gate)
 **UI hint**: no
 
 ### Phase 3: Receive primitive & CHIP test-vector closure
@@ -115,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Crypto primitives & workspace integration | 5/5 | Complete    | 2026-05-15 |
-| 2. Address & key types | 0/5 | Planned     | - |
+| 2. Address & key types | 5/5 | Complete    | 2026-05-15 |
 | 3. Receive primitive & CHIP test-vector closure | 0/TBD | Not started | - |
 | 4. Send-side action | 0/TBD | Not started | - |
 | 5. Bindings (Rust facade + JSON descriptor) | 0/TBD | Not started | - |
@@ -152,4 +152,4 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 7. **Workspace lint policy (`WS-03`)** — Every phase's code must pass `deny clippy::all`, `warn pedantic`, `deny unsafe_code`, `deny dead_code`, and `cargo machete`. Phase 1 establishes the feature-gating skeleton; later phases inherit.
 
 ---
-*Last updated: 2026-05-15 after Phase 2 plan creation*
+*Last updated: 2026-05-15 after Phase 2 execution complete (Plan 02-05)*
