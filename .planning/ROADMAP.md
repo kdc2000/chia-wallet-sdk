@@ -53,7 +53,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 02-01-PLAN.md — Wiring & feature gate: chip-0057 deps on chia-sdk-utils + silent_payments module barrel
 - [x] 02-02-PLAN.md — SilentPaymentError + SilentPaymentNetwork foundational types
 - [x] 02-03-PLAN.md — SilentPaymentAddress encode/decode + 12 address tests (TV1 round-trip, pinned strings, 6 negative cases)
-- [ ] 02-04-PLAN.md — SilentPaymentKeys + LabelRegistry + 15 named tests (TV1 keys, TV3 labels, m=0 reject, registry round-trip)
+- [x] 02-04-PLAN.md — SilentPaymentKeys + LabelRegistry + 15 named tests (TV1 keys, TV3 labels, m=0 reject, registry round-trip)
 - [ ] 02-05-PLAN.md — CI matrix + final gate verification (per-crate `-F chip-0057` build line, prelude re-export, 5-build sweep, full Phase 2 gate)
 **UI hint**: no
 

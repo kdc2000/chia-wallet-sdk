@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Plan 02-03 complete. SilentPaymentAddress + 12 named tests (TV1/TV3 + 6 negative) land in chia-sdk-utils/silent_payments/address.rs. ADDR-02 closed. Wave-3 still in progress: Plan 02-04 (keys + labels) is the remaining wave-3 work; 02-05 (prelude + final gate) depends on 02-04."
-last_updated: "2026-05-15T19:56:13.496Z"
+stopped_at: "Plan 02-04 complete. SilentPaymentKeys + LabelRegistry + 15 named tests land in chia-sdk-utils. ADDR-01, ADDR-03, ADDR-04, ADDR-05, ADDR-06 closed. chip-0057 cascade fix to chia-sdk-utils/Cargo.toml. Phase 2 remaining: Plan 02-05 (prelude.rs re-export + final gate matrix + traceability sweep)."
+last_updated: "2026-05-15T20:12:19.619Z"
 last_activity: 2026-05-15
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 02 (address-key-types) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-15
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P01 | 18 | 3 tasks | 3 files |
 | Phase 02 P02 | 8 | 3 tasks | 3 files |
 | Phase 02 P03 | 8 | 2 tasks | 1 files |
+| Phase 02 P04 | 12 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 02]: Plan 02-01: chia-sdk-utils chip-0057 feature promoted to activate dep:chia-sdk-types, dep:bip39, dep:chia-bls (all optional = true). Q8 (Phase 2 pre-flight audit) resolved: dep edge gated; no-features build unaffected. silent_payments module barrel created as empty cfg-gated public module; Task 3 (prelude.rs re-export) NO-OP'd and deferred to Plan 02-05 to avoid chicken-and-egg compile error.
 - [Phase 02]: Plan 02-02: SilentPaymentError (6-variant enum, #[from] Bech32Error) + SilentPaymentNetwork (Mainnet/Testnet, hrp() returns spxch/tspxch) land in chia-sdk-utils/silent_payments. address.rs ships in STUB form holding only SilentPaymentNetwork — Plan 02-03 APPENDS SilentPaymentAddress to the same file. No Clone/PartialEq on SilentPaymentError (RESEARCH §7); from_hrp uses bound 'other' variable to pass through the unmatched HRP literally. Wave-2 parallelism (Plans 02-03 and 02-04) now unblocked.
 - [Phase 02]: Plan 02-03: SilentPaymentAddress (struct + new + encode + decode) and 12 named tests append to crates/chia-sdk-utils/src/silent_payments/address.rs. Bech32m via chia_sdk_utils::Bech32 wrapper (no direct bech32:: imports). Identity-pubkey rejection via parse-then-is_inf ordering. ADDR-02 closed end-to-end. Permissive matches!(Err(IdentityPublicKey | InvalidPublicKey)) on the two identity tests since both satisfy CHIP §215; chia-bls 0.36.1 empirically fires IdentityPublicKey. Inline clippy fixes for doc_markdown + unnested_or_patterns (no #[allow]).
+- [Phase 02]: Plan 02-04: SilentPaymentKeys (BIP-39 -> scan/spend SKs at m/12381/8444/{12,13}/0; manual redacting Debug; from_secret_keys parity) + LabelRegistry (bidirectional u32 <-> PublicKey via two HashMaps with [u8;48] reverse key) + pub(super) generate_label helper shared between keys.rs::labeled_address and labels.rs::LabelRegistry::register. Closes ADDR-01, ADDR-03, ADDR-04, ADDR-05, ADDR-06. Rule 3 fix: chia-sdk-utils chip-0057 feature now cascades to chia-sdk-types/chip-0057 (was pulling dep but not activating its feature). Inline clippy fixes: clone_on_copy (PublicKey is Copy in chia-bls 0.36.1; drop .clone() in 5 sites + deref via *), similar_names (inline public_key() into struct init to avoid scan_pk/scan_sk local-binding collision). No #[allow] attributes.
 
 ### Pending Todos
 
@@ -100,6 +102,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-15T19:56:13.490Z
-Stopped at: Plan 02-03 complete. SilentPaymentAddress + 12 named tests (TV1/TV3 + 6 negative) land in chia-sdk-utils/silent_payments/address.rs. ADDR-02 closed. Wave-3 still in progress: Plan 02-04 (keys + labels) is the remaining wave-3 work; 02-05 (prelude + final gate) depends on 02-04.
+Last session: 2026-05-15T20:12:19.614Z
+Stopped at: Plan 02-04 complete. SilentPaymentKeys + LabelRegistry + 15 named tests land in chia-sdk-utils. ADDR-01, ADDR-03, ADDR-04, ADDR-05, ADDR-06 closed. chip-0057 cascade fix to chia-sdk-utils/Cargo.toml. Phase 2 remaining: Plan 02-05 (prelude.rs re-export + final gate matrix + traceability sweep).
 Resume file: None
