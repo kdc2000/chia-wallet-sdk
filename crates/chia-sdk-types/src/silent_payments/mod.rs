@@ -10,4 +10,6 @@
 
 mod scalar;
 pub use scalar::*;
+mod tagged_hash;
+pub use tagged_hash::*;
 // (additional submodules appended in sorted order)
