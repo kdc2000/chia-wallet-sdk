@@ -68,7 +68,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Adversarial-`TweakData` test: a `TweakData` whose `tweak_points[i] == PublicKey::default()` (identity element) returns `Vec::new()` from `scan_from_tweaks` with no panic; a `TweakData` containing malformed 48-byte pubkey bytes propagates a typed error (no `unwrap()` panic).
   5. DOS-guard test: a `TweakData` constructed to produce 10,000 consecutive forged matches at a single tweak point causes `scan_from_tweaks` to stop at `K_max = 32` (or the configured cap) within bounded time.
   6. Labeled k-termination test: `scan_from_tweaks` correctly detects a labeled output at `k = 1` when `k = 0` is unlabeled (verifies the rule "break the k loop only when neither unlabeled nor any labeled candidate matches at the current k").
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 03-01-PLAN.md — Type surface + module scaffold + feature cascade extension (RECV-01)
+- [ ] 03-02-PLAN.md — Protocol primitives (compute_shared_secret_from_tweak, derive_output_tweak, derive_onetime_pk, derive_onetime_sk, puzzle_hash_for_pk) + adversarial scalar test (CRYPTO-03)
+- [ ] 03-03-PLAN.md — Scanner core (scan_from_tweaks + K_MAX_DEFAULT) + CHIP TV1, TV4 + identity-element guard (RECV-02, RECV-03)
+- [ ] 03-04-PLAN.md — Labeled detection branch (Option A reach-through) + TV3 + bespoke k=1 + labeled k-termination rule (RECV-04)
+- [ ] 03-05-PLAN.md — DOS-guard test + SilentPaymentScan trait + CI matrix line + prelude re-exports + final phase gate (RECV-05)
 
 ### Phase 4: Send-side action
 **Goal**: A wallet developer can call `spends.add(SilentPaymentSend { recipient, amount, memos })` (or multi-recipient equivalent), call the `Spends` finish flow, and obtain a signed `SpendBundle` whose outputs land at correctly-derived one-time puzzle hashes that a Phase-3 scanner can detect. Multi-party and footgun cases hard-error.
@@ -116,7 +121,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Crypto primitives & workspace integration | 5/5 | Complete    | 2026-05-15 |
 | 2. Address & key types | 5/5 | Complete    | 2026-05-15 |
-| 3. Receive primitive & CHIP test-vector closure | 0/TBD | Not started | - |
+| 3. Receive primitive & CHIP test-vector closure | 0/5  | Planned     | - |
 | 4. Send-side action | 0/TBD | Not started | - |
 | 5. Bindings (Rust facade + JSON descriptor) | 0/TBD | Not started | - |
 | 6. Simulator round-trip + bindings E2E + example | 0/TBD | Not started | - |
