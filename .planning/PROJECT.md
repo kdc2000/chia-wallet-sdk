@@ -14,7 +14,14 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 
 ### Validated
 
-(None yet — ship to validate)
+**Cryptographic primitives** (gated by `chip-0057` feature) — Validated in Phase 1
+- [x] **CRYPTO-01**: `ScalarField` newtype performs **unsigned** mod-r reduction over the BLS12-381 subgroup order — distinct from the existing signed reducer used for synthetic-key offsets
+- [x] **CRYPTO-02**: `tagged_hash(tag, data)` implements the BIP-340-style tagged hash with `Chia_SP/Inputs`, `Chia_SP/SharedSecret`, `Chia_SP/Label` domain tags
+
+**Workspace integration** — Validated in Phase 1
+- [x] **WS-01**: New `chip-0057` workspace feature in root `Cargo.toml` cascades to `chia-sdk-types/chip-0057`, `chia-sdk-driver/chip-0057`, `chia-sdk-utils/chip-0057` (and bindings always-on)
+- [x] **WS-02**: `.github/workflows/rust.yml` builds each affected crate individually with `-F chip-0057` and `--all-features`
+- [x] **WS-03**: All crate code under `chip-0057` compiles cleanly under workspace lint policy (deny clippy::all, warn pedantic, deny unsafe_code, deny dead_code) and passes `cargo machete`
 
 ### Active
 
@@ -37,19 +44,12 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 - [ ] **RECV-04**: Labeled detection: when an unlabeled `k` candidate doesn't match, the scanner tries each registered `label_pk` and surfaces the labeled `(onetime_sk, label_index)` match
 
 **Cryptographic primitives** (gated by `chip-0057` feature)
-- [ ] **CRYPTO-01**: `ScalarField` newtype performs **unsigned** mod-r reduction over the BLS12-381 subgroup order — distinct from the existing signed `mod_by_group_order` used for synthetic-key offsets
-- [ ] **CRYPTO-02**: `tagged_hash(tag, data)` implements the BIP-340-style tagged hash with `Chia_SP/Inputs`, `Chia_SP/SharedSecret`, `Chia_SP/Label` domain tags
 - [ ] **CRYPTO-03**: All CHIP test vectors from `chip-silent-payments.md` (TV1 unlabeled, TV3 labeled, multi-input vectors) pass as Rust unit tests
 
 **Bindings**
 - [ ] **BIND-01**: `bindings/silent_payments.json` descriptor + `chia-sdk-bindings::silent_payments` facade expose address generation (`SilentPaymentKeys::from_mnemonic`, `unlabeled_address`, `labeled_address`, `SilentPaymentAddress::encode`/`decode`) through the bindy macro
 - [ ] **BIND-02**: Same descriptor exposes the send-side primitives (`derive_one_time_puzzle_hash` and the `SilentPaymentSend` action) and the receive primitive (`scan_from_tweaks`, `TweakData`)
 - [ ] **BIND-03**: AVA tests (`napi/__test__/`, `wasm/__test__/`) and pytest tests (`pyo3/tests/`) cover the full address-gen + send + scan-from-tweaks round trip from each target language
-
-**Workspace integration**
-- [ ] **WS-01**: New `chip-0057` workspace feature in root `Cargo.toml` cascades to `chia-sdk-types/chip-0057`, `chia-sdk-driver/chip-0057`, `chia-sdk-utils/chip-0057` (and bindings always-on)
-- [ ] **WS-02**: `.github/workflows/rust.yml` builds each affected crate individually with `-F chip-0057` and `--all-features`
-- [ ] **WS-03**: All crate code under `chip-0057` compiles cleanly under workspace lint policy (deny clippy::all, warn pedantic, deny unsafe_code, deny dead_code) and passes `cargo machete`
 
 **Simulator integration**
 - [ ] **SIM-01**: Test helper (in `chia-sdk-test` or under the driver's `#[cfg(test)]`) generates `TweakData` from a simulator block by collecting that block's standard-puzzle spends, extracting their synthetic pubkeys, computing per-spend `tweak_point = input_hash * A_sum`, and pairing with the block's outputs
@@ -137,4 +137,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 after initialization*
+*Last updated: 2026-05-15 after Phase 1 (crypto primitives & workspace integration) complete*
