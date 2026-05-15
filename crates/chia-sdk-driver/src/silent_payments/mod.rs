@@ -28,5 +28,7 @@
 //! Hash routines in this module use `chia_sha2::Sha256` exclusively; the workspace
 //! grep ban forbids `use sha2::` imports under `silent_payments/`.
 
+mod protocol;
+pub use protocol::*;
 mod types;
 pub use types::*;
