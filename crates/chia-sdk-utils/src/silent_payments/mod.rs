@@ -26,6 +26,7 @@
 //! SDK-standard hasher); the workspace defense-in-depth grep ban forbids
 //! `use sha2::` imports under `silent_payments/`.
 
-// Submodules are declared in sorted order by Plans 02-02, 02-03, 02-04.
-// Plan 02-01 lands an empty barrel so the cfg-gated declaration in lib.rs
-// can compile cleanly with no public items yet.
+mod address;
+pub use address::*;
+mod error;
+pub use error::*;
