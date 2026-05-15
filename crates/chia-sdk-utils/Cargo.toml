@@ -15,7 +15,7 @@ categories = { workspace = true }
 workspace = true
 
 [features]
-chip-0057 = ["dep:chia-sdk-types", "dep:bip39", "dep:chia-bls"]
+chip-0057 = ["dep:chia-sdk-types", "chia-sdk-types/chip-0057", "dep:bip39", "dep:chia-bls"]
 
 [dependencies]
 thiserror = { workspace = true }

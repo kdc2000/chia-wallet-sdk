@@ -187,7 +187,7 @@ mod tests {
         let scan_sk = sk(TV1_B_SCAN);
         let mut reg = LabelRegistry::new();
         reg.register(&scan_sk, 1);
-        let label_pk = reg.forward(1).expect("registered").clone();
+        let label_pk = *reg.forward(1).expect("registered");
         assert_eq!(reg.lookup(&label_pk), Some(1));
         assert_eq!(reg.len(), 1);
         assert!(!reg.is_empty());
@@ -202,7 +202,7 @@ mod tests {
         reg.register(&scan_sk, 3);
         assert_eq!(reg.len(), 3);
         for m in [1u32, 2, 3] {
-            let pk = reg.forward(m).expect("registered").clone();
+            let pk = *reg.forward(m).expect("registered");
             assert_eq!(reg.lookup(&pk), Some(m));
         }
     }

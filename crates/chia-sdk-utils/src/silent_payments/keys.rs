@@ -67,13 +67,11 @@ impl SilentPaymentKeys {
     /// CHIP §10).
     #[must_use]
     pub fn from_secret_keys(scan_sk: SecretKey, spend_sk: SecretKey) -> Self {
-        let scan_pk = scan_sk.public_key();
-        let spend_pk = spend_sk.public_key();
         Self {
+            scan_pk: scan_sk.public_key(),
+            spend_pk: spend_sk.public_key(),
             scan_sk,
             spend_sk,
-            scan_pk,
-            spend_pk,
         }
     }
 
@@ -106,7 +104,7 @@ impl SilentPaymentKeys {
     /// on the given network.
     #[must_use]
     pub fn unlabeled_address(&self, network: SilentPaymentNetwork) -> SilentPaymentAddress {
-        SilentPaymentAddress::new(self.scan_pk.clone(), self.spend_pk.clone(), network)
+        SilentPaymentAddress::new(self.scan_pk, self.spend_pk, network)
     }
 
     /// Build a labeled bech32m silent-payment sub-address.
@@ -126,7 +124,7 @@ impl SilentPaymentKeys {
         let (_scalar, label_pk) = generate_label(&self.scan_sk, m);
         let labeled_spend_pk = &self.spend_pk + &label_pk;
         Ok(SilentPaymentAddress::new(
-            self.scan_pk.clone(),
+            self.scan_pk,
             labeled_spend_pk,
             network,
         ))
