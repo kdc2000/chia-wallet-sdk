@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `grep -r 'mod_by_group_order' crates/chia-sdk-types/src/silent_payments/` returns zero hits.
   5. `cargo machete` passes with no new `[package.metadata.cargo-machete] ignored` entries.
 **Plans**: 5 plans
-- [ ] 01-01-PLAN.md — Workspace chip-0057 feature flag scaffolding (root + types + driver + utils Cargo.toml; new [features] block on utils)
+- [x] 01-01-PLAN.md — Workspace chip-0057 feature flag scaffolding (root + types + driver + utils Cargo.toml; new [features] block on utils)
 - [ ] 01-02-PLAN.md — ScalarField newtype + GROUP_ORDER + unsigned mod-r reduction with 5 named tests
 - [ ] 01-03-PLAN.md — tagged_hash primitive + Chia_SP/* tag constants + tag-pin tests (with computed pinned bytes)
 - [ ] 01-04-PLAN.md — Derivation path constants (SCAN_PATH, SPEND_PATH)
