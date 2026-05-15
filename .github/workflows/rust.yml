@@ -64,6 +64,7 @@ jobs:
           cargo build --release -p chia-sdk-types --all-features
           cargo build --release -p chia-sdk-types -F chip-0057
           cargo build --release -p chia-sdk-utils
+          cargo build --release -p chia-sdk-utils -F chip-0057
           cargo build --release -p chia-sdk-bindings -F napi
           cargo build --release -p chia-sdk-bindings -F wasm
           cargo build --release -p chia-sdk-bindings -F pyo3
