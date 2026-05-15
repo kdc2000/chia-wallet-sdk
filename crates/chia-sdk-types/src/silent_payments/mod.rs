@@ -8,6 +8,8 @@
 //! and silently disagrees with `from_bytes_unsigned` on inputs whose high bit
 //! is set — keep the two routes separate.
 
+mod paths;
+pub use paths::*;
 mod scalar;
 pub use scalar::*;
 mod tagged_hash;
