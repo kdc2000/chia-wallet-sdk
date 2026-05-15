@@ -14,6 +14,9 @@ categories = { workspace = true }
 [lints]
 workspace = true
 
+[features]
+chip-0057 = []
+
 [dependencies]
 thiserror = { workspace = true }
 chia-protocol = { workspace = true }
