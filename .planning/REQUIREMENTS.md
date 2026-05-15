@@ -7,7 +7,7 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 ### Address & Key Derivation (`chia-sdk-utils::silent_payments`)
 
 - [ ] **ADDR-01** — `SilentPaymentKeys` derives scan + spend secret keys from a BIP-39 mnemonic at paths `m/12381/8444/12/0` and `m/12381/8444/13/0` using existing `bip39 = 2.2.0` and `chia-bls::SecretKey::from_seed` / `derive_unhardened`.
-- [ ] **ADDR-02** — `SilentPaymentAddress` encodes and decodes a bech32m string with HRP `spxch` (mainnet) / `tspxch` (testnet) over the 96-byte `serialize(B_scan) || serialize(B_spend)` payload. Round-trips against the CHIP test vectors.
+- [x] **ADDR-02** — `SilentPaymentAddress` encodes and decodes a bech32m string with HRP `spxch` (mainnet) / `tspxch` (testnet) over the 96-byte `serialize(B_scan) || serialize(B_spend)` payload. Round-trips against the CHIP test vectors.
 - [ ] **ADDR-03** — `SilentPaymentKeys::labeled_address(m)` produces a labeled sub-address where `B_spend` is replaced by `B_spend + label_pk(m)`; the scan key is unchanged across labels.
 - [ ] **ADDR-04** — `LabelRegistry` (dedicated type, not a bare `HashMap`) maintains a `label_pk → label_index` lookup so labeled detections in `scan_from_tweaks` can be attributed back to their label index.
 - [ ] **ADDR-05** — `SilentPaymentKeys::from_secret_keys(scan_sk, spend_sk)` constructor enables watch-only / key-import flows without re-deriving from a mnemonic.
