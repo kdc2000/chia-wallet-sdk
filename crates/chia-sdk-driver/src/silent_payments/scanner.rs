@@ -22,7 +22,7 @@ use std::collections::HashSet;
 use chia_bls::{PublicKey, SecretKey};
 use chia_protocol::Bytes32;
 use chia_sdk_types::silent_payments::ScalarField;
-use chia_sdk_utils::silent_payments::{LabelRegistry, generate_label};
+use chia_sdk_utils::silent_payments::{LabelRegistry, SilentPaymentKeys, generate_label};
 
 use super::protocol::{
     compute_shared_secret_from_tweak, derive_onetime_pk, derive_onetime_sk, derive_output_tweak,
@@ -159,6 +159,47 @@ pub fn scan_from_tweaks(
     }
 
     detected
+}
+
+/// Convenience trait that lets a [`SilentPaymentKeys`] bundle drive the
+/// scanner via a single method call, avoiding the four-key-argument
+/// boilerplate of [`scan_from_tweaks`].
+///
+/// The orphan rule prevents inherent methods on `SilentPaymentKeys` from
+/// `chia-sdk-driver` (the type is defined in `chia-sdk-utils`), so the SDK
+/// exposes the bundled flow as a driver-side trait. Wallet authors who
+/// prefer the raw-args flow — for example, hardware-split signers where
+/// `spend_sk` lives on a device — call [`scan_from_tweaks`] directly.
+///
+/// See `03-RESEARCH.md` Open Question 3 for the design discussion.
+pub trait SilentPaymentScan {
+    /// Scan `tweak_data` for silent-payment outputs addressed to this key
+    /// bundle. Equivalent to calling [`scan_from_tweaks`] with this bundle's
+    /// `scan_sk`, `spend_sk`, `spend_pk`.
+    fn scan(
+        &self,
+        tweak_data: &TweakData,
+        labels: Option<&LabelRegistry>,
+        k_max: usize,
+    ) -> Vec<DetectedSpCoin>;
+}
+
+impl SilentPaymentScan for SilentPaymentKeys {
+    fn scan(
+        &self,
+        tweak_data: &TweakData,
+        labels: Option<&LabelRegistry>,
+        k_max: usize,
+    ) -> Vec<DetectedSpCoin> {
+        scan_from_tweaks(
+            self.scan_sk(),
+            self.spend_sk(),
+            self.spend_pk(),
+            tweak_data,
+            labels,
+            k_max,
+        )
+    }
 }
 
 #[cfg(test)]
@@ -597,5 +638,96 @@ mod tests {
             detections[0].label.is_none(),
             "unlabeled preferred over labeled at same k"
         );
+    }
+
+    /// RECV-05 + CHIP §416 DOS guard: a `TweakData` with many forged matches
+    /// (one per k from 0..N) where N >> `k_max` must terminate at `k_max` and
+    /// produce at most `k_max` detections.
+    ///
+    /// Construction: for each k ∈ [0, 9999], compute the `puzzle_hash` the
+    /// scanner WILL derive at that k for TV1's keys + `tweak_point`. Stuff all
+    /// 10,000 into the `OutputMeta` list. The scanner finds a "match" at every
+    /// k, so its `if !found { break; }` never fires from a miss — only the
+    /// `k_max` cap can stop it.
+    #[test]
+    fn dos_guard_caps_at_k_max() {
+        const N_FORGED: u32 = 10_000;
+        const K_MAX_TEST: usize = 32;
+
+        let b_scan = sk(TV1_SCAN_SK);
+        let b_spend = sk(TV1_SPEND_SK);
+        let b_spend_pub = pk(TV1_SPEND_PK);
+        let tp = tweak_point_from(TV1_A_SUM, TV1_INPUT_HASH);
+
+        let shared_secret = compute_shared_secret_from_tweak(&b_scan, &tp);
+
+        let outputs: Vec<OutputMeta> = (0..N_FORGED)
+            .map(|k| {
+                let tweak = derive_output_tweak(&shared_secret, k);
+                let onetime_pk = derive_onetime_pk(&b_spend_pub, &tweak);
+                let ph = puzzle_hash_for_pk(&onetime_pk);
+                OutputMeta {
+                    puzzle_hash: ph,
+                    coin_id: [0u8; 32].into(),
+                    amount: 1,
+                    parent_coin_id: [0u8; 32].into(),
+                }
+            })
+            .collect();
+
+        let data = TweakData {
+            tweak_points: vec![tp],
+            outputs,
+        };
+
+        let detections = scan_from_tweaks(&b_scan, &b_spend, &b_spend_pub, &data, None, K_MAX_TEST);
+
+        assert!(
+            detections.len() <= K_MAX_TEST,
+            "DOS guard failed: got {} detections, expected <= {K_MAX_TEST}",
+            detections.len()
+        );
+    }
+
+    /// Verify the bundled `SilentPaymentScan::scan` method on
+    /// `SilentPaymentKeys` produces byte-for-byte identical results to the
+    /// free function `scan_from_tweaks`. Demonstrates the two API surfaces
+    /// coexist (RESEARCH Open Question 3).
+    #[test]
+    fn silent_payment_keys_scan_method_matches_free_fn_tv1() {
+        use chia_sdk_utils::silent_payments::SilentPaymentKeys;
+
+        let data = TweakData {
+            tweak_points: vec![tweak_point_from(TV1_A_SUM, TV1_INPUT_HASH)],
+            outputs: vec![OutputMeta {
+                puzzle_hash: TV1_PUZZLE_HASH.into(),
+                coin_id: TV1_COIN_ID.into(),
+                amount: 1000,
+                parent_coin_id: [0u8; 32].into(),
+            }],
+        };
+
+        let free_fn_result = scan_from_tweaks(
+            &sk(TV1_SCAN_SK),
+            &sk(TV1_SPEND_SK),
+            &pk(TV1_SPEND_PK),
+            &data,
+            None,
+            K_MAX_DEFAULT,
+        );
+
+        let keys = SilentPaymentKeys::from_secret_keys(sk(TV1_SCAN_SK), sk(TV1_SPEND_SK));
+        let method_result = keys.scan(&data, None, K_MAX_DEFAULT);
+
+        assert_eq!(free_fn_result.len(), method_result.len());
+        assert_eq!(free_fn_result.len(), 1, "TV1 sanity");
+        assert_eq!(free_fn_result[0].coin_id, method_result[0].coin_id);
+        assert_eq!(free_fn_result[0].puzzle_hash, method_result[0].puzzle_hash);
+        assert_eq!(free_fn_result[0].k, method_result[0].k);
+        assert_eq!(
+            free_fn_result[0].onetime_sk.to_bytes(),
+            method_result[0].onetime_sk.to_bytes()
+        );
+        assert_eq!(free_fn_result[0].label, method_result[0].label);
     }
 }
