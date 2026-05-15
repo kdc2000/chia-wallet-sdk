@@ -811,7 +811,10 @@ name = "chia-sdk-utils"
 version = "0.33.0"
 dependencies = [
  "bech32",
+ "bip39",
+ "chia-bls 0.36.1",
  "chia-protocol",
+ "chia-sdk-types",
  "hex",
  "hex-literal",
  "indexmap",
