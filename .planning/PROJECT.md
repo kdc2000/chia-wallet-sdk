@@ -23,13 +23,15 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 - [x] **WS-02**: `.github/workflows/rust.yml` builds each affected crate individually with `-F chip-0057` and `--all-features`
 - [x] **WS-03**: All crate code under `chip-0057` compiles cleanly under workspace lint policy (deny clippy::all, warn pedantic, deny unsafe_code, deny dead_code) and passes `cargo machete`
 
-### Active
+**Address & key derivation** — Validated in Phase 2
+- [x] **ADDR-01**: `SilentPaymentKeys` derives scan + spend secret keys from a BIP-39 mnemonic (paths `m/12381/8444/12/0` and `m/12381/8444/13/0`)
+- [x] **ADDR-02**: `SilentPaymentAddress` encodes/decodes bech32m with HRP `spxch` (mainnet) / `tspxch` (testnet) over the 96-byte `scan_pk || spend_pk` payload
+- [x] **ADDR-03**: `SilentPaymentKeys::labeled_address(m)` produces labeled sub-addresses where `B_spend` is replaced by `B_spend + label_pk(m)`; the scan key is unchanged across labels
+- [x] **ADDR-04**: Wallet maintains a `label_pk → label_index` lookup so labeled detections can be attributed
+- [x] **ADDR-05**: `SilentPaymentKeys::from_seed` derives keys from a raw seed (parallel constructor to `from_mnemonic`)
+- [x] **ADDR-06**: `labeled_address(0)` is rejected at the API boundary with `ReservedChangeLabel` (label `m = 0` is reserved per CHIP-0057)
 
-**Address & key derivation**
-- [ ] **ADDR-01**: `SilentPaymentKeys` derives scan + spend secret keys from a BIP-39 mnemonic (paths `m/12381/8444/12/0` and `m/12381/8444/13/0`)
-- [ ] **ADDR-02**: `SilentPaymentAddress` encodes/decodes bech32m with HRP `spxch` (mainnet) / `tspxch` (testnet) over the 96-byte `scan_pk || spend_pk` payload
-- [ ] **ADDR-03**: `SilentPaymentKeys::labeled_address(m)` produces labeled sub-addresses where `B_spend` is replaced by `B_spend + label_pk(m)`; the scan key is unchanged across labels
-- [ ] **ADDR-04**: Wallet maintains a `label_pk → label_index` lookup so labeled detections can be attributed
+### Active
 
 **Send side (XCH)**
 - [ ] **SEND-01**: `derive_one_time_puzzle_hash` computes the recipient's per-payment puzzle hash from `(scan_pk, spend_pk, aggregated_sender_sk, input_hash, k)`
@@ -111,10 +113,10 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 |----------|-----------|---------|
 | v1 = send-side + transport-agnostic receive primitive (no WS client) | Today's `sp-service` JSON is a prototype, not a CHIP. Locking the SDK to it would force a breaking change when CHIP-0058 lands. Ship a `TweakData` input type instead so adapters can plug in. | — Pending |
 | CAT2 send deferred to v2 | Sender-side works trivially; receiver-side requires indexer-level layer-aware extraction. Shipping CAT2 sends now would produce undetectable payments — a footgun. | — Pending |
-| Labels fully supported in v1 (generation + detection) | Cheap to implement on top of unlabeled crypto; matches the CHIP's design intent for payment-source distinction. Skipping creates an asymmetric API. | — Pending |
-| `chip-0057` feature flag (not `silent-payments`) | Matches the `chip-0035` / `chip-0037` precedent. The CHIP number is confirmed. | — Pending |
-| `ScalarField` is a new SDK newtype (not a reused crate type) | Existing signed `mod_by_group_order` would silently break the protocol. The unsigned reduction needs a distinct type so the compiler enforces correctness. | — Pending |
-| Lives in `chia-sdk-types` + `chia-sdk-driver` + `chia-sdk-utils` (no new crate) | Mirrors how `chip-0035` and `chip-0037` integrate. Silent payments are not a transport, not a new puzzle layer — they're a key-derivation + driver action layered on the standard p2. | — Pending |
+| Labels fully supported in v1 (generation + detection) | Cheap to implement on top of unlabeled crypto; matches the CHIP's design intent for payment-source distinction. Skipping creates an asymmetric API. | — Generation side validated in Phase 2 (Plan 02-04 `LabelRegistry` + `labeled_address`); detection side pending in Phase 4 (RECV-04) |
+| `chip-0057` feature flag (not `silent-payments`) | Matches the `chip-0035` / `chip-0037` precedent. The CHIP number is confirmed. | — Validated in Phase 1 (workspace) + Phase 2 (`chia-sdk-utils/chip-0057` cascades to `chia-sdk-types/chip-0057`) |
+| `ScalarField` is a new SDK newtype (not a reused crate type) | Existing signed `mod_by_group_order` would silently break the protocol. The unsigned reduction needs a distinct type so the compiler enforces correctness. | — Validated in Phase 1 |
+| Lives in `chia-sdk-types` + `chia-sdk-driver` + `chia-sdk-utils` (no new crate) | Mirrors how `chip-0035` and `chip-0037` integrate. Silent payments are not a transport, not a new puzzle layer — they're a key-derivation + driver action layered on the standard p2. | — Validated through Phase 2 (`chia-sdk-types` houses primitives; `chia-sdk-utils` houses address/key/label surface). Driver side still pending Phase 3+ |
 | Bindings ship in v1, not deferred | Sage and other JS/Python wallets are the primary consumers. Shipping a Rust-only v1 would gate adoption on a separate "bindings phase" with no functional reason. | — Pending |
 | Full simulator round-trip (mocked tweak source) is the v1 test target | Test-vectors-only would validate crypto but not the wallet integration shape. The simulator round-trip is the cheapest way to prove the API actually composes with `Spends` + `StandardLayer` + the signer. | — Pending |
 | `puzzle_hash_for_pk` from the prototype is dropped in favor of `StandardArgs::curry_tree_hash(pk.derive_synthetic())` | The SDK already has the helper. Re-shipping it would be redundant and would risk drift. | — Pending |
@@ -137,4 +139,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 after Phase 1 (crypto primitives & workspace integration) complete*
+*Last updated: 2026-05-15 after Phase 2 (address & key types) complete*
