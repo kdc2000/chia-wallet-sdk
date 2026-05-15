@@ -64,25 +64,30 @@ mod tests {
 
     #[test]
     fn tag_inputs_hash_pinned() {
-        // Placeholder — Task 2 replaces with actual SHA256(b"Chia_SP/Inputs").
+        // SHA256(b"Chia_SP/Inputs"). Cross-verified via Python `hashlib.sha256`
+        // and `sha256sum` CLI — both produced identical bytes. Any rename of
+        // the `CHIA_SP_INPUTS` value (e.g. to "ChiaSP/Inputs" or
+        // "Chia_SP/Input") fails this test before any protocol code runs.
         const EXPECTED: [u8; 32] =
-            hex!("0000000000000000000000000000000000000000000000000000000000000000");
+            hex!("d44a6db8619ff9fb78e318cb49b6bae45b338c6b085b98c42e3e43ffda3378cf");
         assert_eq!(sha256(CHIA_SP_INPUTS.as_bytes()), EXPECTED);
     }
 
     #[test]
     fn tag_shared_secret_hash_pinned() {
-        // Placeholder — Task 2 replaces with actual SHA256(b"Chia_SP/SharedSecret").
+        // SHA256(b"Chia_SP/SharedSecret"). Cross-verified via Python and
+        // `sha256sum` CLI — both produced identical bytes.
         const EXPECTED: [u8; 32] =
-            hex!("0000000000000000000000000000000000000000000000000000000000000000");
+            hex!("e7b8a5241d3764f92efc3f2f0b634279c7feddb3101021efd897a8dd63b9ca9f");
         assert_eq!(sha256(CHIA_SP_SHARED_SECRET.as_bytes()), EXPECTED);
     }
 
     #[test]
     fn tag_label_hash_pinned() {
-        // Placeholder — Task 2 replaces with actual SHA256(b"Chia_SP/Label").
+        // SHA256(b"Chia_SP/Label"). Cross-verified via Python and `sha256sum`
+        // CLI — both produced identical bytes.
         const EXPECTED: [u8; 32] =
-            hex!("0000000000000000000000000000000000000000000000000000000000000000");
+            hex!("c63c8bd2123be129023b8f24c0249bacbd83da15e2b883ec5a03aa62b0f94554");
         assert_eq!(sha256(CHIA_SP_LABEL.as_bytes()), EXPECTED);
     }
 
