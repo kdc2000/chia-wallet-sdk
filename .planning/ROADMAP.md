@@ -50,7 +50,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. `labeled_address(0)` returns `Err(SilentPaymentError::ReservedChangeLabel)` (m=0 change-label guard).
   6. `LabelRegistry` round-trip: `register(scan_sk, m)` then `lookup(label_pk)` returns `Some(m)`; `forward(m)` returns the same `label_pk`.
 **Plans**: 5 plans
-- [ ] 02-01-PLAN.md — Wiring & feature gate: chip-0057 deps on chia-sdk-utils + silent_payments module barrel
+- [x] 02-01-PLAN.md — Wiring & feature gate: chip-0057 deps on chia-sdk-utils + silent_payments module barrel
 - [ ] 02-02-PLAN.md — SilentPaymentError + SilentPaymentNetwork foundational types
 - [ ] 02-03-PLAN.md — SilentPaymentAddress encode/decode + 12 address tests (TV1 round-trip, pinned strings, 6 negative cases)
 - [ ] 02-04-PLAN.md — SilentPaymentKeys + LabelRegistry + 15 named tests (TV1 keys, TV3 labels, m=0 reject, registry round-trip)
