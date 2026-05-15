@@ -36,3 +36,10 @@ pub use chia_sdk_utils::silent_payments::{
     LabelRegistry, SilentPaymentAddress, SilentPaymentError, SilentPaymentKeys,
     SilentPaymentNetwork,
 };
+
+#[cfg(feature = "chip-0057")]
+pub use chia_sdk_driver::silent_payments::{
+    DetectedSpCoin, K_MAX_DEFAULT, OutputMeta, SilentPaymentScan, TweakData,
+    compute_shared_secret_from_tweak, derive_onetime_pk, derive_onetime_sk, derive_output_tweak,
+    puzzle_hash_for_pk, scan_from_tweaks,
+};

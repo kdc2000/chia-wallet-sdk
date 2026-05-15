@@ -19,7 +19,7 @@ mod spend_context;
 mod spend_with_conditions;
 
 #[cfg(feature = "chip-0057")]
-mod silent_payments;
+pub mod silent_payments;
 
 pub use action_system::*;
 pub use actions::*;
