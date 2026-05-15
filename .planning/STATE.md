@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-03-PLAN.md (tagged_hash + Chia_SP/* tag constants); ready for 01-04 (paths constants).
-last_updated: "2026-05-15T16:17:47.414Z"
+stopped_at: Completed 01-04-PLAN.md (SCAN_PATH/SPEND_PATH derivation path constants); ready for 01-05 (machete + clippy + grep-ban gate closure).
+last_updated: "2026-05-15T16:23:01.328Z"
 last_activity: 2026-05-15
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 1 (crypto-primitives-workspace-integration) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-15
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-crypto-primitives-workspace-integration P01 | 10 | 1 tasks | 4 files |
 | Phase 01-crypto-primitives-workspace-integration P02 | 7 | 2 tasks | 4 files |
 | Phase 01-crypto-primitives-workspace-integration P03 | 4 | 2 tasks | 2 files |
+| Phase 01-crypto-primitives-workspace-integration P04 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 01-crypto-primitives-workspace-integration]: Phase 1 Plan 01: chip-0057 feature scaffolding mirrors chip-0037 precedent (bbc7f57f) byte-for-byte; chia-sdk-utils gains its first [features] block with empty chip-0057 = []; Q8 dep:chia-sdk-types edge deferred to Phase 2 pre-flight audit.
 - [Phase 01-crypto-primitives-workspace-integration]: Plan 01-02: ScalarField newtype lands behind chip-0057 with unsigned mod-r reduction; no From<[u8;32]> impl (type boundary forces unsigned-vs-signed choice). Adversarial test from PLAN '..._reduces_to_r_minus_one' was a misnomer — actual reduction of (2^256-1) mod r is 0x1824b159...fffffffd (not r-1). Test name preserved per VALIDATION lock; assertion pins correct value.
 - [Phase 01-crypto-primitives-workspace-integration]: Plan 01-03: tagged_hash + Chia_SP/* tag constants land under chip-0057. BIP-340 construction via chia_sha2::Sha256 (new/update/finalize — never ::digest). Three pub const &'static str tags pinned via SHA256(tag.as_bytes())==hex!() typo guards; values cross-verified via Python hashlib.sha256 AND sha256sum CLI before pinning.
+- [Phase 01-crypto-primitives-workspace-integration]: Plan 01-04: SCAN_PATH and SPEND_PATH pinned as pub const &[u32] under chip-0057 — &[12381, 8444, 12, 0] and &[12381, 8444, 13, 0], unhardened (no | 0x80000000) per CHIP-0057 §172-173 and sp-common reference impl. No unit tests at this layer; values validated end-to-end at Phase 2 against b_scan/b_spend CHIP test vectors. silent_payments/mod.rs barrel now in final sorted order paths < scalar < tagged_hash.
 
 ### Pending Todos
 
@@ -89,6 +91,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-15T16:17:40.545Z
-Stopped at: Completed 01-03-PLAN.md (tagged_hash + Chia_SP/* tag constants); ready for 01-04 (paths constants).
+Last session: 2026-05-15T16:22:54.998Z
+Stopped at: Completed 01-04-PLAN.md (SCAN_PATH/SPEND_PATH derivation path constants); ready for 01-05 (machete + clippy + grep-ban gate closure).
 Resume file: None
