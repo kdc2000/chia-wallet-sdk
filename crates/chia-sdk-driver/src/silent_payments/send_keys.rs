@@ -161,7 +161,9 @@ impl Spends {
             // Record the resulting output coin (parent_coin_id was captured at
             // apply time when the parent was selected, before any intermediate
             // ephemeral coins could shift indices).
-            self.outputs.xch.push(Coin::new(p.parent_coin_id, ph, p.amount));
+            self.outputs
+                .xch
+                .push(Coin::new(p.parent_coin_id, ph, p.amount));
         }
 
         // Step 9: delegate to the standard finish path. finish_with_keys
