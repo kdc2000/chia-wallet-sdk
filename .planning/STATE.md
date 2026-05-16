@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-03-PLAN.md (Spends::finish_with_silent_payment_keys real body + 3 DriverError variants + 2 integration tests; 3 task commits f3221245..ddc58720; SEND-03 Spends-level + SEND-04 finish-time CLOSED; ROADMAP Phase 4 success criteria #1+#2 closed at SDK level). Ready for Plan 04-04 (opcode 60/61 cross-input announcement binding)."
-last_updated: "2026-05-16T02:28:21.849Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-05-16T02:58:06.309Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 20
-  completed_plans: 21
+  completed_plans: 22
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 04 (send-side-action) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-16
 
@@ -75,6 +75,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P01 | 15 | 4 tasks | 4 files |
 | Phase 04 P02 | 13 | 4 tasks | 6 files |
 | Phase 04 P03 | 21 | 3 tasks | 3 files |
+| Phase 04 P04 | 21min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04]: Plan 04-01: 3 send-side free functions (aggregate_sender_sks/compute_input_hash/derive_one_time_puzzle_hash) land in crates/chia-sdk-driver/src/silent_payments/ as composed Phase-3 primitives. TV4 aggregate byte-pinned to 5600d878...cbf95b89 (sp-common reference); TV1 input_hash 38a1c8...cc9411; TV1 puzzle_hash 23adba14...c21fbf5 at k=0; in-test k=1 round-trip catches ser32(k) endianness regressions. compute_input_hash panics on empty slice (action layer guarantees non-empty XCH-input set). b_*-style test naming follows scanner.rs::bespoke_k1_detection precedent to avoid clippy::similar_names without #[allow]. Zero new workspace deps; zero new #[allow] attributes anywhere in silent_payments/.
 - [Phase 04]: Plan 04-02: SilentPaymentSend action + apply-time plumbing land in chia-sdk-driver. New pub struct SilentPaymentSend (recipient, amount, memos) + SpendAction impl reserves XCH parent via output_source(BURN_PUZZLE_HASH, amount), increments per-recipient k-counter (keyed by 48-byte compressed scan_pk), pushes SilentPaymentPending; NO CreateCoin emission at apply (deferred per RESEARCH §1e). Action::SilentPaymentSend(SilentPaymentSend) cfg-gated enum variant + Action::silent_payment_send constructor + dispatch arms. Two new pub(crate) chip-0057-gated fields on Spends: silent_payment_counters: HashMap<[u8;48],u32> + silent_payments_pending: Vec<SilentPaymentPending>. Spends::finish_with_silent_payment_keys STUB lands with locked signature ((self, ctx, deltas, relation, &IndexMap<Bytes32,PublicKey>, &IndexMap<Bytes32,SecretKey>) -> Result<Outputs,DriverError>) returning Err(DriverError::Custom) after a dead-code-suppressing destructure-read (no #[allow]). 4 deviations all Rule-1 inline-fixed: destructure-read for dead_code, unused super::*, borrow-after-move via pre-captured expected_scan_pk/expected_spend_pk, pub use → pub(crate) use re-export. 1 new integration test (action_state_machine) → driver test count 1069→1070; silent_payments tests unchanged at 18. 7 Privacy-warning rustdoc mentions across Plan 04-02 surfaces. SEND-04 (apply-time portion) closed; finish-time round-trip blocked on Plan 04-03.
 - [Phase 04]: Plan 04-03: Spends::finish_with_silent_payment_keys real 9-step body replaces Plan 04-02's stub. 3 chip-0057-gated DriverError variants land (SilentPaymentMultiPartyUnsupported / SilentPaymentNoXchInputs / SilentPaymentMemoHintForbidden — canonical wording from RESEARCH §4). Inline-fixed clippy: parameter rename synthetic_sks -> secret_keys (clippy::similar_names; locked TYPE preserved); local rename aggregated_sender_pk -> agg_pk; mem::take Pitfall B borrow workaround commented inline. Recorded SilentPaymentPending.parent_puzzle_hash now used (was dead-code-deny). 2 new tests: multi_party_hard_errors (SEND-03 Spends-level) + round_trip_matches_derive_one_time_puzzle_hash (SEND-04 finish-time; byte-equals derive_one_time_puzzle_hash). ROADMAP Phase 4 success criteria #1 + #2 closed at SDK level (Phase 6 closes simulator-level). Driver test count 1070 -> 1072. Zero new #[allow]; only scanner.rs #[allow] from Plan 03-03 remains across silent_payments/. SEND-03 (Spends-level) + SEND-04 (finish-time) requirements complete.
+- [Phase 04]: Unit-return signature on emit_silent_payment_announcements (clippy::unnecessary_wraps); no #[allow] added
+- [Phase 04]: ConditionsSpend::conditions_ref accessor added for test introspection; pub visibility matches finish/add_conditions
+- [Phase 04]: Lex-min coin_id announcer selection (vs Python iteration-order) for order-independent announcement binding
+- [Phase 04]: Method-on-Spends shape for emit_silent_payment_announcements (vs free function over FungibleSpends); needed for test introspection independent of finish-time consume
 
 ### Pending Todos
 
@@ -121,6 +126,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-16T02:28:21.843Z
-Stopped at: Completed 04-03-PLAN.md (Spends::finish_with_silent_payment_keys real body + 3 DriverError variants + 2 integration tests; 3 task commits f3221245..ddc58720; SEND-03 Spends-level + SEND-04 finish-time CLOSED; ROADMAP Phase 4 success criteria #1+#2 closed at SDK level). Ready for Plan 04-04 (opcode 60/61 cross-input announcement binding).
+Last session: 2026-05-16T02:57:58.283Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
