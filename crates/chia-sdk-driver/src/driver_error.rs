@@ -134,4 +134,20 @@ pub enum DriverError {
     #[cfg(feature = "chip-0057")]
     #[error("silent payment error: {0}")]
     SilentPayment(#[from] chia_sdk_utils::silent_payments::SilentPaymentError),
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent payment requires aggregating synthetic SKs for every input; multi-party flows are unsupported in v1"
+    )]
+    SilentPaymentMultiPartyUnsupported,
+
+    #[cfg(feature = "chip-0057")]
+    #[error("silent payment requires at least one wallet-controlled XCH input")]
+    SilentPaymentNoXchInputs,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "a 32-byte first memo would be promoted to a puzzle_hash hint by the standard wallet, defeating silent-payment privacy"
+    )]
+    SilentPaymentMemoHintForbidden,
 }
