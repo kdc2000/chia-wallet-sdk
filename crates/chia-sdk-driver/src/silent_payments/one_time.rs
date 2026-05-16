@@ -130,13 +130,8 @@ mod tests {
         let aggregated_sender_sk = ScalarField::from_bytes_raw(TV1_AGGREGATED_SENDER_SK);
         let input_hash = ScalarField::from_bytes_unsigned(TV1_INPUT_HASH);
 
-        let result = derive_one_time_puzzle_hash(
-            &scan_pk,
-            &spend_pk,
-            &aggregated_sender_sk,
-            &input_hash,
-            0,
-        );
+        let result =
+            derive_one_time_puzzle_hash(&scan_pk, &spend_pk, &aggregated_sender_sk, &input_hash, 0);
 
         assert_eq!(
             *result.as_ref(),
@@ -150,8 +145,8 @@ mod tests {
     /// matches Phase 3's `bespoke_k1_detection` in-test computation.
     ///
     /// The test re-derives the expected puzzle hash via the same Phase-3
-    /// primitive chain (compute_shared_secret_from_tweak +
-    /// derive_output_tweak(.., 1) + derive_onetime_pk + puzzle_hash_for_pk)
+    /// primitive chain (`compute_shared_secret_from_tweak` +
+    /// `derive_output_tweak(.., 1)` + `derive_onetime_pk` + `puzzle_hash_for_pk`)
     /// over the TV1 inputs, then asserts byte-equality against
     /// `derive_one_time_puzzle_hash(.., k=1)`. Catches `ser32(k)` endianness
     /// regressions because TV1/TV3/TV4 are all k=0.
@@ -159,33 +154,33 @@ mod tests {
     fn derive_one_time_puzzle_hash_k1_round_trip() {
         use crate::silent_payments::compute_shared_secret_from_tweak;
 
-        let scan_sk = SecretKey::from_bytes(&TV1_SCAN_SK).expect("TV1 scan_sk");
-        let scan_pk = PublicKey::from_bytes(&TV1_SCAN_PK).expect("TV1 scan_pk");
-        let spend_pk = PublicKey::from_bytes(&TV1_SPEND_PK).expect("TV1 spend_pk");
-        let aggregated_sender_sk = ScalarField::from_bytes_raw(TV1_AGGREGATED_SENDER_SK);
+        // Phase-3 scanner.rs::bespoke_k1_detection name precedent: use
+        // `b_*` shorthand to keep clippy::similar_names quiet without
+        // suppression attributes (the scan vs spend pair differs by one
+        // byte under longer names like `scan_sk` / `spend_pk` — both routes
+        // need to be in scope for the round-trip).
+        let b_scan = SecretKey::from_bytes(&TV1_SCAN_SK).expect("TV1 scan_sk");
+        let b_scan_pub = PublicKey::from_bytes(&TV1_SCAN_PK).expect("TV1 scan_pk");
+        let b_spend_pub = PublicKey::from_bytes(&TV1_SPEND_PK).expect("TV1 spend_pk");
+        let a_sum_sk = ScalarField::from_bytes_raw(TV1_AGGREGATED_SENDER_SK);
         let input_hash = ScalarField::from_bytes_unsigned(TV1_INPUT_HASH);
 
         // Receiver-side recomputation: construct the tweak_point the receiver
         // sees (input_hash * A_sum), then compute the shared_secret, then
         // derive the expected k=1 puzzle_hash via the Phase 3 chain.
-        let aggregated_sender_pk = SecretKey::from_bytes(aggregated_sender_sk.as_bytes())
+        let a_sum_pub = SecretKey::from_bytes(a_sum_sk.as_bytes())
             .expect("aggregated SK < r")
             .public_key();
-        let mut tweak_point = aggregated_sender_pk;
+        let mut tweak_point = a_sum_pub;
         tweak_point.scalar_multiply(input_hash.as_bytes());
-        let expected_shared_secret = compute_shared_secret_from_tweak(&scan_sk, &tweak_point);
+        let expected_shared_secret = compute_shared_secret_from_tweak(&b_scan, &tweak_point);
         let expected_tweak = derive_output_tweak(&expected_shared_secret, 1);
-        let expected_onetime_pk = derive_onetime_pk(&spend_pk, &expected_tweak);
+        let expected_onetime_pk = derive_onetime_pk(&b_spend_pub, &expected_tweak);
         let expected_ph = puzzle_hash_for_pk(&expected_onetime_pk);
 
         // Sender-side derivation under test:
-        let sender_ph = derive_one_time_puzzle_hash(
-            &scan_pk,
-            &spend_pk,
-            &aggregated_sender_sk,
-            &input_hash,
-            1,
-        );
+        let sender_ph =
+            derive_one_time_puzzle_hash(&b_scan_pub, &b_spend_pub, &a_sum_sk, &input_hash, 1);
 
         assert_eq!(
             *sender_ph.as_ref(),
