@@ -21,8 +21,8 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 - [x] **SEND-04** — `SilentPaymentSend` action composes with the existing `Spends` action system. `spends.add(SilentPaymentSend { recipient, amount, memos })` records the deterministic pieces during `apply()` and defers ECDH to a `Spends::finish_with_silent_payment_keys(synthetic_pk_map, synthetic_sk_map)` overload (Option A from architecture research, subject to a phase-4 proof-of-concept).
 - [x] **SEND-05** — `SilentPaymentSend` accepts `Vec<Recipient>` so a single transaction can produce multiple silent-payment outputs sharing one `input_hash`. The `k` counter (per recipient scan_pk) is maintained by `Spends` so multiple sends in one batch increment correctly.
 - [x] **SEND-06** — Multi-input sends across multiple wallet key indices emit the SendMessage / ReceiveMessage announcements (opcodes 60 / 61) that bind the inputs together, so the recipient's `compute_input_hash` matches the sender's. Without this, cross-index sends are undetectable.
-- [ ] **SEND-07** — Memo-position hint guard: the standard Chia wallet promotes a 32-byte memo at position 0 to a puzzle-hash hint, publishing the one-time PH to every indexer and defeating silent-payment privacy. `SilentPaymentSend` rejects or rewrites this memo shape; the API surface makes the hazard hard to hit by accident.
-- [ ] **SEND-08** — Doc-comment privacy warnings on every memo-bearing API noting that memos are on-chain and visible to anyone holding the recipient's scan key.
+- [x] **SEND-07** — Memo-position hint guard: the standard Chia wallet promotes a 32-byte memo at position 0 to a puzzle-hash hint, publishing the one-time PH to every indexer and defeating silent-payment privacy. `SilentPaymentSend` rejects or rewrites this memo shape; the API surface makes the hazard hard to hit by accident.
+- [x] **SEND-08** — Doc-comment privacy warnings on every memo-bearing API noting that memos are on-chain and visible to anyone holding the recipient's scan key.
 
 ### Receive Side — Transport-Agnostic Primitive (`chia-sdk-driver::silent_payments`)
 
