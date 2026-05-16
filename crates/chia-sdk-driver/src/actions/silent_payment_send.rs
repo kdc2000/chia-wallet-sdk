@@ -63,6 +63,47 @@ impl SilentPaymentSend {
     }
 }
 
+/// Reject a 32-byte first memo that would be promoted to a `puzzle_hash` hint
+/// by the standard Chia wallet, defeating silent-payment privacy.
+///
+/// Privacy warning: the standard wallet (Sage, the mainnet wallet) treats a
+/// 32-byte first memo as a `puzzle_hash` hint and indexes the output by that
+/// hash — exposing the one-time puzzle hash to any indexer. For silent
+/// payments, this completely defeats the privacy gain.
+///
+/// Returns `Err(DriverError::SilentPaymentMemoHintForbidden)` if the first
+/// memo atom is exactly 32 bytes. Returns `Ok(())` for:
+/// - `Memos::None` (no memos)
+/// - `Memos::Some(ptr)` where the CLVM structure does not start with a
+///   32-byte atom (e.g. a 1-byte sentinel followed by a 32-byte payload —
+///   the canonical escape hatch for wallets that legitimately need a 32-byte
+///   memo payload)
+/// - `Memos::Some(ptr)` where the structure is malformed (no first element,
+///   non-list, etc.) — defensive, since the standard wallet's hint promotion
+///   only fires on well-formed 32-byte first atoms.
+fn memo_hint_guard(ctx: &SpendContext, memos: Memos<NodePtr>) -> Result<(), DriverError> {
+    use clvmr::SExp;
+
+    let Memos::Some(ptr) = memos else {
+        return Ok(());
+    };
+
+    let SExp::Pair(head, _tail) = ctx.sexp(ptr) else {
+        return Ok(());
+    };
+
+    let SExp::Atom = ctx.sexp(head) else {
+        return Ok(());
+    };
+
+    let atom = ctx.atom(head);
+    if atom.as_ref().len() == 32 {
+        return Err(DriverError::SilentPaymentMemoHintForbidden);
+    }
+
+    Ok(())
+}
+
 impl SpendAction for SilentPaymentSend {
     fn calculate_delta(&self, deltas: &mut Deltas, _index: usize) {
         deltas.update(Id::Xch).output += self.amount;
@@ -80,6 +121,14 @@ impl SpendAction for SilentPaymentSend {
         spends: &mut Spends,
         _index: usize,
     ) -> Result<(), DriverError> {
+        // SEND-07: reject a 32-byte first memo (would be promoted to a
+        // `puzzle_hash` hint by the standard wallet, defeating privacy).
+        // This is the FIRST line of the body — it fires BEFORE any
+        // side-effects on `spends` (parent reservation, k-counter increment,
+        // SilentPaymentPending push). `Memos<NodePtr>` is Copy so we pass by
+        // value (clippy::trivially_copy_pass_by_ref).
+        memo_hint_guard(ctx, self.memos)?;
+
         // 1. Reserve an XCH parent. `BURN_PUZZLE_HASH` is used as the
         //    placeholder puzzle hash because `output_source` only uses the
         //    `amount` field for source-selection arithmetic
@@ -602,6 +651,127 @@ mod tests {
             "input_hash round-trip failed: expected puzzle_hash {} amount 1 not in outputs",
             hex::encode(expected_ph)
         );
+
+        Ok(())
+    }
+
+    /// SEND-07 + ROADMAP Phase 4 success criterion #5: passing a 32-byte
+    /// first memo to `SilentPaymentSend` errors at apply time with
+    /// `DriverError::SilentPaymentMemoHintForbidden`. The action's
+    /// side-effects on `Spends` (parent reservation, k-counter increment,
+    /// `SilentPaymentPending` push) DO NOT happen because the guard is the
+    /// first line of `spend`.
+    #[test]
+    fn memo_hint_guard_rejects_32_byte_first_memo() -> Result<()> {
+        use crate::DriverError;
+
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(1);
+
+        let recipient = SilentPaymentAddress::new(
+            SecretKey::from_bytes(&[0x42u8; 32])?.public_key(),
+            SecretKey::from_bytes(&[0x43u8; 32])?.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        // Construct Memos with a 32-byte first atom via the canonical
+        // `ctx.hint(...)` helper — it builds a Memos<NodePtr> containing
+        // exactly one 32-byte atom (the Bytes32 hint).
+        let hint_bytes: chia_protocol::Bytes32 = [0xffu8; 32].into();
+        let bad_memos = ctx.hint(hint_bytes)?;
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let result = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, bad_memos)],
+        );
+
+        assert!(
+            matches!(result, Err(DriverError::SilentPaymentMemoHintForbidden)),
+            "expected SilentPaymentMemoHintForbidden, got {result:?}"
+        );
+
+        // No side effects: pending list still empty (apply failed before
+        // the SilentPaymentPending push).
+        assert!(
+            spends.silent_payments_pending.is_empty(),
+            "guard must fire BEFORE pushing SilentPaymentPending"
+        );
+
+        Ok(())
+    }
+
+    /// SEND-07: a 1-byte sentinel followed by a 32-byte payload passes the
+    /// guard — the first memo is 1 byte, not 32. This is the wallet
+    /// author's explicit escape hatch if they legitimately need a 32-byte
+    /// payload memo: prefix it with a sentinel byte so the first atom is
+    /// no longer 32 bytes.
+    #[test]
+    fn memo_hint_guard_allows_sentinel_prefixed() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(1);
+
+        let recipient = SilentPaymentAddress::new(
+            SecretKey::from_bytes(&[0x42u8; 32])?.public_key(),
+            SecretKey::from_bytes(&[0x43u8; 32])?.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        // Build Memos with a 1-byte first atom + a 32-byte second atom.
+        // `ctx.memos(&value)` allocs whatever `value` serializes to under
+        // ToClvm; a `[Bytes; 2]` array serializes to a proper CLVM list of
+        // two atoms (1 byte + 32 bytes).
+        let sentinel: chia_protocol::Bytes = chia_protocol::Bytes::new(vec![0x00u8]);
+        let payload: chia_protocol::Bytes = chia_protocol::Bytes::new(vec![0xffu8; 32]);
+        let safe_memos = ctx.memos(&[sentinel, payload])?;
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let result = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, safe_memos)],
+        );
+
+        assert!(
+            result.is_ok(),
+            "1-byte sentinel + 32-byte payload must pass: {result:?}"
+        );
+        assert_eq!(spends.silent_payments_pending.len(), 1);
+
+        Ok(())
+    }
+
+    /// SEND-07: `Memos::None` passes the guard trivially.
+    #[test]
+    fn memo_hint_guard_allows_none() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(1);
+
+        let recipient = SilentPaymentAddress::new(
+            SecretKey::from_bytes(&[0x42u8; 32])?.public_key(),
+            SecretKey::from_bytes(&[0x43u8; 32])?.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let result = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
+        );
+
+        assert!(result.is_ok(), "Memos::None must pass: {result:?}");
+        assert_eq!(spends.silent_payments_pending.len(), 1);
 
         Ok(())
     }
