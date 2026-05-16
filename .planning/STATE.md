@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-05-PLAN.md (DOS-guard cap test + SilentPaymentScan trait + chia-sdk-driver -F chip-0057 CI line + 11-symbol umbrella prelude re-export + 16-gate Phase 3 final sweep). RECV-05 closed; Phase 3 COMPLETE (RECV-01..05 + CRYPTO-03 all closed). Workspace test count 2397 → 2399. Ready for Phase 4 (send-side action).
-last_updated: "2026-05-15T23:36:05.798Z"
-last_activity: 2026-05-15
+status: executing
+stopped_at: Completed 04-01-PLAN.md (3 send-side free functions + 6 TV-pinned tests in silent_payments/{aggregate,input_hash,one_time}.rs; 18 silent_payments tests green; SEND-01/SEND-02/SEND-03 free-fn portion closed). Ready for Plan 04-02 (SilentPaymentSend action).
+last_updated: "2026-05-16T01:40:03.966Z"
+last_activity: 2026-05-16
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 15
-  completed_plans: 18
+  total_plans: 20
+  completed_plans: 19
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 03 — receive-primitive-chip-test-vector-closure
+**Current focus:** Phase 04 — send-side-action
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-15
+Phase: 04 (send-side-action) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-16
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -72,6 +72,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P03 | 19 | 1 tasks | 2 files |
 | Phase 03 P04 | 13 | 2 tasks | 3 files |
 | Phase 03 P05 | 26 | 3 tasks | 4 files |
+| Phase 04 P01 | 15 | 4 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03]: Plan 03-04: Option A reach-through (RESEARCH §13): generate_label promoted pub(super)→pub(crate) in labels.rs + pub fn generate_label wrapper in mod.rs (one-line delegate, fully-qualified return types). Cross-crate consumers cannot reach labels::generate_label directly. Future Phase-6 own-change detection (m=0) uses the same reach-through.
 - [Phase 03]: Plan 03-04: labeled-detection branch in scan_from_tweaks: if !found && let Some(label_map) = labels { for (m, label_pk) in label_map.iter() { ... break on first labeled match } }. Termination rule placed AFTER labeled branch in source. Closes RECV-04 + CRYPTO-03 success criteria 1 (TV3), 2 (bespoke k=1 via in-test derivation), 6 (labeled k-termination). Workspace tests 2393 → 2397 (+4). No new #[allow] attributes; CHIP-spec test-local names (b_scan, b_spend, b_spend_pub) used to suppress similar_names.
 - [Phase 03]: Plan 03-05: SilentPaymentScan trait + impl on SilentPaymentKeys (orphan-rule-compliant cross-crate method add per RESEARCH Open Q3). Both free fn scan_from_tweaks (hardware-split signers) and method keys.scan(...) (ergonomic bundled) coexist; silent_payment_keys_scan_method_matches_free_fn_tv1 pins byte-equality. dos_guard_caps_at_k_max forges 10,000 matches at one tweak point + k_max=32 → asserts detections.len() <= 32 (CHIP §416 cap proof, RECV-05 closure). New CI line cargo build -p chia-sdk-driver -F chip-0057 in rust.yml at 10-space indent (WS-02 equivalent for Phase 3). src/prelude.rs gains SECOND chip-0057 block re-exporting 11 driver-side symbols (5 types + 6 functions). Rule 3 inline fix: mod silent_payments → pub mod silent_payments in chia-sdk-driver/lib.rs (caught at workspace --all-features compile). 4 deviations all inline-fixed: 2x doc_markdown, 2x items_after_statements, 1x rustfmt re-wrap, 1x module visibility. Zero new #[allow]. Workspace tests 2397 → 2399 (+2 new). Phase 3 COMPLETE: 16-gate matrix green, all 6 ROADMAP success criteria PASS, all 6 requirements (RECV-01..05 + CRYPTO-03) closed.
+- [Phase 04]: Plan 04-01: 3 send-side free functions (aggregate_sender_sks/compute_input_hash/derive_one_time_puzzle_hash) land in crates/chia-sdk-driver/src/silent_payments/ as composed Phase-3 primitives. TV4 aggregate byte-pinned to 5600d878...cbf95b89 (sp-common reference); TV1 input_hash 38a1c8...cc9411; TV1 puzzle_hash 23adba14...c21fbf5 at k=0; in-test k=1 round-trip catches ser32(k) endianness regressions. compute_input_hash panics on empty slice (action layer guarantees non-empty XCH-input set). b_*-style test naming follows scanner.rs::bespoke_k1_detection precedent to avoid clippy::similar_names without #[allow]. Zero new workspace deps; zero new #[allow] attributes anywhere in silent_payments/.
 
 ### Pending Todos
 
@@ -115,6 +117,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-15T23:26:11.390Z
-Stopped at: Completed 03-05-PLAN.md (DOS-guard cap test + SilentPaymentScan trait + chia-sdk-driver -F chip-0057 CI line + 11-symbol umbrella prelude re-export + 16-gate Phase 3 final sweep). RECV-05 closed; Phase 3 COMPLETE (RECV-01..05 + CRYPTO-03 all closed). Workspace test count 2397 → 2399. Ready for Phase 4 (send-side action).
+Last session: 2026-05-16T01:40:03.961Z
+Stopped at: Completed 04-01-PLAN.md (3 send-side free functions + 6 TV-pinned tests in silent_payments/{aggregate,input_hash,one_time}.rs; 18 silent_payments tests green; SEND-01/SEND-02/SEND-03 free-fn portion closed). Ready for Plan 04-02 (SilentPaymentSend action).
 Resume file: None
