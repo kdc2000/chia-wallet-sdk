@@ -41,13 +41,17 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 **Cryptographic primitives** (gated by `chip-0057` feature) — Validated in Phase 3
 - [x] **CRYPTO-03**: All CHIP test vectors from `chip-silent-payments.md` pass as Rust unit tests — TV1 (unlabeled), TV3 (labeled), TV4 (multi-input) byte-exact; plus bespoke `k=1` (catches `ser32(k)` endianness bugs), `[0xff;32]` adversarial scalar (proves `ScalarField::from_bytes_unsigned` boundary fires end-to-end), labeled k-termination rule, unlabeled-preferred-over-labeled at same k
 
-### Active
+**Send side (XCH)** — Validated in Phase 4
+- [x] **SEND-01**: `derive_one_time_puzzle_hash` computes the recipient's per-payment puzzle hash from `(scan_pk, spend_pk, aggregated_sender_sk, input_hash, k)` — TV1 / k=0 + k=1 byte-pinned
+- [x] **SEND-02**: `compute_input_hash` computes the BIP-352 input hash using the lexicographically smallest spent coin id and the aggregated synthetic sender public key — TV1 byte-pin + lex-min selection + order-independent property tests
+- [x] **SEND-03**: `aggregate_sender_sks` aggregates synthetic secret keys across wallet-controlled inputs (single-party only); the multi-party hazard hard-errors at the `Spends` level via `Err(DriverError::SilentPaymentMultiPartyUnsupported)` — multi-party flows must aggregate at sign time
+- [x] **SEND-04**: `SilentPaymentSend` composes with the existing `Spends` action system; `spends.add(Action::silent_payment_send(recipient, amount, memos))` followed by `spends.finish_with_silent_payment_keys(synthetic_pks, synthetic_sks)` produces a `SpendBundle` whose outputs land at the same puzzle hash `derive_one_time_puzzle_hash` returns (byte-for-byte round-trip test)
+- [x] **SEND-05**: Two `SilentPaymentSend` actions targeting the same `scan_pk` in one batch produce outputs at `k=0` and `k=1` (per-scan_pk counter on `Spends`); distinct `scan_pk`s use independent counters
+- [x] **SEND-06**: Cross-input announcement binding: with 2+ XCH inputs, the lex-min `coin_id` input emits `CREATE_COIN_ANNOUNCEMENT` (opcode 60) with empty message; every other XCH input emits `ASSERT_COIN_ANNOUNCEMENT` (opcode 61) asserting `SHA256(lex_min_coin_id || "")` — the recipient's `compute_input_hash` matches the sender's byte-for-byte
+- [x] **SEND-07**: Memo-hint guard hard-errors with `Err(DriverError::SilentPaymentMemoHintForbidden)` when the first memo atom is exactly 32 bytes (puzzle-hash-hint deanonymization hazard); 1-byte sentinel + 32-byte payload bypasses the guard as the wallet-author escape hatch
+- [x] **SEND-08**: Every public memo-bearing API in `crates/chia-sdk-driver/src/silent_payments/` and `actions/silent_payment_send.rs` carries `/// Privacy warning: memos are stored on-chain in plaintext and are visible to anyone holding the recipient's scan key.` — verified by `grep -L 'Privacy warning'` gate
 
-**Send side (XCH)**
-- [ ] **SEND-01**: `derive_one_time_puzzle_hash` computes the recipient's per-payment puzzle hash from `(scan_pk, spend_pk, aggregated_sender_sk, input_hash, k)`
-- [ ] **SEND-02**: `compute_input_hash` computes the BIP-352 input hash using the lexicographically smallest spent coin id and the aggregated synthetic sender public key
-- [ ] **SEND-03**: `aggregate_sender_sks` aggregates synthetic secret keys across all wallet-controlled inputs of a transaction (single-party only — multi-party flows must aggregate at sign time)
-- [ ] **SEND-04**: A `SilentPaymentSend` action composes with the existing `Spends` action system so wallet code can `spends.add(SilentPaymentSend { recipient, amount, memos })` and have the signer/standard-layer path produce a correctly-signed spend bundle
+### Active
 
 **Bindings**
 - [ ] **BIND-01**: `bindings/silent_payments.json` descriptor + `chia-sdk-bindings::silent_payments` facade expose address generation (`SilentPaymentKeys::from_mnemonic`, `unlabeled_address`, `labeled_address`, `SilentPaymentAddress::encode`/`decode`) through the bindy macro
@@ -140,4 +144,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 after Phase 3 (receive primitive & CHIP test-vector closure) complete*
+*Last updated: 2026-05-16 after Phase 4 (send-side action) complete — `SilentPaymentSend` + `Spends::finish_with_silent_payment_keys` are wired into the action system, all 8 SEND-* requirements validated, full workspace test suite green at 2416 tests. Phase 5 (Bindings) is next.*
