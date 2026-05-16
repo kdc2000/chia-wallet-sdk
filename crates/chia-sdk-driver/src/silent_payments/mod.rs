@@ -42,3 +42,11 @@ mod send_keys;
 pub(crate) use send_keys::*;
 mod types;
 pub use types::*;
+
+// Re-export the action type from the actions/ module so the umbrella prelude
+// can import via the silent_payments path (consistent with all other chip-0057
+// re-exports). The action itself lives in actions/ per the SDK convention
+// (every SpendAction is at actions/<name>.rs); the re-export here is purely
+// for prelude convenience. The `silent_payment_send` module is private in
+// `actions.rs`, so we go through the public re-export at `crate::actions::*`.
+pub use crate::actions::SilentPaymentSend;
