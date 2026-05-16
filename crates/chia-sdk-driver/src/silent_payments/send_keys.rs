@@ -9,14 +9,17 @@
 //!   binding for >=2-input scenarios.
 
 use chia_bls::{PublicKey, SecretKey};
-use chia_protocol::{Bytes32, Coin};
+use chia_protocol::{Bytes, Bytes32, Coin};
 use chia_puzzle_types::Memos;
-use chia_sdk_types::conditions::CreateCoin;
+use chia_sdk_types::{
+    Conditions,
+    conditions::{CreateCoin, announcement_id},
+};
 use clvmr::NodePtr;
 use indexmap::IndexMap;
 
 use crate::{
-    Asset, Deltas, DriverError, Outputs, Relation, SpendContext, Spends,
+    Asset, Deltas, DriverError, Outputs, Relation, SpendContext, SpendKind, Spends,
     silent_payments::{aggregate_sender_sks, compute_input_hash, derive_one_time_puzzle_hash},
 };
 
@@ -39,6 +42,79 @@ pub(crate) struct SilentPaymentPending {
 }
 
 impl Spends {
+    /// Emit cross-input announcement binding (opcode 60 / opcode 61) for
+    /// silent-payment sends with two or more XCH inputs.
+    ///
+    /// Algorithm (per CHIP-0057 §319-329 + `04-RESEARCH.md` §5):
+    /// - If `xch_input_ids.len() < 2`, return immediately. Single-input sends
+    ///   do not require an announcement: the receiver's Pass 2b only needs
+    ///   linkage in order to GROUP multiple inputs into one spend group; a
+    ///   single-input send has nothing to group.
+    /// - Otherwise pick `lex_min_coin_id = xch_input_ids.iter().min()` and
+    ///   compute `ann_id = announcement_id(lex_min_coin_id, b"")`. For each
+    ///   non-ephemeral XCH item with `SpendKind::Conditions(spend)`:
+    ///     * On the lex-min coin, append `CREATE_COIN_ANNOUNCEMENT` (opcode
+    ///       60) with `message = b""`.
+    ///     * On every other coin, append `ASSERT_COIN_ANNOUNCEMENT` (opcode
+    ///       61) asserting `ann_id`.
+    ///
+    /// Lex-min vs the Python reference's iteration-order announcer choice:
+    /// `04-RESEARCH.md` §5c documents the tradeoff. The `Spends` builder
+    /// pattern lets callers add coins in any order, so a deterministic
+    /// announcer choice is required. Lex-min also matches `compute_input_hash`,
+    /// which already uses `coin_ids.iter().min()`. The receiver's Pass 2b
+    /// does not care which input is the announcer; both choices produce
+    /// identical detection.
+    ///
+    /// Method-on-`Spends` shape (vs a free function over
+    /// `&mut FungibleSpends<Coin>`): the integration tests in
+    /// `actions::silent_payment_send::tests` need to invoke this helper
+    /// independently of [`Spends::finish_with_silent_payment_keys`] (which
+    /// consumes `self`) so the tests can inspect emitted conditions on
+    /// `self.xch.items` after binding is emitted but before the standard
+    /// finish path runs.
+    ///
+    /// `_ctx` is currently unused — kept in the signature for forward
+    /// compatibility with future CHIP variants that may require allocator-
+    /// backed condition construction.
+    ///
+    /// Returns `()` (not `Result<(), DriverError>`): the helper has no
+    /// reachable failure mode — the `len() < 2` guard makes the `.min()`
+    /// call infallible, and `add_conditions` is a pure append. The unit
+    /// return satisfies `clippy::unnecessary_wraps` without a function-level
+    /// `#[allow]`; the call site in `finish_with_silent_payment_keys` calls
+    /// the helper as a statement (no `?`).
+    pub(crate) fn emit_silent_payment_announcements(
+        &mut self,
+        _ctx: &mut SpendContext,
+        xch_input_ids: &[Bytes32],
+    ) {
+        if xch_input_ids.len() < 2 {
+            return;
+        }
+
+        let lex_min_coin_id = *xch_input_ids.iter().min().expect("non-empty checked above");
+
+        let empty_message: Bytes = Bytes::new(vec![]);
+        let ann_id = announcement_id(lex_min_coin_id, &empty_message);
+
+        for item in &mut self.xch.items {
+            if item.ephemeral {
+                continue;
+            }
+            let coin_id = item.asset.coin_id();
+            let SpendKind::Conditions(spend) = &mut item.kind else {
+                continue;
+            };
+            if coin_id == lex_min_coin_id {
+                spend
+                    .add_conditions(Conditions::new().create_coin_announcement(Bytes::new(vec![])));
+            } else {
+                spend.add_conditions(Conditions::new().assert_coin_announcement(ann_id));
+            }
+        }
+    }
+
     /// Finish the spend with synthetic-key maps, completing pending
     /// silent-payment outputs.
     ///
@@ -166,11 +242,16 @@ impl Spends {
                 .push(Coin::new(p.parent_coin_id, ph, p.amount));
         }
 
+        // Step 8.5: emit cross-input announcement binding (opcode 60/61) for
+        // >=2-input scenarios. Allows the recipient's Pass 2b scanner to
+        // reconstruct the cross-input group and compute the matching
+        // input_hash. Single-input sends short-circuit inside the helper.
+        // The helper returns `()` (clippy::unnecessary_wraps) — no `?`.
+        self.emit_silent_payment_announcements(ctx, &xch_input_ids);
+
         // Step 9: delegate to the standard finish path. finish_with_keys
         // handles change creation, conditions emission, relation linking,
-        // StandardLayer wrapping, and CoinSpend collection. Plan 04-04 will
-        // insert emit_silent_payment_announcements between Step 8 and Step 9
-        // (opcode 60/61 announcement binding for >=2-input scenarios).
+        // StandardLayer wrapping, and CoinSpend collection.
         self.finish_with_keys(ctx, deltas, relation, synthetic_pks)
     }
 }
