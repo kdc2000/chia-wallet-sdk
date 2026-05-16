@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md (3 send-side free functions + 6 TV-pinned tests in silent_payments/{aggregate,input_hash,one_time}.rs; 18 silent_payments tests green; SEND-01/SEND-02/SEND-03 free-fn portion closed). Ready for Plan 04-02 (SilentPaymentSend action).
-last_updated: "2026-05-16T01:40:03.966Z"
+stopped_at: Completed 04-02-PLAN.md (SilentPaymentSend action + apply-time Spends state + cfg-gated Action variant + stub finish_with_silent_payment_keys; 4 task commits 3219a03c..a7ebc724; action_state_machine integration test green; SEND-04 apply-time portion closed). Ready for Plan 04-03 (replace stub body with real ECDH + CreateCoin emission).
+last_updated: "2026-05-16T02:00:38.034Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 04 (send-side-action) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-16
 
@@ -73,6 +73,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P04 | 13 | 2 tasks | 3 files |
 | Phase 03 P05 | 26 | 3 tasks | 4 files |
 | Phase 04 P01 | 15 | 4 tasks | 4 files |
+| Phase 04 P02 | 13 | 4 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03]: Plan 03-04: labeled-detection branch in scan_from_tweaks: if !found && let Some(label_map) = labels { for (m, label_pk) in label_map.iter() { ... break on first labeled match } }. Termination rule placed AFTER labeled branch in source. Closes RECV-04 + CRYPTO-03 success criteria 1 (TV3), 2 (bespoke k=1 via in-test derivation), 6 (labeled k-termination). Workspace tests 2393 → 2397 (+4). No new #[allow] attributes; CHIP-spec test-local names (b_scan, b_spend, b_spend_pub) used to suppress similar_names.
 - [Phase 03]: Plan 03-05: SilentPaymentScan trait + impl on SilentPaymentKeys (orphan-rule-compliant cross-crate method add per RESEARCH Open Q3). Both free fn scan_from_tweaks (hardware-split signers) and method keys.scan(...) (ergonomic bundled) coexist; silent_payment_keys_scan_method_matches_free_fn_tv1 pins byte-equality. dos_guard_caps_at_k_max forges 10,000 matches at one tweak point + k_max=32 → asserts detections.len() <= 32 (CHIP §416 cap proof, RECV-05 closure). New CI line cargo build -p chia-sdk-driver -F chip-0057 in rust.yml at 10-space indent (WS-02 equivalent for Phase 3). src/prelude.rs gains SECOND chip-0057 block re-exporting 11 driver-side symbols (5 types + 6 functions). Rule 3 inline fix: mod silent_payments → pub mod silent_payments in chia-sdk-driver/lib.rs (caught at workspace --all-features compile). 4 deviations all inline-fixed: 2x doc_markdown, 2x items_after_statements, 1x rustfmt re-wrap, 1x module visibility. Zero new #[allow]. Workspace tests 2397 → 2399 (+2 new). Phase 3 COMPLETE: 16-gate matrix green, all 6 ROADMAP success criteria PASS, all 6 requirements (RECV-01..05 + CRYPTO-03) closed.
 - [Phase 04]: Plan 04-01: 3 send-side free functions (aggregate_sender_sks/compute_input_hash/derive_one_time_puzzle_hash) land in crates/chia-sdk-driver/src/silent_payments/ as composed Phase-3 primitives. TV4 aggregate byte-pinned to 5600d878...cbf95b89 (sp-common reference); TV1 input_hash 38a1c8...cc9411; TV1 puzzle_hash 23adba14...c21fbf5 at k=0; in-test k=1 round-trip catches ser32(k) endianness regressions. compute_input_hash panics on empty slice (action layer guarantees non-empty XCH-input set). b_*-style test naming follows scanner.rs::bespoke_k1_detection precedent to avoid clippy::similar_names without #[allow]. Zero new workspace deps; zero new #[allow] attributes anywhere in silent_payments/.
+- [Phase 04]: Plan 04-02: SilentPaymentSend action + apply-time plumbing land in chia-sdk-driver. New pub struct SilentPaymentSend (recipient, amount, memos) + SpendAction impl reserves XCH parent via output_source(BURN_PUZZLE_HASH, amount), increments per-recipient k-counter (keyed by 48-byte compressed scan_pk), pushes SilentPaymentPending; NO CreateCoin emission at apply (deferred per RESEARCH §1e). Action::SilentPaymentSend(SilentPaymentSend) cfg-gated enum variant + Action::silent_payment_send constructor + dispatch arms. Two new pub(crate) chip-0057-gated fields on Spends: silent_payment_counters: HashMap<[u8;48],u32> + silent_payments_pending: Vec<SilentPaymentPending>. Spends::finish_with_silent_payment_keys STUB lands with locked signature ((self, ctx, deltas, relation, &IndexMap<Bytes32,PublicKey>, &IndexMap<Bytes32,SecretKey>) -> Result<Outputs,DriverError>) returning Err(DriverError::Custom) after a dead-code-suppressing destructure-read (no #[allow]). 4 deviations all Rule-1 inline-fixed: destructure-read for dead_code, unused super::*, borrow-after-move via pre-captured expected_scan_pk/expected_spend_pk, pub use → pub(crate) use re-export. 1 new integration test (action_state_machine) → driver test count 1069→1070; silent_payments tests unchanged at 18. 7 Privacy-warning rustdoc mentions across Plan 04-02 surfaces. SEND-04 (apply-time portion) closed; finish-time round-trip blocked on Plan 04-03.
 
 ### Pending Todos
 
@@ -117,6 +119,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-16T01:40:03.961Z
-Stopped at: Completed 04-01-PLAN.md (3 send-side free functions + 6 TV-pinned tests in silent_payments/{aggregate,input_hash,one_time}.rs; 18 silent_payments tests green; SEND-01/SEND-02/SEND-03 free-fn portion closed). Ready for Plan 04-02 (SilentPaymentSend action).
+Last session: 2026-05-16T02:00:38.028Z
+Stopped at: Completed 04-02-PLAN.md (SilentPaymentSend action + apply-time Spends state + cfg-gated Action variant + stub finish_with_silent_payment_keys; 4 task commits 3219a03c..a7ebc724; action_state_machine integration test green; SEND-04 apply-time portion closed). Ready for Plan 04-03 (replace stub body with real ECDH + CreateCoin emission).
 Resume file: None
