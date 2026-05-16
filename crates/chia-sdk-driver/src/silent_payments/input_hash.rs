@@ -44,7 +44,7 @@ use chia_sdk_types::silent_payments::{CHIA_SP_INPUTS, ScalarField, tagged_hash};
 /// non-empty XCH-input set before calling this function — see
 /// `DriverError::SilentPaymentNoXchInputs` (Plan 04-03).
 ///
-/// Privacy warning: the input_hash scalar is a deterministic public function of
+/// Privacy warning: the `input_hash` scalar is a deterministic public function of
 /// the spent coin ids + aggregated sender PK; both are visible on chain after
 /// the send. The scalar itself is not sensitive, but it can be re-derived by
 /// anyone observing the transaction. The privacy property of silent payments
@@ -92,7 +92,7 @@ mod tests {
     );
 
     /// SEND-02 + ROADMAP success criterion #1: TV1 input-hash byte-pin.
-    /// Verifies the lex-min coin_id + serialize(A_sum) || tagged_hash
+    /// Verifies the lex-min `coin_id` + `serialize(A_sum)` || `tagged_hash`
     /// pipeline matches the byte-for-byte CHIP-pinned `38a1c8...cc9411` value.
     #[test]
     fn tv1_compute_input_hash_matches() {

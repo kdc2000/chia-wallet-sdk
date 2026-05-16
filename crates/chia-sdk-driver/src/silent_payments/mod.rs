@@ -28,6 +28,12 @@
 //! Hash routines in this module use `chia_sha2::Sha256` exclusively; the workspace
 //! grep ban forbids `use sha2::` imports under `silent_payments/`.
 
+mod aggregate;
+pub use aggregate::*;
+mod input_hash;
+pub use input_hash::*;
+mod one_time;
+pub use one_time::*;
 mod protocol;
 pub use protocol::*;
 mod scanner;
