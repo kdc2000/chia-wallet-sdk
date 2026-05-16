@@ -281,4 +281,328 @@ mod tests {
 
         Ok(())
     }
+
+    /// SEND-05 + ROADMAP Phase 4 success criterion #3: two `SilentPaymentSend`
+    /// actions to the same `scan_pk` in one `Spends` produce outputs at k=0
+    /// and k=1 respectively. The counter on `spends.silent_payment_counters`
+    /// increments per `scan_pk`.
+    #[test]
+    fn multi_output_same_scan_pk_increments_k() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(10);
+
+        let recipient_scan_sk = SecretKey::from_bytes(&[0x42u8; 32])?;
+        let recipient_spend_sk = SecretKey::from_bytes(&[0x43u8; 32])?;
+        let recipient = SilentPaymentAddress::new(
+            recipient_scan_sk.public_key(),
+            recipient_spend_sk.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        // Capture scan_pk before recipient is moved into the actions.
+        let scan_pk = recipient.scan_pk;
+
+        let _deltas = spends.apply(
+            &mut ctx,
+            &[
+                Action::silent_payment_send(recipient.clone(), 1, Memos::None),
+                Action::silent_payment_send(recipient, 2, Memos::None),
+            ],
+        )?;
+
+        assert_eq!(spends.silent_payments_pending.len(), 2);
+        assert_eq!(
+            spends.silent_payments_pending[0].k, 0,
+            "first output to recipient is k=0"
+        );
+        assert_eq!(
+            spends.silent_payments_pending[1].k, 1,
+            "second output to same scan_pk is k=1"
+        );
+        assert_eq!(spends.silent_payments_pending[0].amount, 1);
+        assert_eq!(spends.silent_payments_pending[1].amount, 2);
+
+        let scan_pk_bytes: [u8; 48] = scan_pk.to_bytes();
+        assert_eq!(
+            spends.silent_payment_counters.get(&scan_pk_bytes).copied(),
+            Some(2),
+            "counter incremented past k=1"
+        );
+
+        Ok(())
+    }
+
+    /// SEND-05: two `SilentPaymentSend` actions to DIFFERENT recipients in
+    /// one `Spends` produce outputs both at k=0 (per-`scan_pk` counters are
+    /// independent).
+    #[test]
+    fn multi_output_distinct_scan_pks_independent_counters() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(10);
+
+        let recipient_a = SilentPaymentAddress::new(
+            SecretKey::from_bytes(&[0x42u8; 32])?.public_key(),
+            SecretKey::from_bytes(&[0x43u8; 32])?.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+        let recipient_b = SilentPaymentAddress::new(
+            SecretKey::from_bytes(&[0x44u8; 32])?.public_key(),
+            SecretKey::from_bytes(&[0x45u8; 32])?.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let _deltas = spends.apply(
+            &mut ctx,
+            &[
+                Action::silent_payment_send(recipient_a, 1, Memos::None),
+                Action::silent_payment_send(recipient_b, 2, Memos::None),
+            ],
+        )?;
+
+        assert_eq!(spends.silent_payments_pending.len(), 2);
+        assert_eq!(
+            spends.silent_payments_pending[0].k, 0,
+            "recipient_a's first output is k=0"
+        );
+        assert_eq!(
+            spends.silent_payments_pending[1].k, 0,
+            "recipient_b's first output is k=0 (independent counter)"
+        );
+
+        Ok(())
+    }
+
+    /// SEND-06: a `Spends` with one XCH input + one `SilentPaymentSend`
+    /// action emits NO opcode-60 (`CreateCoinAnnouncement`) AND NO opcode-61
+    /// (`AssertCoinAnnouncement`) — single-input scenarios don't need
+    /// binding.
+    #[test]
+    fn single_input_no_announcement() -> Result<()> {
+        use chia_protocol::Bytes32;
+        use chia_sdk_types::Condition;
+
+        use crate::SpendKind;
+
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(10);
+
+        let recipient = SilentPaymentAddress::new(
+            SecretKey::from_bytes(&[0x42u8; 32])?.public_key(),
+            SecretKey::from_bytes(&[0x43u8; 32])?.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let _deltas = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
+        )?;
+
+        // Manually invoke the announcement helper — must short-circuit on a
+        // single non-ephemeral XCH input.
+        let xch_input_ids: Vec<Bytes32> = spends
+            .xch
+            .items
+            .iter()
+            .filter(|i| !i.ephemeral)
+            .map(|i| i.asset.coin_id())
+            .collect();
+        spends.emit_silent_payment_announcements(&mut ctx, &xch_input_ids);
+
+        // Walk every xch item and assert neither opcode 60 nor opcode 61
+        // appears in its ConditionsSpend.
+        for item in &spends.xch.items {
+            if let SpendKind::Conditions(spend) = &item.kind {
+                for cond in spend.conditions_ref() {
+                    assert!(
+                        !matches!(cond, Condition::CreateCoinAnnouncement(_)),
+                        "unexpected opcode-60 on single-input scenario"
+                    );
+                    assert!(
+                        !matches!(cond, Condition::AssertCoinAnnouncement(_)),
+                        "unexpected opcode-61 on single-input scenario"
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// SEND-06 + ROADMAP Phase 4 success criterion #4: a `Spends` with 2 XCH
+    /// inputs at different derivation indices emits opcode-60 on the lex-min
+    /// coin and opcode-61 on the other; the asserted id matches
+    /// `SHA256(coin_id_min || "")`.
+    #[test]
+    fn cross_index_announcement_binding() -> Result<()> {
+        use chia_protocol::{Bytes, Bytes32};
+        use chia_sdk_types::{Condition, conditions::announcement_id};
+
+        use crate::SpendKind;
+
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(5);
+        let bob = sim.bls(7); // different derivation index than alice
+
+        let recipient = SilentPaymentAddress::new(
+            SecretKey::from_bytes(&[0x42u8; 32])?.public_key(),
+            SecretKey::from_bytes(&[0x43u8; 32])?.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+        spends.add(bob.coin);
+
+        let _deltas = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
+        )?;
+
+        let xch_input_ids: Vec<Bytes32> = spends
+            .xch
+            .items
+            .iter()
+            .filter(|i| !i.ephemeral)
+            .map(|i| i.asset.coin_id())
+            .collect();
+        spends.emit_silent_payment_announcements(&mut ctx, &xch_input_ids);
+
+        let lex_min_coin_id = *xch_input_ids
+            .iter()
+            .min()
+            .expect("test set up with 2 inputs");
+        let empty_message: Bytes = Bytes::new(vec![]);
+        let expected_ann_id = announcement_id(lex_min_coin_id, &empty_message);
+
+        let mut creates = 0;
+        let mut asserts = 0;
+        for item in &spends.xch.items {
+            let coin_id = item.asset.coin_id();
+            if let SpendKind::Conditions(spend) = &item.kind {
+                for cond in spend.conditions_ref() {
+                    match cond {
+                        Condition::CreateCoinAnnouncement(c) => {
+                            assert_eq!(coin_id, lex_min_coin_id, "opcode-60 only on lex-min coin");
+                            assert_eq!(c.message.as_ref().len(), 0, "message must be b\"\"");
+                            creates += 1;
+                        }
+                        Condition::AssertCoinAnnouncement(a) => {
+                            assert_ne!(coin_id, lex_min_coin_id, "opcode-61 NOT on lex-min coin");
+                            assert_eq!(a.announcement_id, expected_ann_id);
+                            asserts += 1;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        assert_eq!(creates, 1, "exactly one CreateCoinAnnouncement (opcode-60)");
+        assert_eq!(asserts, 1, "exactly one AssertCoinAnnouncement (opcode-61)");
+
+        Ok(())
+    }
+
+    /// SEND-06: the receiver's `compute_input_hash` over the on-chain
+    /// `coin_id`s plus the aggregated synthetic PK reconstructs the SAME
+    /// `input_hash` the sender used. Verifies that Plan 04-04's opcode-60/61
+    /// grouping preserves the round-trip — the receiver's Pass 2b can rebuild
+    /// the sender's `input_hash` exactly from announcement-linked `coin_id`s.
+    #[test]
+    fn input_hash_round_trip() -> Result<()> {
+        use indexmap::indexmap;
+
+        use crate::{
+            Relation,
+            silent_payments::{
+                aggregate_sender_sks, compute_input_hash, derive_one_time_puzzle_hash,
+            },
+        };
+
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(5);
+        let bob = sim.bls(7);
+
+        let recipient = SilentPaymentAddress::new(
+            SecretKey::from_bytes(&[0x42u8; 32])?.public_key(),
+            SecretKey::from_bytes(&[0x43u8; 32])?.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        let scan_pk = recipient.scan_pk;
+        let spend_pk = recipient.spend_pk;
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+        spends.add(bob.coin);
+
+        let deltas = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
+        )?;
+
+        let outputs = spends.finish_with_silent_payment_keys(
+            &mut ctx,
+            &deltas,
+            Relation::None,
+            &indexmap! {
+                alice.puzzle_hash => alice.pk,
+                bob.puzzle_hash => bob.pk,
+            },
+            &indexmap! {
+                alice.puzzle_hash => alice.sk.clone(),
+                bob.puzzle_hash => bob.sk.clone(),
+            },
+        )?;
+
+        // Independent reconstruction of the expected puzzle hash via the
+        // free functions — exactly the path Phase 3's scanner would follow
+        // after grouping the two inputs via opcode 60/61.
+        //
+        // Vec intermediate (Plan 04-03 deviation 5 precedent):
+        // clippy::cloned_ref_to_slice_refs would fire on
+        // `aggregate_sender_sks(&[alice.sk.clone(), bob.sk.clone()])`. The
+        // Vec keeps the per-SK `.clone()` byte sequence in the source for
+        // grep while satisfying clippy on the slice construction.
+        let sender_sks = vec![alice.sk.clone(), bob.sk.clone()];
+        let aggregated_sender_sk = aggregate_sender_sks(&sender_sks);
+        let agg_pk = SecretKey::from_bytes(aggregated_sender_sk.as_bytes())
+            .expect("aggregated SK < r")
+            .public_key();
+        let coin_ids = vec![alice.coin.coin_id(), bob.coin.coin_id()];
+        let input_hash = compute_input_hash(&coin_ids, &agg_pk);
+        let expected_ph =
+            derive_one_time_puzzle_hash(&scan_pk, &spend_pk, &aggregated_sender_sk, &input_hash, 0);
+
+        let found = outputs
+            .xch
+            .iter()
+            .any(|c| c.puzzle_hash == expected_ph && c.amount == 1);
+        assert!(
+            found,
+            "input_hash round-trip failed: expected puzzle_hash {} amount 1 not in outputs",
+            hex::encode(expected_ph)
+        );
+
+        Ok(())
+    }
 }
