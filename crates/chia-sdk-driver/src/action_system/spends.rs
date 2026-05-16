@@ -25,6 +25,10 @@ pub struct Spends<S = Unfinished> {
     pub change_puzzle_hash: Bytes32,
     pub outputs: Outputs,
     pub conditions: ConditionConfig,
+    #[cfg(feature = "chip-0057")]
+    pub(crate) silent_payment_counters: std::collections::HashMap<[u8; 48], u32>,
+    #[cfg(feature = "chip-0057")]
+    pub(crate) silent_payments_pending: Vec<crate::silent_payments::SilentPaymentPending>,
     _state: S,
 }
 
@@ -71,6 +75,10 @@ impl Spends<Unfinished> {
             change_puzzle_hash,
             outputs: Outputs::default(),
             conditions: ConditionConfig::default(),
+            #[cfg(feature = "chip-0057")]
+            silent_payment_counters: std::collections::HashMap::new(),
+            #[cfg(feature = "chip-0057")]
+            silent_payments_pending: Vec::new(),
             _state: Unfinished,
         }
     }
@@ -453,6 +461,10 @@ impl Spends<Unfinished> {
             change_puzzle_hash: self.change_puzzle_hash,
             outputs: self.outputs,
             conditions: self.conditions,
+            #[cfg(feature = "chip-0057")]
+            silent_payment_counters: self.silent_payment_counters,
+            #[cfg(feature = "chip-0057")]
+            silent_payments_pending: self.silent_payments_pending,
             _state: Finished,
         })
     }
