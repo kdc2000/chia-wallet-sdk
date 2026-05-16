@@ -194,4 +194,91 @@ mod tests {
 
         Ok(())
     }
+
+    /// SEND-04 (finish-time) + ROADMAP Phase 4 success criterion #1:
+    /// the apply+finish flow produces an XCH output whose `puzzle_hash`
+    /// matches what Plan-04-01's `derive_one_time_puzzle_hash` independently
+    /// computes for the same `(scan_pk, spend_pk, aggregated_sender_sk,
+    /// input_hash, k=0)` tuple. This closes the in-driver round-trip; the
+    /// full simulator round-trip is Phase 6's concern.
+    #[test]
+    fn round_trip_matches_derive_one_time_puzzle_hash() -> Result<()> {
+        use indexmap::indexmap;
+
+        use crate::{
+            Relation,
+            silent_payments::{
+                aggregate_sender_sks, compute_input_hash, derive_one_time_puzzle_hash,
+            },
+        };
+
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(1);
+
+        // Recipient address from arbitrary BLS keys (Pitfall D: in the
+        // BlsPair fixture the "synthetic" SK == raw SK; the math closes
+        // because both sides of the round-trip use the same interpretation).
+        let recipient_scan_sk = SecretKey::from_bytes(&[0x42u8; 32])?;
+        let recipient_spend_sk = SecretKey::from_bytes(&[0x43u8; 32])?;
+        let recipient = SilentPaymentAddress::new(
+            recipient_scan_sk.public_key(),
+            recipient_spend_sk.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        // Capture the recipient's keys before the action moves recipient.
+        let scan_pk = recipient.scan_pk;
+        let spend_pk = recipient.spend_pk;
+
+        // Apply + finish.
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let deltas = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
+        )?;
+
+        let outputs = spends.finish_with_silent_payment_keys(
+            &mut ctx,
+            &deltas,
+            Relation::None,
+            &indexmap! { alice.puzzle_hash => alice.pk },
+            &indexmap! { alice.puzzle_hash => alice.sk.clone() },
+        )?;
+
+        // Independently compute the expected one-time puzzle hash via the
+        // Plan-04-01 free functions (same composition the implementation
+        // uses internally; if the implementation diverges, this assertion
+        // fires byte-for-byte).
+        // Independent aggregation: vec! ensures the slice is freshly owned
+        // (avoids clippy::cloned_ref_to_slice_refs that &[alice.sk.clone()]
+        // would trigger; functionally identical to passing one SK through
+        // aggregate_sender_sks).
+        let alice_sks = vec![alice.sk.clone()];
+        let aggregated_sender_sk = aggregate_sender_sks(&alice_sks);
+        let agg_pk = SecretKey::from_bytes(aggregated_sender_sk.as_bytes())
+            .expect("aggregated SK < r")
+            .public_key();
+        let input_hash = compute_input_hash(&[alice.coin.coin_id()], &agg_pk);
+        let expected_ph =
+            derive_one_time_puzzle_hash(&scan_pk, &spend_pk, &aggregated_sender_sk, &input_hash, 0);
+
+        // Assert: at least one xch output matches expected_ph + amount 1.
+        // outputs.xch may also include change (alice.coin amount > 1).
+        let found = outputs
+            .xch
+            .iter()
+            .any(|c| c.puzzle_hash == expected_ph && c.amount == 1);
+        assert!(
+            found,
+            "expected an output at puzzle_hash {} amount 1; got outputs.xch = {:?}",
+            hex::encode(expected_ph),
+            outputs.xch
+        );
+
+        Ok(())
+    }
 }
