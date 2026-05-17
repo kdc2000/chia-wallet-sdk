@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 04.2 context gathered
-last_updated: "2026-05-17T21:11:19.175Z"
+status: executing
+stopped_at: Completed 04.2-01-PLAN.md
+last_updated: "2026-05-17T22:18:45.450Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 8
   completed_phases: 5
-  total_plans: 22
-  completed_plans: 27
+  total_plans: 25
+  completed_plans: 28
   percent: 50
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 04.1 — sage-style-binding-refactor
+**Current focus:** Phase 04.2 — unify-sp-send-into-action-send-via-senddestination-enum
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Phase 4.1 complete; awaiting Phase 5 plan-phase invocation
+Phase: 04.2 (unify-sp-send-into-action-send-via-senddestination-enum) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-05-17
 
 Progress: [█████░░░░░] 50%  (Phases 1, 2, 3, 4, 4.1 complete)
@@ -79,6 +79,7 @@ Progress: [█████░░░░░] 50%  (Phases 1, 2, 3, 4, 4.1 complete
 | Phase 04 P05 | 23min | 3 tasks | 3 files |
 | Phase 04.1 P01 | 8min | 2 tasks | 2 files |
 | Phase 04.1 P02 | 33min | 4 tasks | 5 files |
+| Phase 04.2 P01 | 10min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04.1]: Plan 04.1-02: DriverError::SilentPaymentRequiresInputBinding variant added (chip-0057 gated; canonical wording per RESEARCH §5a). Runtime input-binding gate inserted between Step 1 and Step 2 of finish_with_silent_payment_keys (non-ephemeral XCH count >= 2 AND relation != AssertConcurrent → Err(SilentPaymentRequiresInputBinding)). 2 gate tests + 3 named pinning tests added. Relation enum + per-variant rustdoc landed (NOT cfg-gated; verbatim per RESEARCH §6b with 1 inline doc_markdown fix for snake_case `coin_id`). Cycle-emission pinning test (action_system/spends.rs::tests, NOT cfg-gated on chip-0057) covers N=2/3/4 via three named #[test] functions calling assert_concurrent_cycle_for_n helper.
 - [Phase 04.1]: Plan 04.1-02 deviations: 5 inline auto-fixes — (1) clippy::doc_markdown on coin_id; (2) broken intra-doc link [Spends::finish_with_silent_payment_keys] downgraded to plain code (chip-0057 cfg-gated method, Spends not imported into relation.rs scope); (3) unused Asset import dropped (Coin has inherent coin_id); (4) FINGERPRINT-01 added to REQUIREMENTS.md (was missing — Rule 2 missing critical for traceability); (5) rustfmt collapsed one multi-line apply() call. Zero new #[allow] attributes.
 - [Phase 04.1]: Phase 4.1 COMPLETE: 22-gate matrix green; 7 of 7 ROADMAP §04.1 success criteria PASS; SEND-06 re-validated under cycle binding scheme; FINGERPRINT-01 newly closed (deletion half + enforcement half); workspace test count 2416 → 2419 (+3 net: 5 new − 2 deleted); cumulative duration 41 min across 2 plans. Phase 5 (Bindings) unblocked.
+- [Phase 04.2]: Plan 04.2-01: Wave A foundation lands additive symbols (2 DriverError variants, SendDestination enum, 2 Spends pub(crate) fields + with_silent_payment_keys builder). SendDestination::SilentPayment variant BOXED (Box<SilentPaymentAddress>) inline to satisfy clippy::large_enum_variant; semantically equivalent to plan's locked spec. Plan-anticipated dead_code-deny intermediate state did NOT materialize because prepare()'s field-passthrough is a reader; workspace cargo check + cargo clippy both clean at this plan's boundary.
 
 ### Roadmap Evolution
 
@@ -143,6 +145,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-17T21:11:19.168Z
-Stopped at: Phase 04.2 context gathered
-Resume file: .planning/phases/04.2-unify-sp-send-into-action-send-via-senddestination-enum/04.2-CONTEXT.md
+Last session: 2026-05-17T22:18:45.443Z
+Stopped at: Completed 04.2-01-PLAN.md
+Resume file: None
