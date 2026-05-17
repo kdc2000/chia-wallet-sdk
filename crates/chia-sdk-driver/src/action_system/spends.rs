@@ -106,17 +106,17 @@ impl Spends<Unfinished> {
     /// for the SP flow), so they are accepted together — splitting would invite
     /// mismatch.
     ///
-    /// Privacy warning: `synthetic_sks` carries sensitive synthetic-secret-key
+    /// Privacy warning: `secret_keys` carries sensitive synthetic-secret-key
     /// material. Wallets must treat the map like the SKs themselves (zeroize on
     /// drop, do not log).
     #[cfg(feature = "chip-0057")]
     pub fn with_silent_payment_keys(
         &mut self,
         synthetic_pks: IndexMap<Bytes32, PublicKey>,
-        synthetic_sks: IndexMap<Bytes32, SecretKey>,
+        secret_keys: IndexMap<Bytes32, SecretKey>,
     ) -> &mut Self {
         self.silent_payment_synthetic_pks = Some(synthetic_pks);
-        self.silent_payment_synthetic_sks = Some(synthetic_sks);
+        self.silent_payment_synthetic_sks = Some(secret_keys);
         self
     }
 

@@ -8,8 +8,8 @@ use hex_literal::hex;
 use crate::{
     CreateDidAction, Delta, Deltas, DriverError, FeeAction, HashedPtr, Id, IssueCatAction,
     MeltSingletonAction, MintNftAction, MintOptionAction, OptionType, RunTailAction, SendAction,
-    SettleAction, Spend, SpendContext, Spends, TailIssuance, TransferNftById, UpdateDidAction,
-    UpdateNftAction,
+    SendDestination, SettleAction, Spend, SpendContext, Spends, TailIssuance, TransferNftById,
+    UpdateDidAction, UpdateNftAction,
 };
 #[cfg(feature = "chip-0057")]
 use chia_sdk_utils::silent_payments::SilentPaymentAddress;
@@ -41,8 +41,25 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn send(id: Id, puzzle_hash: Bytes32, amount: u64, memos: Memos) -> Self {
-        Self::Send(SendAction::new(id, puzzle_hash, amount, memos))
+    /// Construct a unified send action targeting either a literal puzzle hash
+    /// ([`SendDestination::PuzzleHash`]) or a silent-payment address
+    /// ([`SendDestination::SilentPayment`], chip-0057-gated).
+    ///
+    /// `destination: impl Into<SendDestination>` accepts `Bytes32` literals via
+    /// the always-on `From<Bytes32> for SendDestination` impl, so existing
+    /// `Action::send(id, ph, amount, memos)` call sites compile unchanged.
+    ///
+    /// Privacy warning: `memos` is on-chain plaintext, visible to anyone holding
+    /// the recipient's scan key in the silent-payment case. A 32-byte first
+    /// memo is rejected at apply time by the chip-0057 SP arm of
+    /// `SendAction::spend` (`DriverError::SilentPaymentMemoHintForbidden`).
+    pub fn send(
+        id: Id,
+        destination: impl Into<SendDestination>,
+        amount: u64,
+        memos: Memos,
+    ) -> Self {
+        Self::Send(SendAction::new(id, destination.into(), amount, memos))
     }
 
     pub fn settle(id: Id, notarized_payment: NotarizedPayment) -> Self {
@@ -68,7 +85,12 @@ impl Action {
     }
 
     pub fn burn(id: Id, amount: u64, memos: Memos) -> Self {
-        Self::Send(SendAction::new(id, BURN_PUZZLE_HASH, amount, memos))
+        Self::Send(SendAction::new(
+            id,
+            SendDestination::PuzzleHash(BURN_PUZZLE_HASH),
+            amount,
+            memos,
+        ))
     }
 
     pub fn create_did(
