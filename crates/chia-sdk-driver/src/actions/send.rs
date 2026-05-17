@@ -1,24 +1,30 @@
-use chia_protocol::{Bytes32, Coin};
+use chia_protocol::Coin;
 use chia_puzzle_types::Memos;
 use chia_sdk_types::conditions::CreateCoin;
 
-use crate::{
-    Asset, Deltas, DriverError, Id, Output, SingletonDestination, SpendAction, SpendContext, Spends,
-};
+#[cfg(feature = "chip-0057")]
+use chia_sdk_utils::silent_payments::SilentPaymentAddress;
 
-#[derive(Debug, Clone, Copy)]
+use crate::{
+    Asset, Deltas, DriverError, Id, Output, SendDestination, SingletonDestination, SpendAction,
+    SpendContext, Spends,
+};
+#[cfg(feature = "chip-0057")]
+use crate::{BURN_PUZZLE_HASH, silent_payments::SilentPaymentPending};
+
+#[derive(Debug, Clone)]
 pub struct SendAction {
     pub id: Id,
-    pub puzzle_hash: Bytes32,
+    pub destination: SendDestination,
     pub amount: u64,
     pub memos: Memos,
 }
 
 impl SendAction {
-    pub fn new(id: Id, puzzle_hash: Bytes32, amount: u64, memos: Memos) -> Self {
+    pub fn new(id: Id, destination: SendDestination, amount: u64, memos: Memos) -> Self {
         Self {
             id,
-            puzzle_hash,
+            destination,
             amount,
             memos,
         }
@@ -37,8 +43,29 @@ impl SpendAction for SendAction {
         spends: &mut Spends,
         _index: usize,
     ) -> Result<(), DriverError> {
-        let output = Output::new(self.puzzle_hash, self.amount);
-        let create_coin = CreateCoin::new(self.puzzle_hash, self.amount, self.memos);
+        // chip-0057 SP arm: SilentPayment destination on Xch.
+        // Pre-emption order: SilentPaymentRequiresXch (Id check) BEFORE memo-hint
+        // guard BEFORE parent reservation. Fires the cheapest guard first.
+        #[cfg(feature = "chip-0057")]
+        if let SendDestination::SilentPayment(addr) = &self.destination {
+            if !matches!(self.id, Id::Xch) {
+                return Err(DriverError::SilentPaymentRequiresXch);
+            }
+            memo_hint_guard(ctx, self.memos)?;
+            return spend_silent_payment(ctx, spends, addr, self.amount, self.memos);
+        }
+
+        // PuzzleHash destination — exhaustive extraction. Under chip-0057 the
+        // SilentPayment(_) arm is statically handled above; the early return
+        // makes the post-handled match exhaustiveness arm unreachable!().
+        let puzzle_hash = match &self.destination {
+            SendDestination::PuzzleHash(ph) => *ph,
+            #[cfg(feature = "chip-0057")]
+            SendDestination::SilentPayment(_) => unreachable!("handled above"),
+        };
+
+        let output = Output::new(puzzle_hash, self.amount);
+        let create_coin = CreateCoin::new(puzzle_hash, self.amount, self.memos);
 
         if matches!(self.id, Id::Xch) {
             let source = spends.xch.output_source(ctx, &output)?;
@@ -93,10 +120,103 @@ impl SpendAction for SendAction {
     }
 }
 
+/// Apply-time half of a chip-0057 silent-payment send: reserves an XCH parent,
+/// increments the per-`scan_pk` k counter on `Spends`, and pushes a
+/// `SilentPaymentPending` entry. NO `CreateCoin` is emitted here — the
+/// on-chain output is emitted at finish time by the chip-0057 SP branch of
+/// [`Spends::finish_with_keys`], which derives the one-time puzzle hash from
+/// the recorded entry.
+///
+/// Privacy warning: memos passed here land in the on-chain `CreateCoin.memos`
+/// field unchanged at finish time and are visible to anyone holding the
+/// recipient's scan key. The 32-byte first-memo hint guard
+/// (`DriverError::SilentPaymentMemoHintForbidden`) is fired by the caller
+/// before this helper runs.
+#[cfg(feature = "chip-0057")]
+fn spend_silent_payment(
+    ctx: &mut SpendContext,
+    spends: &mut Spends,
+    recipient: &SilentPaymentAddress,
+    amount: u64,
+    memos: Memos,
+) -> Result<(), DriverError> {
+    // 1. Reserve XCH parent. BURN_PUZZLE_HASH is the placeholder puzzle hash
+    //    because output_source only uses `amount` for source-selection
+    //    arithmetic; the real puzzle hash arrives at finish time. Avoiding
+    //    Bytes32::default() prevents a plausible-looking all-zeros collision.
+    let output = Output::new(BURN_PUZZLE_HASH, amount);
+    let source = spends.xch.output_source(ctx, &output)?;
+    let parent = &spends.xch.items[source];
+    let parent_coin_id = parent.asset.coin_id();
+    let parent_puzzle_hash = parent.asset.full_puzzle_hash();
+
+    // 2. Per-scan_pk k counter. Keyed by 48-byte compressed scan_pk so
+    //    distinct sub-addresses (labeled vs unlabeled) of the same recipient
+    //    share a counter.
+    let scan_pk_bytes: [u8; 48] = recipient.scan_pk.to_bytes();
+    let next_k = spends
+        .silent_payment_counters
+        .entry(scan_pk_bytes)
+        .or_insert(0);
+    let k = *next_k;
+    *next_k += 1;
+
+    // 3. Push pending entry. ECDH math + CreateCoin emission + outputs.xch
+    //    push are all deferred to the chip-0057 SP branch of
+    //    Spends::finish_with_keys.
+    spends.silent_payments_pending.push(SilentPaymentPending {
+        scan_pk: recipient.scan_pk,
+        spend_pk: recipient.spend_pk,
+        parent_xch_index: source,
+        parent_coin_id,
+        parent_puzzle_hash,
+        k,
+        amount,
+        memos,
+    });
+
+    Ok(())
+}
+
+/// Reject a 32-byte first memo that would be promoted to a `puzzle_hash` hint
+/// by the standard Chia wallet, defeating silent-payment privacy.
+///
+/// Privacy warning: the standard wallet (Sage, the mainnet wallet) treats a
+/// 32-byte first memo as a `puzzle_hash` hint and indexes the output by that
+/// hash — exposing the one-time puzzle hash to any indexer. For silent
+/// payments, this completely defeats the privacy gain.
+///
+/// Returns `Err(DriverError::SilentPaymentMemoHintForbidden)` if the first
+/// memo atom is exactly 32 bytes. All other memo shapes (`Memos::None`, non-pair,
+/// non-atom head, first atom != 32 bytes, malformed) return `Ok(())`.
+#[cfg(feature = "chip-0057")]
+fn memo_hint_guard(ctx: &SpendContext, memos: Memos) -> Result<(), DriverError> {
+    use clvmr::SExp;
+
+    let Memos::Some(ptr) = memos else {
+        return Ok(());
+    };
+
+    let SExp::Pair(head, _tail) = ctx.sexp(ptr) else {
+        return Ok(());
+    };
+
+    let SExp::Atom = ctx.sexp(head) else {
+        return Ok(());
+    };
+
+    let atom = ctx.atom(head);
+    if atom.as_ref().len() == 32 {
+        return Err(DriverError::SilentPaymentMemoHintForbidden);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use chia_protocol::Coin;
+    use chia_protocol::{Bytes32, Coin};
     use chia_puzzle_types::standard::StandardArgs;
     use chia_sdk_test::{BlsPair, Simulator};
     use indexmap::indexmap;
