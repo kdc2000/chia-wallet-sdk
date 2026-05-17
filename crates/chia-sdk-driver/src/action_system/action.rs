@@ -11,13 +11,6 @@ use crate::{
     SendDestination, SettleAction, Spend, SpendContext, Spends, TailIssuance, TransferNftById,
     UpdateDidAction, UpdateNftAction,
 };
-#[cfg(feature = "chip-0057")]
-use chia_sdk_utils::silent_payments::SilentPaymentAddress;
-#[cfg(feature = "chip-0057")]
-use clvmr::NodePtr;
-
-#[cfg(feature = "chip-0057")]
-use crate::SilentPaymentSend;
 
 pub const BURN_PUZZLE_HASH: Bytes32 = Bytes32::new(hex!(
     "000000000000000000000000000000000000000000000000000000000000dead"
@@ -36,8 +29,6 @@ pub enum Action {
     MintOption(MintOptionAction),
     MeltSingleton(MeltSingletonAction),
     Fee(FeeAction),
-    #[cfg(feature = "chip-0057")]
-    SilentPaymentSend(SilentPaymentSend),
 }
 
 impl Action {
@@ -253,18 +244,6 @@ impl Action {
     pub fn fee(amount: u64) -> Self {
         Self::Fee(FeeAction::new(amount))
     }
-
-    /// Privacy warning: `memos` is on-chain plaintext, visible to anyone with
-    /// the recipient's scan key. A 32-byte first memo is rejected by Plan
-    /// 04-05's memo-hint guard.
-    #[cfg(feature = "chip-0057")]
-    pub fn silent_payment_send(
-        recipient: SilentPaymentAddress,
-        amount: u64,
-        memos: Memos<NodePtr>,
-    ) -> Self {
-        Self::SilentPaymentSend(SilentPaymentSend::new(recipient, amount, memos))
-    }
 }
 
 pub trait SpendAction {
@@ -292,8 +271,6 @@ impl SpendAction for Action {
             Action::MintOption(action) => action.calculate_delta(deltas, index),
             Action::MeltSingleton(action) => action.calculate_delta(deltas, index),
             Action::Fee(action) => action.calculate_delta(deltas, index),
-            #[cfg(feature = "chip-0057")]
-            Action::SilentPaymentSend(action) => action.calculate_delta(deltas, index),
         }
     }
 
@@ -315,8 +292,6 @@ impl SpendAction for Action {
             Action::MintOption(action) => action.spend(ctx, spends, index),
             Action::MeltSingleton(action) => action.spend(ctx, spends, index),
             Action::Fee(action) => action.spend(ctx, spends, index),
-            #[cfg(feature = "chip-0057")]
-            Action::SilentPaymentSend(action) => action.spend(ctx, spends, index),
         }
     }
 }

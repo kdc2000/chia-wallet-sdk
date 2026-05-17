@@ -509,8 +509,8 @@ impl Spends<Unfinished> {
     /// Finish the spend with synthetic public keys, producing the final
     /// [`Outputs`].
     ///
-    /// Privacy warning (chip-0057): when `silent_payments_pending` is non-empty
-    /// (i.e. at least one `Action::send` with a [`SendDestination::SilentPayment`]
+    /// Privacy warning: under chip-0057, when `silent_payments_pending` is non-empty
+    /// (i.e. at least one `Action::send` with a `SendDestination::SilentPayment`
     /// destination has been applied), a chip-0057 SP branch runs BEFORE
     /// `prepare()` so the derived `CreateCoin` conditions feed into the parents'
     /// `payment_assertions` before `emit_conditions`. The branch consumes
