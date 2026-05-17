@@ -116,6 +116,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04]: Plan 04-05: aggregate_sender_sks DELIBERATELY omitted from umbrella prelude per RESEARCH Anti-Pattern 2 — too easy to misuse outside Spends::finish_with_silent_payment_keys invariants. Prelude chip-0057 driver block now 14 symbols (was 11): SilentPaymentSend, derive_one_time_puzzle_hash, compute_input_hash added.
 - [Phase 04]: Phase 4 COMPLETE: 18-gate matrix green, all 6 ROADMAP success criteria PASS, all 8 SEND-* requirements (SEND-01..08) closed. Workspace test count 2399 (Phase 3) -> 2416 (+17). 5 plans across 5 waves (~93 min cumulative). Zero new workspace deps; zero new #[allow] anywhere in Phase 4 (only scanner.rs allow from Plan 03-03 remains). Phase 5 (Bindings) unblocked.
 
+### Roadmap Evolution
+
+- 2026-05-17: **Phase 4.1 inserted after Phase 4** (URGENT): Sage-style send-side binding refactor. Drops the SP-specific opcode 60/61 empty-message announcement binding emitted by Phase 4's `Spends::emit_silent_payment_announcements`; switches to relying on the SDK's existing `Relation::AssertConcurrent` cycle (opcode 64 SCC) for multi-input atomicity. Discovered mid-session as a privacy regression: the empty-message announcement is uniquely identifiable as silent-payment traffic, eroding the SP anonymity set. The companion CHIP-0057 reference repo (`~/silent-payments`) already adopted this design (its Phase 2). MUST ship before Phase 5 (Bindings) so the napi/pyo3/wasm surface stabilizes on the post-refactor API. New requirement FINGERPRINT-01 introduced (multi-input SP transactions emit no SP-specific on-chain marker).
+
 ### Pending Todos
 
 None yet.
