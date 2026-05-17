@@ -150,4 +150,10 @@ pub enum DriverError {
         "a 32-byte first memo would be promoted to a puzzle_hash hint by the standard wallet, defeating silent-payment privacy"
     )]
     SilentPaymentMemoHintForbidden,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent payment multi-input send requires Relation::AssertConcurrent for CHIP-0057 Pass 2b scanner detection; single-input SP sends accept any Relation"
+    )]
+    SilentPaymentRequiresInputBinding,
 }
