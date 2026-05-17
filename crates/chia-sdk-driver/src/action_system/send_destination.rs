@@ -33,6 +33,12 @@ pub enum SendDestination {
     /// Boxed because `SilentPaymentAddress` is ~296 bytes (two BLS pubkeys) and
     /// would dominate the enum's size otherwise (`clippy::large_enum_variant`).
     /// Boxing preserves the type's `Clone` semantics.
+    ///
+    /// Privacy warning: memos attached to an `Action::send` with this destination
+    /// land on chain in plaintext via the deferred `CreateCoin` emission. They
+    /// are visible to anyone holding the recipient's scan key. A 32-byte first
+    /// memo is rejected at apply time by `SendAction::spend`'s chip-0057 SP arm
+    /// (`DriverError::SilentPaymentMemoHintForbidden`).
     #[cfg(feature = "chip-0057")]
     SilentPayment(Box<SilentPaymentAddress>),
 }
