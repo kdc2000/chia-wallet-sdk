@@ -84,6 +84,13 @@ impl Spends {
             return self.finish_with_keys(ctx, deltas, relation, synthetic_pks);
         }
 
+        // Phase 04.1 input-binding gate: SP multi-input requires Relation::AssertConcurrent
+        // for Pass 2b scanner detection. Single-input SP sends accept any Relation.
+        let non_ephemeral_xch_count = self.xch.items.iter().filter(|i| !i.ephemeral).count();
+        if non_ephemeral_xch_count >= 2 && !matches!(relation, Relation::AssertConcurrent) {
+            return Err(DriverError::SilentPaymentRequiresInputBinding);
+        }
+
         // Step 2 + 3: collect XCH input coin ids + verify SK coverage.
         // Iterating non-ephemeral xch.items only: ephemeral items are
         // intermediate coins created within this spend group and are not
@@ -229,6 +236,109 @@ mod tests {
         assert!(
             matches!(result, Err(DriverError::SilentPaymentMultiPartyUnsupported)),
             "expected SilentPaymentMultiPartyUnsupported, got {result:?}"
+        );
+
+        Ok(())
+    }
+
+    /// FINGERPRINT-01 + ROADMAP §04.1 SC3: a `Spends` with 2 wallet-controlled
+    /// XCH inputs + 1 `SilentPaymentSend` action MUST be passed
+    /// `Relation::AssertConcurrent` to `finish_with_silent_payment_keys`.
+    /// Anything else (including `Relation::None`) returns
+    /// `Err(DriverError::SilentPaymentRequiresInputBinding)`.
+    ///
+    /// The SK-coverage check is NOT triggered by this test: both Alice's and
+    /// Bob's SKs are registered in `secret_keys`, so under
+    /// `Relation::AssertConcurrent` the call would succeed. The gate fires
+    /// before the SK-coverage check because the gate sits between Step 1 and
+    /// Step 2 of `finish_with_silent_payment_keys`.
+    #[test]
+    fn multi_input_requires_assert_concurrent_relation() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(5);
+        let bob = sim.bls(7);
+
+        let recipient_scan_sk = SecretKey::from_bytes(&[0x42u8; 32])?;
+        let recipient_spend_sk = SecretKey::from_bytes(&[0x43u8; 32])?;
+        let recipient = SilentPaymentAddress::new(
+            recipient_scan_sk.public_key(),
+            recipient_spend_sk.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+        spends.add(bob.coin);
+
+        let deltas = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
+        )?;
+
+        let result = spends.finish_with_silent_payment_keys(
+            &mut ctx,
+            &deltas,
+            Relation::None,
+            &indexmap! {
+                alice.puzzle_hash => alice.pk,
+                bob.puzzle_hash => bob.pk,
+            },
+            &indexmap! {
+                alice.puzzle_hash => alice.sk.clone(),
+                bob.puzzle_hash => bob.sk.clone(),
+            },
+        );
+
+        assert!(
+            matches!(result, Err(DriverError::SilentPaymentRequiresInputBinding)),
+            "expected SilentPaymentRequiresInputBinding, got {result:?}"
+        );
+
+        Ok(())
+    }
+
+    /// FINGERPRINT-01 + ROADMAP §04.1 SC3: a `Spends` with 1 XCH input + 1
+    /// `SilentPaymentSend` action accepts `Relation::None` — the gate
+    /// short-circuits because non-ephemeral XCH count < 2. Single-input SP
+    /// sends do not require input binding (the receiver's Pass 2b only needs
+    /// linkage to GROUP multiple inputs; a single-input send has nothing to
+    /// group).
+    #[test]
+    fn single_input_accepts_relation_none() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(5);
+
+        let recipient_scan_sk = SecretKey::from_bytes(&[0x42u8; 32])?;
+        let recipient_spend_sk = SecretKey::from_bytes(&[0x43u8; 32])?;
+        let recipient = SilentPaymentAddress::new(
+            recipient_scan_sk.public_key(),
+            recipient_spend_sk.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let deltas = spends.apply(
+            &mut ctx,
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
+        )?;
+
+        let result = spends.finish_with_silent_payment_keys(
+            &mut ctx,
+            &deltas,
+            Relation::None,
+            &indexmap! { alice.puzzle_hash => alice.pk },
+            &indexmap! { alice.puzzle_hash => alice.sk.clone() },
+        );
+
+        assert!(
+            result.is_ok(),
+            "single-input SP send with Relation::None should succeed: {result:?}"
         );
 
         Ok(())
