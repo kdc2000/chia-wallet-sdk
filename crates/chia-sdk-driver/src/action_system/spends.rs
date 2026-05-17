@@ -687,10 +687,7 @@ mod tests {
         // Burn destination: any 32-byte puzzle hash literal works; the test
         // does not submit the bundle anywhere.
         let burn_ph: chia_protocol::Bytes32 = [0x77u8; 32].into();
-        let deltas = spends.apply(
-            &mut ctx,
-            &[Action::send(Id::Xch, burn_ph, 1, Memos::None)],
-        )?;
+        let deltas = spends.apply(&mut ctx, &[Action::send(Id::Xch, burn_ph, 1, Memos::None)])?;
 
         // Drive Spends<Unfinished> -> Spends<Finished>; emit_relation runs
         // inside prepare().

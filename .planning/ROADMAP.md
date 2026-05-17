@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Address & key types** — `SilentPaymentKeys` (mnemonic + watch-only), `SilentPaymentAddress` (bech32m), labels generation, `LabelRegistry`, `m=0` change-label guard. (completed 2026-05-15)
 - [ ] **Phase 3: Receive primitive & CHIP test-vector closure** — `TweakData`/`DetectedSpCoin`/`OutputMeta`, `compute_shared_secret_from_tweak`, `scan_from_tweaks` with labeled k-termination + `K_max` DOS guard, all CHIP TVs + bespoke `k=1` + adversarial `[0xff;32]` tests pass.
 - [ ] **Phase 4: Send-side action** — `derive_one_time_puzzle_hash`, `compute_input_hash`, `aggregate_sender_sks` (multi-party hard-error), `SilentPaymentSend` action with `Spends` integration, multi-output `Vec<Recipient>`, opcode 60/61 announcement binding, 32-byte memo-hint guard, doc-comment privacy warnings.
-- [ ] **Phase 4.1: Sage-style send-side binding refactor (INSERTED)** — drop opcode 60/61 empty-message announcement emission from `silent_payments/send_keys.rs`; rely on the SDK's existing `Relation::AssertConcurrent` cycle (opcode 64 SCC) for multi-input atomicity; add runtime gate rejecting `Relation::None` for multi-input SP sends; pin `Relation::AssertConcurrent` shape; matches the companion `~/silent-payments` Phase 2 design.
+- [x] **Phase 4.1: Sage-style send-side binding refactor (INSERTED)** — drop opcode 60/61 empty-message announcement emission from `silent_payments/send_keys.rs`; rely on the SDK's existing `Relation::AssertConcurrent` cycle (opcode 64 SCC) for multi-input atomicity; add runtime gate rejecting `Relation::None` for multi-input SP sends; pin `Relation::AssertConcurrent` shape; matches the companion `~/silent-payments` Phase 2 design. (completed 2026-05-17)
 - [ ] **Phase 5: Bindings (Rust facade + JSON descriptor)** — `bindings/silent_payments.json` descriptor, `chia-sdk-bindings::silent_payments` re-export facade, `Action::silent_payment_send` entry in `action_system.json`, napi/pyo3/wasm builds green, AVA address round-trip test.
 - [ ] **Phase 6: Simulator round-trip + bindings E2E + example** — `chia-sdk-test::silent_payments::tweak_data_from_simulator_block`, unlabeled and labeled simulator round-trip tests, AVA/pytest/wasm cross-language E2E (address-gen + send + scan-from-tweaks), `examples/silent_payment.rs`.
 
@@ -103,7 +103,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   7. Workspace gates green: `cargo build --release --workspace --all-features`, `cargo clippy -p chia-sdk-driver --features chip-0057 --all-targets -- -D warnings`, `cargo fmt --all --check`, `cargo machete`. Phase 4 grep bans still hold.
 **Plans**: 2 plans
 - [x] 04.1-01-PLAN.md — Drop opcode 60/61 announcement emission + update multi-input tests to Relation::AssertConcurrent (closes SC1, SC2; partial SC6; FINGERPRINT-01 deletion half)
-- [ ] 04.1-02-PLAN.md — Runtime input-binding gate + DriverError variant + Relation rustdoc + cycle pinning test + final phase gate (closes SC3, SC4, SC5, SC7; FINGERPRINT-01 enforcement half; SEND-06 re-validation)
+- [x] 04.1-02-PLAN.md — Runtime input-binding gate + DriverError variant + Relation rustdoc + cycle pinning test + final phase gate (closes SC3, SC4, SC5, SC7; FINGERPRINT-01 enforcement half; SEND-06 re-validation)
 
 ### Phase 5: Bindings (Rust facade + JSON descriptor)
 **Goal**: The full Rust silent-payments surface (address generation, send-action constructor, receive primitive) is exposed through `chia-sdk-bindings::silent_payments` and `bindings/silent_payments.json`; napi/pyo3/wasm crates build cleanly and an address round-trip test passes in TypeScript.
@@ -138,9 +138,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Crypto primitives & workspace integration | 5/5 | Complete    | 2026-05-15 |
 | 2. Address & key types | 5/5 | Complete    | 2026-05-15 |
-| 3. Receive primitive & CHIP test-vector closure | 3/5 | In Progress|  |
-| 4. Send-side action | 4/5 | In Progress| - |
-| 4.1. Sage-style send-side binding refactor (INSERTED) | 0/2 | Not started | - |
+| 3. Receive primitive & CHIP test-vector closure | 5/5 | Complete    | 2026-05-16 |
+| 4. Send-side action | 5/5 | Complete    | 2026-05-16 |
+| 4.1. Sage-style send-side binding refactor (INSERTED) | 2/2 | Complete    | 2026-05-17 |
 | 5. Bindings (Rust facade + JSON descriptor) | 0/TBD | Not started | - |
 | 6. Simulator round-trip + bindings E2E + example | 0/TBD | Not started | - |
 
@@ -175,4 +175,4 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 7. **Workspace lint policy (`WS-03`)** — Every phase's code must pass `deny clippy::all`, `warn pedantic`, `deny unsafe_code`, `deny dead_code`, and `cargo machete`. Phase 1 establishes the feature-gating skeleton; later phases inherit.
 
 ---
-*Last updated: 2026-05-17 after Phase 4.1 plans created (04.1-01 + 04.1-02)*
+*Last updated: 2026-05-17 after Phase 4.1 closure — all 7 ROADMAP §04.1 success criteria PASS; SEND-06 re-validated + FINGERPRINT-01 closed; workspace test count 2416 → 2419; Phase 5 (Bindings) unblocked.*

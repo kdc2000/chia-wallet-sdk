@@ -20,9 +20,10 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 - [x] **SEND-03** — `aggregate_sender_sks(sks)` aggregates synthetic secret keys across all wallet-controlled inputs of a single transaction. Returns a `ScalarField`. Hard-errors (no silent fallback) when partial control is detected — multi-party flows must aggregate at sign time across parties. *(Plan 04-01 closed the free-function aggregator + TV4 byte-pin; the Spends-level multi-party hard-error portion lands in Plan 04-03 — re-checks at 04-03 completion.)*
 - [x] **SEND-04** — `SilentPaymentSend` action composes with the existing `Spends` action system. `spends.add(SilentPaymentSend { recipient, amount, memos })` records the deterministic pieces during `apply()` and defers ECDH to a `Spends::finish_with_silent_payment_keys(synthetic_pk_map, synthetic_sk_map)` overload (Option A from architecture research, subject to a phase-4 proof-of-concept).
 - [x] **SEND-05** — `SilentPaymentSend` accepts `Vec<Recipient>` so a single transaction can produce multiple silent-payment outputs sharing one `input_hash`. The `k` counter (per recipient scan_pk) is maintained by `Spends` so multiple sends in one batch increment correctly.
-- [x] **SEND-06** — Multi-input sends across multiple wallet key indices emit the SendMessage / ReceiveMessage announcements (opcodes 60 / 61) that bind the inputs together, so the recipient's `compute_input_hash` matches the sender's. Without this, cross-index sends are undetectable.
+- [x] **SEND-06** — Multi-input sends across multiple wallet key indices are bound together via the SDK's existing `Relation::AssertConcurrent` cycle (opcode-64 closed cycle, one strongly connected component spanning every non-ephemeral coin), so the recipient's `compute_input_hash` matches the sender's. *(Phase 04.1 refactor: replaced the SP-specific opcode 60/61 announcement helper with the SDK's general cycle binding to remove the SP-uniquely-identifiable on-chain fingerprint. Enforced at runtime via `DriverError::SilentPaymentRequiresInputBinding` when ≥2 non-ephemeral XCH inputs are present but `Relation != AssertConcurrent`.)*
 - [x] **SEND-07** — Memo-position hint guard: the standard Chia wallet promotes a 32-byte memo at position 0 to a puzzle-hash hint, publishing the one-time PH to every indexer and defeating silent-payment privacy. `SilentPaymentSend` rejects or rewrites this memo shape; the API surface makes the hazard hard to hit by accident.
 - [x] **SEND-08** — Doc-comment privacy warnings on every memo-bearing API noting that memos are on-chain and visible to anyone holding the recipient's scan key.
+- [x] **FINGERPRINT-01** — Multi-input SP transactions emit no SP-specific on-chain marker. The send path uses the SDK's general-purpose `Relation::AssertConcurrent` cycle binding (opcode 64, used pervasively across the SDK for atomic multi-coin bundles), not a SP-unique opcode 60/61 empty-message announcement. SP transactions disappear into the SDK's regular-traffic anonymity set. Enforced via grep gates (`emit_silent_payment_announcements` absent; `create_coin_announcement|assert_coin_announcement|announcement_id` absent in `silent_payments/send_keys.rs`) and a runtime gate that hard-errors `Relation != AssertConcurrent` for multi-input SP sends.
 
 ### Receive Side — Transport-Agnostic Primitive (`chia-sdk-driver::silent_payments`)
 
@@ -96,9 +97,10 @@ Phase mapping assigned by `ROADMAP.md` (2026-05-15).
 | SEND-03 | Phase 4 | Multi-party hard-error (no silent fallback) |
 | SEND-04 | Phase 4 | Phase-4 proof-of-concept resolves Option A vs B for deferred ECDH |
 | SEND-05 | Phase 4 | Multi-output `Vec<Recipient>` with per-scan_pk `k` counter |
-| SEND-06 | Phase 4 | Opcode 60/61 announcement binding — closer to correctness bug fix than feature |
+| SEND-06 | Phase 4 / Phase 4.1 | Phase 4 shipped opcode 60/61 binding; Phase 4.1 refactored to `Relation::AssertConcurrent` cycle binding to remove the SP-uniquely-identifiable fingerprint |
 | SEND-07 | Phase 4 | Memo-position hint guard — Chia-specific |
 | SEND-08 | Phase 4 | Doc-only privacy warnings |
+| FINGERPRINT-01 | Phase 4.1 | No SP-specific on-chain marker; runtime gate hard-errors `Relation != AssertConcurrent` on multi-input SP sends |
 | RECV-01 | Phase 3 | Transport-agnostic `TweakData` |
 | RECV-02 | Phase 3 | `scan_from_tweaks` k-iteration with labeled-termination rule |
 | RECV-03 | Phase 3 | `compute_shared_secret_from_tweak` ECDH primitive |
@@ -119,4 +121,4 @@ Phase mapping assigned by `ROADMAP.md` (2026-05-15).
 | EX-01 | Phase 6 | `examples/silent_payment.rs` |
 
 ---
-*Last updated: 2026-05-15 after roadmap creation*
+*Last updated: 2026-05-17 after Phase 4.1 (sage-style binding refactor) — added FINGERPRINT-01 + updated SEND-06 note.*

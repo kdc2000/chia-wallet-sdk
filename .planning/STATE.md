@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04.1-01-PLAN.md (FINGERPRINT-01 deletion half + SEND-06 re-validation; Plan 04.1-02 = runtime gate)
-last_updated: "2026-05-17T18:42:58.451Z"
+stopped_at: Completed Phase 4.1 (Plan 04.1-02 final wave; FINGERPRINT-01 + SEND-06 closed; Phase 5 Bindings unblocked)
+last_updated: "2026-05-17T19:19:30.000Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 22
-  completed_plans: 25
+  completed_plans: 27
   percent: 0
 ---
 
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 ## Current Position
 
-Phase: 04.1 (sage-style-binding-refactor) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
+Phase: 05 (Bindings — Rust facade + JSON descriptor) — READY TO START
+Plan: 0 of TBD
+Status: Phase 4.1 complete; awaiting Phase 5 plan-phase invocation
 Last activity: 2026-05-17
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%  (Phases 1, 2, 3, 4, 4.1 complete)
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P04 | 21min | 2 tasks | 3 files |
 | Phase 04 P05 | 23min | 3 tasks | 3 files |
 | Phase 04.1 P01 | 8min | 2 tasks | 2 files |
+| Phase 04.1 P02 | 33min | 4 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04]: Phase 4 COMPLETE: 18-gate matrix green, all 6 ROADMAP success criteria PASS, all 8 SEND-* requirements (SEND-01..08) closed. Workspace test count 2399 (Phase 3) -> 2416 (+17). 5 plans across 5 waves (~93 min cumulative). Zero new workspace deps; zero new #[allow] anywhere in Phase 4 (only scanner.rs allow from Plan 03-03 remains). Phase 5 (Bindings) unblocked.
 - [Phase 04.1]: Plan 04.1-01: Deletion-half of FINGERPRINT-01 closed. emit_silent_payment_announcements + Step 8.5 + 4 unused imports + 2 announcement-specific tests deleted. multi_party_hard_errors and input_hash_round_trip updated to Relation::AssertConcurrent (production-correct value; preempts Plan 04.1-02 runtime gate). send_keys.rs 319->236 (-83 lines); silent_payment_send.rs 778->640 (-138 lines). 9 surviving SP tests green; full workspace --all-features build clean; clippy clean under chip-0057.
 - [Phase 04.1]: Plan 04.1-01 deviation (Rule 3 - blocking): Task 1 commit produces transient test-build break until Task 2 lands (Task 2-deleted tests still reference Task 1-deleted method). Committed Task 1 with non-test library build verified + grep gates green; documented in commit. Future plan authors: when deleting a pub(crate) symbol referenced from cfg(test) in another file, those test deletions must commit either first or atomically with the symbol deletion.
+- [Phase 04.1]: Plan 04.1-02: DriverError::SilentPaymentRequiresInputBinding variant added (chip-0057 gated; canonical wording per RESEARCH §5a). Runtime input-binding gate inserted between Step 1 and Step 2 of finish_with_silent_payment_keys (non-ephemeral XCH count >= 2 AND relation != AssertConcurrent → Err(SilentPaymentRequiresInputBinding)). 2 gate tests + 3 named pinning tests added. Relation enum + per-variant rustdoc landed (NOT cfg-gated; verbatim per RESEARCH §6b with 1 inline doc_markdown fix for snake_case `coin_id`). Cycle-emission pinning test (action_system/spends.rs::tests, NOT cfg-gated on chip-0057) covers N=2/3/4 via three named #[test] functions calling assert_concurrent_cycle_for_n helper.
+- [Phase 04.1]: Plan 04.1-02 deviations: 5 inline auto-fixes — (1) clippy::doc_markdown on coin_id; (2) broken intra-doc link [Spends::finish_with_silent_payment_keys] downgraded to plain code (chip-0057 cfg-gated method, Spends not imported into relation.rs scope); (3) unused Asset import dropped (Coin has inherent coin_id); (4) FINGERPRINT-01 added to REQUIREMENTS.md (was missing — Rule 2 missing critical for traceability); (5) rustfmt collapsed one multi-line apply() call. Zero new #[allow] attributes.
+- [Phase 04.1]: Phase 4.1 COMPLETE: 22-gate matrix green; 7 of 7 ROADMAP §04.1 success criteria PASS; SEND-06 re-validated under cycle binding scheme; FINGERPRINT-01 newly closed (deletion half + enforcement half); workspace test count 2416 → 2419 (+3 net: 5 new − 2 deleted); cumulative duration 41 min across 2 plans. Phase 5 (Bindings) unblocked.
 
 ### Roadmap Evolution
 
@@ -138,6 +142,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-17T18:42:58.444Z
-Stopped at: Completed 04.1-01-PLAN.md (FINGERPRINT-01 deletion half + SEND-06 re-validation; Plan 04.1-02 = runtime gate)
+Last session: 2026-05-17T19:19:30.000Z
+Stopped at: Completed Phase 4.1 (Plan 04.1-02 final wave; FINGERPRINT-01 + SEND-06 closed; Phase 5 Bindings unblocked)
 Resume file: None
