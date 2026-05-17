@@ -41,15 +41,18 @@ A wallet developer can derive a silent-payment address from a mnemonic, display 
 **Cryptographic primitives** (gated by `chip-0057` feature) — Validated in Phase 3
 - [x] **CRYPTO-03**: All CHIP test vectors from `chip-silent-payments.md` pass as Rust unit tests — TV1 (unlabeled), TV3 (labeled), TV4 (multi-input) byte-exact; plus bespoke `k=1` (catches `ser32(k)` endianness bugs), `[0xff;32]` adversarial scalar (proves `ScalarField::from_bytes_unsigned` boundary fires end-to-end), labeled k-termination rule, unlabeled-preferred-over-labeled at same k
 
-**Send side (XCH)** — Validated in Phase 4
+**Send side (XCH)** — Validated in Phase 4 (SEND-06 re-validated in Phase 4.1)
 - [x] **SEND-01**: `derive_one_time_puzzle_hash` computes the recipient's per-payment puzzle hash from `(scan_pk, spend_pk, aggregated_sender_sk, input_hash, k)` — TV1 / k=0 + k=1 byte-pinned
 - [x] **SEND-02**: `compute_input_hash` computes the BIP-352 input hash using the lexicographically smallest spent coin id and the aggregated synthetic sender public key — TV1 byte-pin + lex-min selection + order-independent property tests
 - [x] **SEND-03**: `aggregate_sender_sks` aggregates synthetic secret keys across wallet-controlled inputs (single-party only); the multi-party hazard hard-errors at the `Spends` level via `Err(DriverError::SilentPaymentMultiPartyUnsupported)` — multi-party flows must aggregate at sign time
 - [x] **SEND-04**: `SilentPaymentSend` composes with the existing `Spends` action system; `spends.add(Action::silent_payment_send(recipient, amount, memos))` followed by `spends.finish_with_silent_payment_keys(synthetic_pks, synthetic_sks)` produces a `SpendBundle` whose outputs land at the same puzzle hash `derive_one_time_puzzle_hash` returns (byte-for-byte round-trip test)
 - [x] **SEND-05**: Two `SilentPaymentSend` actions targeting the same `scan_pk` in one batch produce outputs at `k=0` and `k=1` (per-scan_pk counter on `Spends`); distinct `scan_pk`s use independent counters
-- [x] **SEND-06**: Cross-input announcement binding: with 2+ XCH inputs, the lex-min `coin_id` input emits `CREATE_COIN_ANNOUNCEMENT` (opcode 60) with empty message; every other XCH input emits `ASSERT_COIN_ANNOUNCEMENT` (opcode 61) asserting `SHA256(lex_min_coin_id || "")` — the recipient's `compute_input_hash` matches the sender's byte-for-byte
+- [x] **SEND-06**: Multi-input sends across multiple wallet key indices are bound together via the SDK's existing `Relation::AssertConcurrent` cycle (opcode-64 closed cycle, one strongly connected component spanning every non-ephemeral coin), so the recipient's `compute_input_hash` matches the sender's. *(Phase 04.1 refactor: replaced the SP-specific opcode 60/61 announcement helper with the SDK's general cycle binding to remove the SP-uniquely-identifiable on-chain fingerprint. Enforced at runtime via `DriverError::SilentPaymentRequiresInputBinding` when ≥2 non-ephemeral XCH inputs are present but `Relation != AssertConcurrent`.)*
 - [x] **SEND-07**: Memo-hint guard hard-errors with `Err(DriverError::SilentPaymentMemoHintForbidden)` when the first memo atom is exactly 32 bytes (puzzle-hash-hint deanonymization hazard); 1-byte sentinel + 32-byte payload bypasses the guard as the wallet-author escape hatch
 - [x] **SEND-08**: Every public memo-bearing API in `crates/chia-sdk-driver/src/silent_payments/` and `actions/silent_payment_send.rs` carries `/// Privacy warning: memos are stored on-chain in plaintext and are visible to anyone holding the recipient's scan key.` — verified by `grep -L 'Privacy warning'` gate
+
+**On-chain fingerprint** — Validated in Phase 4.1
+- [x] **FINGERPRINT-01**: Multi-input SP transactions emit no SP-specific on-chain marker. The send path uses the SDK's general-purpose `Relation::AssertConcurrent` cycle binding (opcode 64, used pervasively across the SDK for atomic multi-coin bundles), not a SP-unique opcode 60/61 empty-message announcement. SP transactions disappear into the SDK's regular-traffic anonymity set. Enforced via grep gates (`emit_silent_payment_announcements` absent; `create_coin_announcement|assert_coin_announcement|announcement_id` absent in `silent_payments/send_keys.rs`) and a runtime gate that hard-errors `Relation != AssertConcurrent` for multi-input SP sends.
 
 ### Active
 
@@ -144,4 +147,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-16 after Phase 4 (send-side action) complete — `SilentPaymentSend` + `Spends::finish_with_silent_payment_keys` are wired into the action system, all 8 SEND-* requirements validated, full workspace test suite green at 2416 tests. Phase 5 (Bindings) is next.*
+*Last updated: 2026-05-17 after Phase 4.1 (sage-style send-side binding refactor) complete — SP send path now uses the SDK's general `Relation::AssertConcurrent` cycle binding instead of the opcode 60/61 helper, removing the SP-specific on-chain fingerprint. New `DriverError::SilentPaymentRequiresInputBinding` gate enforces the binding at runtime for multi-input sends. SEND-06 re-validated; FINGERPRINT-01 newly validated. Workspace test suite green at 2419 tests. Phase 5 (Bindings) is next.*
