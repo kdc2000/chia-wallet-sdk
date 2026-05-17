@@ -1,6 +1,8 @@
 use std::{collections::HashMap, mem};
 
 use chia_bls::PublicKey;
+#[cfg(feature = "chip-0057")]
+use chia_bls::SecretKey;
 use chia_protocol::{Bytes32, Coin};
 use chia_puzzle_types::offer::SettlementPaymentsSolution;
 use chia_sdk_types::{Conditions, conditions::AssertPuzzleAnnouncement};
@@ -29,6 +31,10 @@ pub struct Spends<S = Unfinished> {
     pub(crate) silent_payment_counters: std::collections::HashMap<[u8; 48], u32>,
     #[cfg(feature = "chip-0057")]
     pub(crate) silent_payments_pending: Vec<crate::silent_payments::SilentPaymentPending>,
+    #[cfg(feature = "chip-0057")]
+    pub(crate) silent_payment_synthetic_pks: Option<IndexMap<Bytes32, PublicKey>>,
+    #[cfg(feature = "chip-0057")]
+    pub(crate) silent_payment_synthetic_sks: Option<IndexMap<Bytes32, SecretKey>>,
     _state: S,
 }
 
@@ -79,12 +85,39 @@ impl Spends<Unfinished> {
             silent_payment_counters: std::collections::HashMap::new(),
             #[cfg(feature = "chip-0057")]
             silent_payments_pending: Vec::new(),
+            #[cfg(feature = "chip-0057")]
+            silent_payment_synthetic_pks: None,
+            #[cfg(feature = "chip-0057")]
+            silent_payment_synthetic_sks: None,
             _state: Unfinished,
         }
     }
 
     pub fn add(&mut self, asset: impl AddAsset) {
         asset.add(self);
+    }
+
+    /// Register the silent-payment synthetic key maps that
+    /// [`Spends::finish_with_keys`]'s chip-0057 branch consumes to derive each
+    /// pending one-time puzzle hash.
+    ///
+    /// Chainable; matches the `add_*` builder precedent on `Spends`. The PK and
+    /// SK maps are co-dependent (the SK map must cover every key in the PK map
+    /// for the SP flow), so they are accepted together — splitting would invite
+    /// mismatch.
+    ///
+    /// Privacy warning: `synthetic_sks` carries sensitive synthetic-secret-key
+    /// material. Wallets must treat the map like the SKs themselves (zeroize on
+    /// drop, do not log).
+    #[cfg(feature = "chip-0057")]
+    pub fn with_silent_payment_keys(
+        &mut self,
+        synthetic_pks: IndexMap<Bytes32, PublicKey>,
+        synthetic_sks: IndexMap<Bytes32, SecretKey>,
+    ) -> &mut Self {
+        self.silent_payment_synthetic_pks = Some(synthetic_pks);
+        self.silent_payment_synthetic_sks = Some(synthetic_sks);
+        self
     }
 
     pub fn apply(
@@ -465,6 +498,10 @@ impl Spends<Unfinished> {
             silent_payment_counters: self.silent_payment_counters,
             #[cfg(feature = "chip-0057")]
             silent_payments_pending: self.silent_payments_pending,
+            #[cfg(feature = "chip-0057")]
+            silent_payment_synthetic_pks: self.silent_payment_synthetic_pks,
+            #[cfg(feature = "chip-0057")]
+            silent_payment_synthetic_sks: self.silent_payment_synthetic_sks,
             _state: Finished,
         })
     }
