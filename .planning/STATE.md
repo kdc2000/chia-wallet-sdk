@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 04-05-PLAN.md (Phase 4 final wave)
-last_updated: "2026-05-16T03:43:24.336Z"
-last_activity: 2026-05-16
+status: executing
+stopped_at: Completed 04.1-01-PLAN.md (FINGERPRINT-01 deletion half + SEND-06 re-validation; Plan 04.1-02 = runtime gate)
+last_updated: "2026-05-17T18:42:58.451Z"
+last_activity: 2026-05-17
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 4
-  total_plans: 20
-  completed_plans: 24
+  total_plans: 22
+  completed_plans: 25
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 04 — send-side-action
+**Current focus:** Phase 04.1 — sage-style-binding-refactor
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-16
+Phase: 04.1 (sage-style-binding-refactor) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-05-17
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -77,6 +77,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P03 | 21 | 3 tasks | 3 files |
 | Phase 04 P04 | 21min | 2 tasks | 3 files |
 | Phase 04 P05 | 23min | 3 tasks | 3 files |
+| Phase 04.1 P01 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04]: Plan 04-05: Memos<NodePtr> passed by value (clippy::trivially_copy_pass_by_ref); no #[allow] added. Cross-module re-export of SilentPaymentSend goes through crate::actions::* (the private silent_payment_send module's public re-export) instead of crate::actions::silent_payment_send::SilentPaymentSend (E0603).
 - [Phase 04]: Plan 04-05: aggregate_sender_sks DELIBERATELY omitted from umbrella prelude per RESEARCH Anti-Pattern 2 — too easy to misuse outside Spends::finish_with_silent_payment_keys invariants. Prelude chip-0057 driver block now 14 symbols (was 11): SilentPaymentSend, derive_one_time_puzzle_hash, compute_input_hash added.
 - [Phase 04]: Phase 4 COMPLETE: 18-gate matrix green, all 6 ROADMAP success criteria PASS, all 8 SEND-* requirements (SEND-01..08) closed. Workspace test count 2399 (Phase 3) -> 2416 (+17). 5 plans across 5 waves (~93 min cumulative). Zero new workspace deps; zero new #[allow] anywhere in Phase 4 (only scanner.rs allow from Plan 03-03 remains). Phase 5 (Bindings) unblocked.
+- [Phase 04.1]: Plan 04.1-01: Deletion-half of FINGERPRINT-01 closed. emit_silent_payment_announcements + Step 8.5 + 4 unused imports + 2 announcement-specific tests deleted. multi_party_hard_errors and input_hash_round_trip updated to Relation::AssertConcurrent (production-correct value; preempts Plan 04.1-02 runtime gate). send_keys.rs 319->236 (-83 lines); silent_payment_send.rs 778->640 (-138 lines). 9 surviving SP tests green; full workspace --all-features build clean; clippy clean under chip-0057.
+- [Phase 04.1]: Plan 04.1-01 deviation (Rule 3 - blocking): Task 1 commit produces transient test-build break until Task 2 lands (Task 2-deleted tests still reference Task 1-deleted method). Committed Task 1 with non-test library build verified + grep gates green; documented in commit. Future plan authors: when deleting a pub(crate) symbol referenced from cfg(test) in another file, those test deletions must commit either first or atomically with the symbol deletion.
 
 ### Roadmap Evolution
 
@@ -135,6 +138,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-16T03:32:01.498Z
-Stopped at: Completed 04-05-PLAN.md (Phase 4 final wave)
+Last session: 2026-05-17T18:42:58.444Z
+Stopped at: Completed 04.1-01-PLAN.md (FINGERPRINT-01 deletion half + SEND-06 re-validation; Plan 04.1-02 = runtime gate)
 Resume file: None

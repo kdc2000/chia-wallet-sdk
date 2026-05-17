@@ -102,7 +102,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. All Phase 4 round-trip and multi-output tests (`round_trip_matches_derive_one_time_puzzle_hash`, `multi_output_same_scan_pk_increments_k`, `multi_output_distinct_scan_pks_independent_counters`, `input_hash_round_trip`) still pass against the cycle binding alone, with no explicit announcement emission.
   7. Workspace gates green: `cargo build --release --workspace --all-features`, `cargo clippy -p chia-sdk-driver --features chip-0057 --all-targets -- -D warnings`, `cargo fmt --all --check`, `cargo machete`. Phase 4 grep bans still hold.
 **Plans**: 2 plans
-- [ ] 04.1-01-PLAN.md — Drop opcode 60/61 announcement emission + update multi-input tests to Relation::AssertConcurrent (closes SC1, SC2; partial SC6; FINGERPRINT-01 deletion half)
+- [x] 04.1-01-PLAN.md — Drop opcode 60/61 announcement emission + update multi-input tests to Relation::AssertConcurrent (closes SC1, SC2; partial SC6; FINGERPRINT-01 deletion half)
 - [ ] 04.1-02-PLAN.md — Runtime input-binding gate + DriverError variant + Relation rustdoc + cycle pinning test + final phase gate (closes SC3, SC4, SC5, SC7; FINGERPRINT-01 enforcement half; SEND-06 re-validation)
 
 ### Phase 5: Bindings (Rust facade + JSON descriptor)
