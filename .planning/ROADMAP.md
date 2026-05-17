@@ -111,7 +111,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 - [x] 04.2-01-PLAN.md — Wave A foundation: 2 DriverError variants + SendDestination enum + 2 Spends chip-0057 fields + with_silent_payment_keys builder (additive only; consumers wired in Plan 02)
 - [x] 04.2-02-PLAN.md — Wave A wire-up: Action::send Into<SendDestination> + SendAction.destination + chip-0057 SP arm in SendAction::spend + sp_finish_branch in Spends::finish_with_keys + reshape 3 send_keys.rs tests (kills dead_code-deny)
-- [ ] 04.2-03-PLAN.md — Wave B atomic delete-and-migrate: drop old SilentPaymentSend API + actions/silent_payment_send.rs + finish_with_silent_payment_keys; relocate 8 tests + add 2 NEW Wave 0 tests to actions/send.rs; prelude swap; REQUIREMENTS.md ACTION-API-01 entry; final phase gate
+- [x] 04.2-03-PLAN.md — Wave B atomic delete-and-migrate: drop old SilentPaymentSend API + actions/silent_payment_send.rs + finish_with_silent_payment_keys; relocate 8 tests + add 2 NEW Wave 0 tests to actions/send.rs; prelude swap; REQUIREMENTS.md ACTION-API-01 entry; final phase gate
 **UI hint**: no
 
 ### Phase 04.1: Sage-style send-side binding refactor (INSERTED)
