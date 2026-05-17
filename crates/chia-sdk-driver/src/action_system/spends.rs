@@ -643,3 +643,115 @@ impl AddAsset for OptionContract {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use chia_puzzle_types::Memos;
+    use chia_sdk_test::Simulator;
+    use chia_sdk_types::Condition;
+
+    use crate::{Action, Id, Relation, SpendContext, SpendKind, Spends};
+
+    /// Pinning test for `Relation::AssertConcurrent` — verifies the exact
+    /// closed-cycle opcode-64 emission shape that CHIP-0057 Pass 2b scanners
+    /// depend on. Drift in `emit_relation`'s implementation away from the
+    /// closed cycle will silently break SP scanner detection for cross-
+    /// derivation-index multi-input sends; this test fires before any such
+    /// regression can ship.
+    ///
+    /// NOT `#[cfg(feature = "chip-0057")]` gated: `Relation` is general-
+    /// purpose; SP is one consumer.
+    fn assert_concurrent_cycle_for_n(n: usize) -> Result<()> {
+        assert!(n >= 2, "pinning test only meaningful for n >= 2");
+
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        // Allocate N independently-funded XCH coins.
+        let coins: Vec<_> = (0..n).map(|_| sim.bls(1)).collect();
+
+        // Build Spends with N coins; intermediate puzzle hash defaults to
+        // coins[0]'s puzzle hash (the canonical change destination).
+        let mut spends = Spends::new(coins[0].puzzle_hash);
+        for c in &coins {
+            spends.add(c.coin);
+        }
+
+        // Apply a conditions-producing action on each xch item so each
+        // SpendKind is ConditionsSpend (rather than Settlement). The
+        // standard send-XCH action emits a CreateCoin condition on the
+        // chosen input — sufficient to keep every item.kind as
+        // SpendKind::Conditions before prepare() runs emit_relation.
+        //
+        // Burn destination: any 32-byte puzzle hash literal works; the test
+        // does not submit the bundle anywhere.
+        let burn_ph: chia_protocol::Bytes32 = [0x77u8; 32].into();
+        let deltas = spends.apply(
+            &mut ctx,
+            &[Action::send(Id::Xch, burn_ph, 1, Memos::None)],
+        )?;
+
+        // Drive Spends<Unfinished> -> Spends<Finished>; emit_relation runs
+        // inside prepare().
+        let finished = spends.prepare(&mut ctx, &deltas, Relation::AssertConcurrent)?;
+
+        // Collect the coin_ids in iteration order.
+        let coin_ids: Vec<chia_protocol::Bytes32> = finished
+            .xch
+            .items
+            .iter()
+            .map(|i| i.asset.coin_id())
+            .collect();
+        assert_eq!(coin_ids.len(), n);
+
+        // For each item, assert exactly one AssertConcurrentSpend with the
+        // expected predecessor coin_id (coin 0 -> coin N-1; coin i -> coin i-1).
+        for (i, item) in finished.xch.items.iter().enumerate() {
+            let SpendKind::Conditions(spend) = &item.kind else {
+                panic!("xch item {i} not SpendKind::Conditions; cannot inspect");
+            };
+            let conds = spend.conditions_ref();
+            let expected_predecessor = if i == 0 {
+                coin_ids[n - 1]
+            } else {
+                coin_ids[i - 1]
+            };
+            let mut count = 0;
+            let mut last_observed_target: Option<chia_protocol::Bytes32> = None;
+            for cond in conds.iter() {
+                if let Condition::AssertConcurrentSpend(a) = cond {
+                    count += 1;
+                    last_observed_target = Some(a.coin_id);
+                }
+            }
+            assert_eq!(
+                count, 1,
+                "coin {i} of {n}: expected exactly 1 AssertConcurrentSpend, got {count}"
+            );
+            assert_eq!(
+                last_observed_target,
+                Some(expected_predecessor),
+                "coin {i} of {n}: AssertConcurrentSpend target mismatch (expected predecessor {})",
+                hex::encode(expected_predecessor)
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn assert_concurrent_relation_emits_cycle_for_n_coins_2() -> Result<()> {
+        assert_concurrent_cycle_for_n(2)
+    }
+
+    #[test]
+    fn assert_concurrent_relation_emits_cycle_for_n_coins_3() -> Result<()> {
+        assert_concurrent_cycle_for_n(3)
+    }
+
+    #[test]
+    fn assert_concurrent_relation_emits_cycle_for_n_coins_4() -> Result<()> {
+        assert_concurrent_cycle_for_n(4)
+    }
+}
