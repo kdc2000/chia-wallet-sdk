@@ -108,7 +108,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   11. All existing SP tests pass under the new construction pattern (call sites updated from `Action::silent_payment_send(...)` to `Action::send(Id::Xch, recipient.into(), ...)` + `spends.with_silent_payment_keys(pks, sks); spends.finish(...)` instead of `finish_with_silent_payment_keys(..., pks, sks)`): the 2 gate tests (`multi_input_requires_assert_concurrent_relation`, `single_input_accepts_relation_none`), 3 cycle pinning tests, `input_hash_round_trip`, `multi_party_hard_errors`, `action_state_machine`, `multi_output_same_scan_pk_increments_k`, `multi_output_distinct_scan_pks_independent_counters`, 3 memo guard tests.
   12. Bindings descriptor pattern verified ahead of Phase 5: `SendDestination` slots into bindy's existing opaque-handle pattern (see `Id`, `Action` in `bindings/action_system.json`) with factory methods (`puzzle_hash`, `silent_payment`) + introspectors (`is_puzzle_hash`/`as_puzzle_hash`/`is_silent_payment`/`as_silent_payment`). No new bindy-macro work required — confirmed during 04.2 design discussion. Phase 5 carries the descriptor update.
   13. Workspace gates green: `cargo build --release --workspace --all-features`, `cargo clippy -p chia-sdk-driver --features chip-0057 --all-targets -- -D warnings`, `cargo fmt --all --check`, `cargo machete`. Phase 1/4/4.1 grep bans still hold (`mod_by_group_order`, `^use sha2::`, `Sha256::digest` in `silent_payments/`; FINGERPRINT-01 grep gates from 04.1; Phase 4 Privacy-warning coverage).
-**Plans**: 0 plans (run `/gsd:discuss-phase 04.2` to gather context, then `/gsd:plan-phase 04.2` to break down)
+**Plans**: 3 plans
+- [ ] 04.2-01-PLAN.md — Wave A foundation: 2 DriverError variants + SendDestination enum + 2 Spends chip-0057 fields + with_silent_payment_keys builder (additive only; consumers wired in Plan 02)
+- [ ] 04.2-02-PLAN.md — Wave A wire-up: Action::send Into<SendDestination> + SendAction.destination + chip-0057 SP arm in SendAction::spend + sp_finish_branch in Spends::finish_with_keys + reshape 3 send_keys.rs tests (kills dead_code-deny)
+- [ ] 04.2-03-PLAN.md — Wave B atomic delete-and-migrate: drop old SilentPaymentSend API + actions/silent_payment_send.rs + finish_with_silent_payment_keys; relocate 8 tests + add 2 NEW Wave 0 tests to actions/send.rs; prelude swap; REQUIREMENTS.md ACTION-API-01 entry; final phase gate
 **UI hint**: no
 
 ### Phase 04.1: Sage-style send-side binding refactor (INSERTED)
@@ -163,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Receive primitive & CHIP test-vector closure | 5/5 | Complete    | 2026-05-16 |
 | 4. Send-side action | 5/5 | Complete    | 2026-05-16 |
 | 4.1. Sage-style send-side binding refactor (INSERTED) | 2/2 | Complete    | 2026-05-17 |
-| 4.2. Unify SP send into Action::send via SendDestination enum (INSERTED) | 0/TBD | Not started | - |
+| 4.2. Unify SP send into Action::send via SendDestination enum (INSERTED) | 0/3 | Planned     | - |
 | 5. Bindings (Rust facade + JSON descriptor) | 0/TBD | Not started | - |
 | 6. Simulator round-trip + bindings E2E + example | 0/TBD | Not started | - |
 
@@ -198,4 +201,4 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 7. **Workspace lint policy (`WS-03`)** — Every phase's code must pass `deny clippy::all`, `warn pedantic`, `deny unsafe_code`, `deny dead_code`, and `cargo machete`. Phase 1 establishes the feature-gating skeleton; later phases inherit.
 
 ---
-*Last updated: 2026-05-17 after Phase 4.1 closure — all 7 ROADMAP §04.1 success criteria PASS; SEND-06 re-validated + FINGERPRINT-01 closed; workspace test count 2416 → 2419; Phase 5 (Bindings) unblocked.*
+*Last updated: 2026-05-17 after Phase 04.2 planning — 3 plans across 3 waves (Wave A additive: 01; Wave A wire-up + dead_code-deny resolution: 02; Wave B atomic delete-and-migrate + 8 test relocations + 2 NEW Wave 0 tests: 03); ACTION-API-01 newly traced; SEND-04 re-validation queued.*
