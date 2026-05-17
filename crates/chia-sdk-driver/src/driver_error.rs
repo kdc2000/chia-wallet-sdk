@@ -156,4 +156,16 @@ pub enum DriverError {
         "silent payment multi-input send requires Relation::AssertConcurrent for CHIP-0057 Pass 2b scanner detection; single-input SP sends accept any Relation"
     )]
     SilentPaymentRequiresInputBinding,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent payment send requires Spends::with_silent_payment_keys to be called before finish (no SP secret keys registered)"
+    )]
+    SilentPaymentKeysNotRegistered,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent payment destination requires Id::Xch (CAT/NFT/option silent payments are deferred to v2)"
+    )]
+    SilentPaymentRequiresXch,
 }
