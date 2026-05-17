@@ -506,13 +506,36 @@ impl Spends<Unfinished> {
         })
     }
 
+    /// Finish the spend with synthetic public keys, producing the final
+    /// [`Outputs`].
+    ///
+    /// Privacy warning (chip-0057): when `silent_payments_pending` is non-empty
+    /// (i.e. at least one `Action::send` with a [`SendDestination::SilentPayment`]
+    /// destination has been applied), a chip-0057 SP branch runs BEFORE
+    /// `prepare()` so the derived `CreateCoin` conditions feed into the parents'
+    /// `payment_assertions` before `emit_conditions`. The branch consumes
+    /// `Spends::silent_payment_synthetic_sks` (registered via
+    /// [`Spends::with_silent_payment_keys`]) and emits the recipient's one-time
+    /// puzzle hash on the recorded parent. Memos travel in `CreateCoin.memos`
+    /// in plaintext, visible to anyone holding the recipient's scan key. The
+    /// 32-byte first-memo hint guard fired at apply time
+    /// (`DriverError::SilentPaymentMemoHintForbidden`) — no further memo guard
+    /// fires here.
     pub fn finish_with_keys(
-        self,
+        #[cfg_attr(not(feature = "chip-0057"), allow(unused_mut))] mut self,
         ctx: &mut SpendContext,
         deltas: &Deltas,
         relation: Relation,
         synthetic_keys: &IndexMap<Bytes32, PublicKey>,
     ) -> Result<Outputs, DriverError> {
+        // chip-0057 SP derivation branch — runs BEFORE prepare() so CreateCoin
+        // emissions feed into the parents' payment_assertions before
+        // emit_conditions.
+        #[cfg(feature = "chip-0057")]
+        if !self.silent_payments_pending.is_empty() {
+            sp_finish_branch(ctx, &mut self, relation)?;
+        }
+
         let spends = self.prepare(ctx, deltas, relation)?;
         let mut coin_spends = HashMap::new();
 
@@ -542,6 +565,121 @@ impl Spends<Unfinished> {
 
         spends.spend(ctx, coin_spends)
     }
+}
+
+/// Chip-0057 finish-time SP branch: absorbs the 9-step derivation pipeline
+/// previously in `Spends::finish_with_silent_payment_keys` (Plan 04-03).
+///
+/// Gate ordering (Pitfall 7):
+/// 1. [`DriverError::SilentPaymentRequiresInputBinding`] (Phase 04.1 D-06 preserve) —
+///    fires first on `≥2` non-ephemeral XCH inputs with `Relation != AssertConcurrent`.
+/// 2. [`DriverError::SilentPaymentKeysNotRegistered`] — fires if
+///    `with_silent_payment_keys` was not called.
+/// 3. [`DriverError::SilentPaymentMultiPartyUnsupported`] — SK-coverage check.
+/// 4. [`DriverError::SilentPaymentNoXchInputs`] — collected SK set empty.
+///
+/// After gates pass: aggregate sender SKs, recover aggregated PK, compute
+/// `input_hash`, per-pending derive one-time puzzle hash + push `CreateCoin`
+/// via `create_coin_with_assertion` onto the recorded parent's
+/// `payment_assertions`, push the resulting Coin to `outputs.xch`.
+#[cfg(feature = "chip-0057")]
+fn sp_finish_branch(
+    ctx: &mut SpendContext,
+    spends: &mut Spends,
+    relation: Relation,
+) -> Result<(), DriverError> {
+    use chia_sdk_types::conditions::CreateCoin;
+
+    use crate::silent_payments::{
+        aggregate_sender_sks, compute_input_hash, derive_one_time_puzzle_hash,
+    };
+
+    // GATE 1 (Pitfall 7 — Phase 04.1 preserved per D-06):
+    // SilentPaymentRequiresInputBinding fires first; multi-input atomic-binding
+    // is more fundamental than key-registration.
+    let non_ephemeral_xch_count = spends.xch.items.iter().filter(|i| !i.ephemeral).count();
+    if non_ephemeral_xch_count >= 2 && !matches!(relation, Relation::AssertConcurrent) {
+        return Err(DriverError::SilentPaymentRequiresInputBinding);
+    }
+
+    // GATE 2 (NEW per SC8 — keys must be registered).
+    let Some(secret_keys) = spends.silent_payment_synthetic_sks.as_ref() else {
+        return Err(DriverError::SilentPaymentKeysNotRegistered);
+    };
+
+    // Step 2 + 3: collect XCH input coin ids + verify SK coverage.
+    // Iterating non-ephemeral xch.items only: ephemeral items are intermediate
+    // coins created within this spend group and are not wallet-controlled inputs
+    // whose SKs the sender holds.
+    let mut xch_input_ids: Vec<Bytes32> = Vec::with_capacity(spends.xch.items.len());
+    let mut sender_sks: Vec<SecretKey> = Vec::with_capacity(spends.xch.items.len());
+    for item in spends.xch.items.iter().filter(|i| !i.ephemeral) {
+        let ph = item.asset.p2_puzzle_hash();
+        let Some(sk) = secret_keys.get(&ph) else {
+            return Err(DriverError::SilentPaymentMultiPartyUnsupported);
+        };
+        sender_sks.push(sk.clone());
+        xch_input_ids.push(item.asset.coin_id());
+    }
+
+    // Step 4: no-inputs guard. Only fires if every XCH item is ephemeral.
+    if sender_sks.is_empty() {
+        return Err(DriverError::SilentPaymentNoXchInputs);
+    }
+
+    // Step 5 + 6: aggregate + recover the aggregated PK.
+    // The aggregated PK is recovered via SecretKey::from_bytes round-trip on
+    // the ScalarField bytes, NOT by hand-summing the input PKs (which would
+    // diverge from the SK sum on mod-r wraparound). The .expect is acceptable
+    // because ScalarField guarantees the bytes are < r and the zero-aggregate
+    // probability is ~ 2^-255.
+    let aggregated_sender_sk = aggregate_sender_sks(&sender_sks);
+    let agg_pk = SecretKey::from_bytes(aggregated_sender_sk.as_bytes())
+        .expect("ScalarField guarantees < r; zero aggregate has vanishing probability")
+        .public_key();
+
+    // Step 7: input_hash binding over lex-min coin_id + aggregated PK.
+    let input_hash = compute_input_hash(&xch_input_ids, &agg_pk);
+
+    // Borrow-checker workaround: take ownership of the pending Vec so the
+    // per-pending loop can iterate it while mutating spends.xch.items and
+    // spends.outputs.xch freely. After this take, silent_payments_pending is
+    // an empty Vec; prepare() does not re-read it.
+    let pending = std::mem::take(&mut spends.silent_payments_pending);
+
+    // Step 8: per-pending derivation + CreateCoin emission.
+    for p in &pending {
+        let ph = derive_one_time_puzzle_hash(
+            &p.scan_pk,
+            &p.spend_pk,
+            &aggregated_sender_sk,
+            &input_hash,
+            p.k,
+        );
+
+        let create_coin = CreateCoin::new(ph, p.amount, p.memos);
+
+        // Emit the CreateCoin condition on the recorded parent. The
+        // p.parent_puzzle_hash was captured at apply time via
+        // parent.asset.full_puzzle_hash().
+        let parent = &mut spends.xch.items[p.parent_xch_index];
+        parent.kind.create_coin_with_assertion(
+            ctx,
+            p.parent_puzzle_hash,
+            &mut spends.xch.payment_assertions,
+            create_coin,
+        );
+
+        // Record the resulting output coin (parent_coin_id was captured at
+        // apply time when the parent was selected, before any intermediate
+        // ephemeral coins could shift indices).
+        spends
+            .outputs
+            .xch
+            .push(Coin::new(p.parent_coin_id, ph, p.amount));
+    }
+
+    Ok(())
 }
 
 impl Spends<Finished> {
