@@ -141,7 +141,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `bindy-macro` static-functions schema verified ahead of descriptor commit (pre-flight action item from the architecture research): either confirmed natively supported (the `SilentPayments` zero-field class with `static_functions` works) or the fallback strategy is applied (free functions distributed onto carrier types).
 **Plans**: 4 plans
 - [x] 05-01-PLAN.md — Wave 0 pre-flight: chip-0057 unconditional deps wiring (D-01) + zero-field SilentPayments stub probe + Wave 0 scaffolding + VALIDATION.md per-task map populated
-- [ ] 05-02-PLAN.md — Full chia-sdk-bindings::silent_payments facade (~250 lines, 9 types per D-02/D-03) + bindings/silent_payments.json (9 entries) + SendDestination opaque-handle class added to action_system.json per D-04 + Action.send signature change + Spends.with_silent_payment_keys
+- [x] 05-02-PLAN.md — Full chia-sdk-bindings::silent_payments facade (~250 lines, 9 types per D-02/D-03) + bindings/silent_payments.json (9 entries) + SendDestination opaque-handle class added to action_system.json per D-04 + Action.send signature change + Spends.with_silent_payment_keys
 - [ ] 05-03-PLAN.md — Cross-target build verification: napi build (pnpm build), pyo3 build (maturin develop), wasm-pack build (--target nodejs) with Vec<PublicKey> marshaling fallback if Open Q1 fires
 - [ ] 05-04-PLAN.md — AVA round-trip test (silent_payments.spec.ts: 4 named tests for SC2+SC3) + descriptor↔facade drift audit script + REQUIREMENTS.md/STATE.md updates + 05-PHASE-SUMMARY.md (closes BIND-01 + BIND-02)
 **UI hint**: no
