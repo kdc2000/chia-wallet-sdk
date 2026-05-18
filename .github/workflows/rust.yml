@@ -61,6 +61,7 @@ jobs:
           cargo build --release -p chia-sdk-signer
           cargo build --release -p chia-sdk-test
           cargo build --release -p chia-sdk-test --all-features
+          cargo build --release -p chia-sdk-test -F chip-0057
           cargo build --release -p chia-sdk-types
           cargo build --release -p chia-sdk-types --all-features
           cargo build --release -p chia-sdk-types -F chip-0057
