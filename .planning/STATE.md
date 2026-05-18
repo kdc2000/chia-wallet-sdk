@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 05-03-PLAN.md (Wave 2: cross-target binding builds)"
-last_updated: "2026-05-18T01:53:31.985Z"
+stopped_at: "Phase 5 complete; Phase 6 ready to start"
+last_updated: "2026-05-18T02:01:00.000Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 29
-  completed_plans: 34
-  percent: 50
+  completed_plans: 35
+  percent: 88
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 ## Current Position
 
-Phase: 05 (bindings-rust-facade-json-descriptor) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 6 (simulator-roundtrip-bindings-e2e-example) — Ready to start
+Plan: Not started
+Status: Phase 5 complete; Phase 6 unblocked
 Last activity: 2026-05-18
 
-Progress: [█████░░░░░] 50%  (Phases 1, 2, 3, 4, 4.1 complete)
+Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Progress: [█████░░░░░] 50%  (Phases 1, 2, 3, 4, 4.1 complete
 | Phase 05 P01 | 3min | 2 tasks | 7 files |
 | Phase 05 P02 | 13min | 3 tasks | 9 files |
 | Phase 05-bindings-rust-facade-json-descriptor P03 | 13min | 3 tasks | 4 files |
+| Phase 05-bindings-rust-facade-json-descriptor P04 | 5min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 05]: Plan 05-03: Wave 2 cross-target binding builds all PASS — napi pnpm build, pyo3 maturin develop, wasm-pack build --target nodejs all exit 0. Generated napi/index.d.ts exposes all 10 SP types + 4 static methods + Action.send(destination: SendDestination) signature. wasm-pack pinned to 0.13.1 (latest 0.15.0 pulls cargo-platform 0.3.3 requiring rustc 1.91, but workspace pins rustc 1.90). pyo3 venv created at pyo3/.venv (gitignored) since host has no system maturin.
 - [Phase 05]: Plan 05-03: RESEARCH Q1 PASSED without fallback — bindy-macro auto-handles Vec<chia_bls::PublicKey> on TweakData.tweak_points across napi + wasm targets. Generated wasm .d.ts declares TweakData.tweakPoints: PublicKey[] cleanly. Vec<T> where T is a bindy class (including remote: true chia-bls types) marshals natively across all three targets without bindings.json type-group entries. The documented Option A (explicit Vec<PublicKey> entries in wasm/wasm_stubs) and Option B (TweakPoints newtype) fallbacks remain unused.
 - [Phase 05]: Plan 05-03: Plan acceptance-criteria grep pattern fix — bindy-macro-generated napi/index.d.ts uses 'export declare class TypeName' (not 'export class TypeName') and 'export declare const enum SilentPaymentNetwork' (not 'export enum'). Verification pattern should be '^export (declare class|declare const enum|class|enum) <TypeName>\b'. All 10 SP types confirmed present with this corrected pattern. BIND-01 + BIND-02 mechanically closed by the three cross-target builds; AVA round-trip test in Plan 05-04 will add functional verification on top.
+- [Phase 05]: Plan 05-04: 4 AVA tests in napi/__test__/silent_payments.spec.ts (2 SC2 address round-trip + 2 SC3 SendDestination smoke) all pass; full pnpm test exits 0 with 51 tests passed (4 new SP + 47 pre-existing). Descriptor↔facade drift audit script (scripts/sp_descriptor_facade_drift.sh) reports zero drift — 22 methods on both sides. REQUIREMENTS.md BIND-01 + BIND-02 descriptions updated with post-04.2 wording (was referencing the deleted SilentPaymentSend).
+- [Phase 05]: Plan 05-04 deviation [Rule 3 - Blocking]: napi/__test__/action_system.spec.ts had 10 pre-existing `Action.send(id, wallet.puzzleHash, ...)` call sites passing raw Uint8Array as the second arg. The post-04.2 binding-side Action.send signature requires SendDestination, so these failed TS compilation. Wrapped each in SendDestination.puzzleHash(...) inline; documented the breaking-change pattern in PHASE-SUMMARY.md lessons #5. The Rust `From<Bytes32> for SendDestination` ergonomic does NOT translate through bindy.
+- [Phase 05]: Phase 5 COMPLETE — 4 plans across 4 waves (~35 min cumulative); 14-gate phase matrix all green; 2 of 2 in-phase requirements (BIND-01, BIND-02) closed; BIND-03 deferred to Phase 6 per scope. Phase 6 (Simulator round-trip + bindings E2E + example) unblocked.
 
 ### Roadmap Evolution
 
@@ -157,6 +161,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-18T01:53:07.173Z
-Stopped at: Completed 05-03-PLAN.md (Wave 2: cross-target binding builds)
+Last session: 2026-05-18T02:01:00.000Z
+Stopped at: Phase 5 complete; Phase 6 ready to start
 Resume file: None

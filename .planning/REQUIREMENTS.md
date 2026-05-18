@@ -42,8 +42,8 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 
 ### Bindings (`chia-sdk-bindings` + `bindings/silent_payments.json` + `napi`/`pyo3`/`wasm`)
 
-- [x] **BIND-01** — `bindings/silent_payments.json` descriptor + `chia-sdk-bindings::silent_payments` facade expose `SilentPaymentKeys` (from_mnemonic, from_secret_keys, scan_pk, spend_pk, unlabeled_address, labeled_address) and `SilentPaymentAddress` (encode, decode, fields) through the `bindy-macro`.
-- [x] **BIND-02** — Same descriptor exposes the send-side primitives (`SilentPaymentSend`, `derive_one_time_puzzle_hash`, `compute_input_hash`, `aggregate_sender_sks`) and the receive primitive (`scan_from_tweaks`, `TweakData`, `DetectedSpCoin`, `LabelRegistry`). Verify `bindy-macro`'s support for static-only function classes; fall back to distributing methods onto carrier types if unsupported.
+- [x] **BIND-01** — `bindings/silent_payments.json` descriptor + `chia-sdk-bindings::silent_payments` facade expose `SilentPaymentKeys` (from_mnemonic, from_secret_keys, scan_pk, spend_pk, unlabeled_address, labeled_address) and `SilentPaymentAddress` (encode, decode, fields) through the `bindy-macro`. *(Phase 5 closed via D-02's zero-field SilentPayments namespace pattern — confirmed natively supported by bindy-macro static-functions schema per Wave 0 pre-flight verdict.)*
+- [x] **BIND-02** — Same descriptor exposes the send-side primitives (`derive_one_time_puzzle_hash`, `compute_input_hash`, `aggregate_sender_sks`) and the receive primitive (`scan_from_tweaks`, `TweakData`, `DetectedSpCoin`, `LabelRegistry`) — exposed as static methods on the zero-field `SilentPayments` namespace class per D-02. Note: the original wording listed `SilentPaymentSend`, which Phase 04.2 deleted; Phase 5 D-04 + SC3 patched in `SendDestination` opaque-handle class in `action_system.json` instead, so the SP send-side TS construction shape is `Action.send(Id.xch(), SendDestination.silentPayment(addr), amount, memos)`. Bindy-macro static-functions schema verified — no fallback required.
 - [ ] **BIND-03** — AVA tests under `napi/__test__/` and `wasm/__test__/` plus pytest under `pyo3/tests/` cover the full address-gen + send + scan-from-tweaks round trip from each target language. Test that `Vec<chia_bls::PublicKey>` (a new bindings shape introduced by `TweakData::tweak_points`) marshals correctly to each target.
 
 ### Workspace Integration
@@ -111,8 +111,8 @@ Phase mapping assigned by `ROADMAP.md` (2026-05-15).
 | CRYPTO-01 | Phase 1 | Signed-vs-unsigned scalar prevention — foundational |
 | CRYPTO-02 | Phase 1 | Tagged-hash + tag constants |
 | CRYPTO-03 | Phase 3 | TV1/TV3/TV4 + bespoke k=1 + adversarial `[0xff;32]` |
-| BIND-01 | Phase 5 | Address/keys descriptor + facade |
-| BIND-02 | Phase 5 | Send/receive primitives in descriptor; verify bindy-macro static-functions schema first |
+| BIND-01 | Phase 5 | Address/keys descriptor + facade — closed via D-02 SilentPayments namespace |
+| BIND-02 | Phase 5 | Send/receive primitives in descriptor as static methods on SilentPayments namespace; static-functions schema natively supported (no fallback used); SendDestination opaque-handle class added to action_system.json per D-04 |
 | BIND-03 | Phase 6 | Cross-language E2E (uses Phase-6 simulator helper) |
 | WS-01 | Phase 1 | `chip-0057` workspace feature cascade |
 | WS-02 | Phase 1 | CI per-crate `-F chip-0057` lines |

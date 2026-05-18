@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Send-side action** — `derive_one_time_puzzle_hash`, `compute_input_hash`, `aggregate_sender_sks` (multi-party hard-error), `SilentPaymentSend` action with `Spends` integration, multi-output `Vec<Recipient>`, opcode 60/61 announcement binding, 32-byte memo-hint guard, doc-comment privacy warnings.
 - [x] **Phase 4.1: Sage-style send-side binding refactor (INSERTED)** — drop opcode 60/61 empty-message announcement emission from `silent_payments/send_keys.rs`; rely on the SDK's existing `Relation::AssertConcurrent` cycle (opcode 64 SCC) for multi-input atomicity; add runtime gate rejecting `Relation::None` for multi-input SP sends; pin `Relation::AssertConcurrent` shape; matches the companion `~/silent-payments` Phase 2 design. (completed 2026-05-17)
 - [ ] **Phase 4.2: Unify SP send into Action::send via SendDestination enum (INSERTED)** — fold `SilentPaymentSend` into `Action::send` via new `SendDestination` enum; drop dedicated SP action/finish-method/file; SP keys move onto `Spends` via `with_silent_payment_keys` builder; `From<Bytes32>` keeps all 28 existing Rust callers unchanged. Refines the API shape Phase 5 will expose.
-- [ ] **Phase 5: Bindings (Rust facade + JSON descriptor)** — `bindings/silent_payments.json` descriptor, `chia-sdk-bindings::silent_payments` re-export facade, `SendDestination` opaque-handle class entry in `action_system.json` (factory + introspector methods per `Id` precedent), napi/pyo3/wasm builds green, AVA address round-trip test.
+- [x] **Phase 5: Bindings (Rust facade + JSON descriptor)** — `bindings/silent_payments.json` descriptor, `chia-sdk-bindings::silent_payments` re-export facade, `SendDestination` opaque-handle class entry in `action_system.json` (factory + introspector methods per `Id` precedent), napi/pyo3/wasm builds green, AVA address round-trip test. (completed 2026-05-18)
 - [ ] **Phase 6: Simulator round-trip + bindings E2E + example** — `chia-sdk-test::silent_payments::tweak_data_from_simulator_block`, unlabeled and labeled simulator round-trip tests, AVA/pytest/wasm cross-language E2E (address-gen + send + scan-from-tweaks), `examples/silent_payment.rs`.
 
 ## Phase Details
@@ -171,7 +171,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 4. Send-side action | 5/5 | Complete    | 2026-05-16 |
 | 4.1. Sage-style send-side binding refactor (INSERTED) | 2/2 | Complete    | 2026-05-17 |
 | 4.2. Unify SP send into Action::send via SendDestination enum (INSERTED) | 3/3 | Complete    | 2026-05-17 |
-| 5. Bindings (Rust facade + JSON descriptor) | 0/4   | Not started | - |
+| 5. Bindings (Rust facade + JSON descriptor) | 4/4   | Complete    | 2026-05-18 |
 | 6. Simulator round-trip + bindings E2E + example | 0/TBD | Not started | - |
 
 ## Coverage
