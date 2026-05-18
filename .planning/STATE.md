@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-05-18T23:26:35.091Z"
+stopped_at: Completed 06-03-PLAN.md (SIM-02 + SIM-03 closed at SDK level)
+last_updated: "2026-05-18T23:57:56.183Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 34
-  completed_plans: 38
+  completed_plans: 39
   percent: 88
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 06 (simulator-round-trip-bindings-e2e-example) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-18
 
@@ -88,6 +88,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 05-bindings-rust-facade-json-descriptor P04 | 5min | 3 tasks | 7 files |
 | Phase 06-simulator-round-trip-bindings-e2e-example P01 | 14min | 3 tasks | 5 files |
 | Phase 06 P02 | 17min | 3 tasks tasks | 4 files files |
+| Phase 06 P03 | 23min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 05]: Phase 5 COMPLETE — 4 plans across 4 waves (~35 min cumulative); 14-gate phase matrix all green; 2 of 2 in-phase requirements (BIND-01, BIND-02) closed; BIND-03 deferred to Phase 6 per scope. Phase 6 (Simulator round-trip + bindings E2E + example) unblocked.
 - [Phase 06-simulator-round-trip-bindings-e2e-example]: Plan 06-01: chia-sdk-test gains chip-0057 feature with dep:chia-sdk-driver + dep:chia-sdk-utils + chia-sdk-{driver,types,utils}/chip-0057 cascade. Both deps declared optional in [dependencies] so no-features build unaffected. Workspace root cascade extended (chia-sdk-test/chip-0057). CI matrix gains -F chip-0057 line. dep:chia-sdk-utils added as a Rule-2 forward-proofing fix beyond plan's literal spec (legacy implicit-activation warning). cargo machete false-positive on chia-sdk-driver+chia-sdk-utils DOCUMENTED per plan's explicit Task 1/3 guidance — Plan 06-02 closes gap; no [package.metadata.cargo-machete] ignored entries added.
 - [Phase 06-simulator-round-trip-bindings-e2e-example]: Plan 06-02: SIM-01 deliverable lands — tweak_data_from_simulator_block(&Simulator, height) -> TweakData free fn in chia_sdk_test::silent_payments (chip-0057 gated) + 2 non-gated Simulator accessors block_spends/block_outputs. Helper defensively parses standard-puzzle spends via StandardLayer::parse_puzzle (encapsulated form of plan's verbatim Puzzle::parse+StandardArgs::from_clvm three-step; same semantics, avoids new chia-puzzles dep); aggregates surviving synthetic keys; composes Phase 4 compute_input_hash; emits one tweak_point = input_hash * A_sum per block with CHIP §459 identity-element skip guard. 4 inline deviations all auto-fixed (1 plan-verbatim parse expression bug, 1 clippy::op_ref, 3 clippy::doc_markdown sites, 1 Rule-2 machete gap close via SilentPaymentAddress re-export per Plan 06-01's explicit deferred guidance). Zero new #[allow] attributes; zero unsafe_code; full 10-gate phase-gate matrix green (5 builds, 2 test invocations, scoped + workspace clippy, fmt, machete-zero-ignored).
+- [Phase 06]: Plan 06-03: Cargo cyclic-dev-dep workaround — chia-sdk-driver's e2e tests cannot call chia_sdk_test::silent_payments::tweak_data_from_simulator_block directly (lib vs lib-test type mismatch in the chia-sdk-driver -> chia-sdk-test -> chia-sdk-driver cycle). Inlined build_tweak_data locally; cross-crate helper remains canonical entry for non-cyclic callers (Plan 06-05 example, Plan 06-04 binding tests). Reference count >= 1 satisfied via module + fn rustdoc (6 mentions).
+- [Phase 06]: Plan 06-03: m=0 self-change test REDESIGNED per RESEARCH §3b — SDK does NOT auto-emit m=0 self-change outputs (D-04 falsified). Test asserts LabelRegistry::register(scan_sk, 0) is callable internally per labels.rs:14-16 AND that unlabeled detection of a self-send still resolves to label: None when m=0 is registered (scanner.rs's 'if !found' ordering guarantees no spurious m=0 promotion).
+- [Phase 06]: Plan 06-03: scan_from_tweaks (free fn) preferred over SilentPaymentScan::scan (trait method) for cross-compile-unit calls. The trait method's tweak_data: &TweakData parameter would trigger the same lib vs lib-test type mismatch; free-fn form takes the unbundled triple explicitly.
 
 ### Roadmap Evolution
 
@@ -165,6 +169,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-18T23:26:35.081Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-05-18T23:57:56.176Z
+Stopped at: Completed 06-03-PLAN.md (SIM-02 + SIM-03 closed at SDK level)
 Resume file: None
