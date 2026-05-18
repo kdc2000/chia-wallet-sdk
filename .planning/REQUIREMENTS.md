@@ -42,8 +42,8 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 
 ### Bindings (`chia-sdk-bindings` + `bindings/silent_payments.json` + `napi`/`pyo3`/`wasm`)
 
-- [ ] **BIND-01** — `bindings/silent_payments.json` descriptor + `chia-sdk-bindings::silent_payments` facade expose `SilentPaymentKeys` (from_mnemonic, from_secret_keys, scan_pk, spend_pk, unlabeled_address, labeled_address) and `SilentPaymentAddress` (encode, decode, fields) through the `bindy-macro`.
-- [ ] **BIND-02** — Same descriptor exposes the send-side primitives (`SilentPaymentSend`, `derive_one_time_puzzle_hash`, `compute_input_hash`, `aggregate_sender_sks`) and the receive primitive (`scan_from_tweaks`, `TweakData`, `DetectedSpCoin`, `LabelRegistry`). Verify `bindy-macro`'s support for static-only function classes; fall back to distributing methods onto carrier types if unsupported.
+- [x] **BIND-01** — `bindings/silent_payments.json` descriptor + `chia-sdk-bindings::silent_payments` facade expose `SilentPaymentKeys` (from_mnemonic, from_secret_keys, scan_pk, spend_pk, unlabeled_address, labeled_address) and `SilentPaymentAddress` (encode, decode, fields) through the `bindy-macro`.
+- [x] **BIND-02** — Same descriptor exposes the send-side primitives (`SilentPaymentSend`, `derive_one_time_puzzle_hash`, `compute_input_hash`, `aggregate_sender_sks`) and the receive primitive (`scan_from_tweaks`, `TweakData`, `DetectedSpCoin`, `LabelRegistry`). Verify `bindy-macro`'s support for static-only function classes; fall back to distributing methods onto carrier types if unsupported.
 - [ ] **BIND-03** — AVA tests under `napi/__test__/` and `wasm/__test__/` plus pytest under `pyo3/tests/` cover the full address-gen + send + scan-from-tweaks round trip from each target language. Test that `Vec<chia_bls::PublicKey>` (a new bindings shape introduced by `TweakData::tweak_points`) marshals correctly to each target.
 
 ### Workspace Integration

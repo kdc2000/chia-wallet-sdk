@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 05-02-PLAN.md (Wave 1: full facade + descriptors)"
-last_updated: "2026-05-18T01:35:15.119Z"
+stopped_at: "Completed 05-03-PLAN.md (Wave 2: cross-target binding builds)"
+last_updated: "2026-05-18T01:53:31.985Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 29
-  completed_plans: 33
+  completed_plans: 34
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 05 (bindings-rust-facade-json-descriptor) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-18
 
@@ -84,6 +84,7 @@ Progress: [█████░░░░░] 50%  (Phases 1, 2, 3, 4, 4.1 complete
 | Phase 04.2 P03 | 27min | 3 tasks | 11 files |
 | Phase 05 P01 | 3min | 2 tasks | 7 files |
 | Phase 05 P02 | 13min | 3 tasks | 9 files |
+| Phase 05-bindings-rust-facade-json-descriptor P03 | 13min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04.2]: Plan 04.2-03: Wave B atomic delete complete. OLD SP send API (Action::SilentPaymentSend variant + Action::silent_payment_send constructor + actions/silent_payment_send.rs 640-line file + Spends::finish_with_silent_payment_keys method) DELETED in one atomic commit (4cd99543) with 8 tests relocated to actions/send.rs::silent_payment_tests + 2 NEW Wave 0 acceptance tests (silent_payment_destination_requires_xch_id + silent_payment_keys_not_registered_errors_at_finish). src/prelude.rs swapped (SendDestination always-on, SilentPaymentSend removed). REQUIREMENTS.md gets ACTION-API-01 entry + SEND-04 re-validation. 30-gate phase matrix all PASS; 13 ROADMAP §04.2 SCs all PASS; SEND-04 (re-validated) + ACTION-API-01 (newly closed) requirements complete. Workspace tests: 2419 → 2421 (+2 net = +2 NEW Wave 0). 4 inline deviations (1 cargo-doc bug inherited from Plan 02 broken intra-doc link to SendDestination::SilentPayment, 1 import scope blocking from impl-block removal, 1 fmt rewrap, 1 pre-existing chia-sdk-utils rustdoc error deferred to deferred-items.md). Zero new #[allow]. Phase 5 (Bindings) unblocked.
 - [Phase 05]: Plan 05-01: Wave 0 PASS — bindy-macro natively supports zero-field-class + static-method across napi/wasm/pyo3. All 4 target builds (chia-sdk-bindings --all-features, chia-wallet-sdk-napi, chia-wallet-sdk-py, chia-wallet-sdk-wasm) exit 0 with the SilentPayments::probe_noop stub in place. SC4 primary path confirmed; fallback strategy (distribute statics across carrier types) NOT needed. chip-0057 wired unconditionally onto chia-sdk-bindings dep declarations (driver+utils+types) per D-01; NO chip-0057 cargo feature on chia-sdk-bindings itself; NO #[cfg] gates inside facade. Wave 0 stubs (silent_payments.rs facade + bindings/silent_payments.json + napi/__test__/silent_payments.spec.ts skip-placeholder) landed. Plan 05-02 must DELETE probe_noop when adding the 4 real static methods.
 - [Phase 05]: Plan 05-02: Wave 1 complete — 11-type ~430-line silent_payments.rs facade + 11-entry silent_payments.json descriptor + SendDestination opaque-handle class + Action.send signature rewire + Spends.with_silent_payment_keys all land. probe_noop deleted from both facade and descriptor. 7 inline deviations all auto-fixed (3 Rule 3 blocking + 4 Rule 1 bugs). Critical: Vec<(K,V)> tuple types are NOT marshaled by bindy (napi FromNapiValue fails); fallback used 2-field wrapper bindy classes (SilentPaymentRegisteredKey + SilentPaymentRegisteredSecretKey) that convert to IndexMap<Bytes32,_> inside the facade. Bindy method dispatch is positional after JSON-args lookup, so facade params can use b_scan/b_spend shorthand to suppress clippy::similar_names without #[allow]. LabelRegistry needs Arc<Mutex<_>> interior mutability because bindy dispatches &self.0.method always. bindy::Error gained SilentPayment(#[from] SilentPaymentError) variant for ? propagation. Zero new #[allow] attributes; zero #[cfg(feature = chip-0057)] gates inside the facade. cargo build -p chia-sdk-bindings + chia-wallet-sdk-napi --all-features both exit 0; clippy -D warnings clean.
+- [Phase 05]: Plan 05-03: Wave 2 cross-target binding builds all PASS — napi pnpm build, pyo3 maturin develop, wasm-pack build --target nodejs all exit 0. Generated napi/index.d.ts exposes all 10 SP types + 4 static methods + Action.send(destination: SendDestination) signature. wasm-pack pinned to 0.13.1 (latest 0.15.0 pulls cargo-platform 0.3.3 requiring rustc 1.91, but workspace pins rustc 1.90). pyo3 venv created at pyo3/.venv (gitignored) since host has no system maturin.
+- [Phase 05]: Plan 05-03: RESEARCH Q1 PASSED without fallback — bindy-macro auto-handles Vec<chia_bls::PublicKey> on TweakData.tweak_points across napi + wasm targets. Generated wasm .d.ts declares TweakData.tweakPoints: PublicKey[] cleanly. Vec<T> where T is a bindy class (including remote: true chia-bls types) marshals natively across all three targets without bindings.json type-group entries. The documented Option A (explicit Vec<PublicKey> entries in wasm/wasm_stubs) and Option B (TweakPoints newtype) fallbacks remain unused.
+- [Phase 05]: Plan 05-03: Plan acceptance-criteria grep pattern fix — bindy-macro-generated napi/index.d.ts uses 'export declare class TypeName' (not 'export class TypeName') and 'export declare const enum SilentPaymentNetwork' (not 'export enum'). Verification pattern should be '^export (declare class|declare const enum|class|enum) <TypeName>\b'. All 10 SP types confirmed present with this corrected pattern. BIND-01 + BIND-02 mechanically closed by the three cross-target builds; AVA round-trip test in Plan 05-04 will add functional verification on top.
 
 ### Roadmap Evolution
 
@@ -153,6 +157,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-18T01:35:04.350Z
-Stopped at: Completed 05-02-PLAN.md (Wave 1: full facade + descriptors)
+Last session: 2026-05-18T01:53:07.173Z
+Stopped at: Completed 05-03-PLAN.md (Wave 2: cross-target binding builds)
 Resume file: None
