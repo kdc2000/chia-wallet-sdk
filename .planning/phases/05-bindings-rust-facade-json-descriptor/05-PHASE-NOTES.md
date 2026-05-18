@@ -25,3 +25,30 @@
 - bindings/puzzles.json:612, 625, 675, 774, 861, 868 — 6 distinct static method precedents
 
 **Note on probe command form:** The plan listed `cargo build -p chia-wallet-sdk-py --features pyo3` and `cargo build -p chia-wallet-sdk-wasm --features wasm`, but neither crate declares any features in its `Cargo.toml` — feature activation flows through their dep on `chia-sdk-bindings` which already specifies the target feature unconditionally. The probe was therefore run with plain `cargo build -p <crate>`, which is equivalent in effect and exits 0.
+
+---
+
+## Plan 05-03 Wave 2 — environment setup notes
+
+**Date:** 2026-05-18
+
+### pyo3 venv
+
+`maturin` is not installed system-wide on this host. The plan's documented fallback path was applied:
+
+```bash
+cd pyo3
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip maturin
+maturin develop
+```
+
+The venv lives at `pyo3/.venv/` (already in `pyo3/.gitignore:13`). Re-runs require `source pyo3/.venv/bin/activate` first. `maturin 1.13.3` is installed in this venv; the build installs `chia_wallet_sdk-0.33.0` as an editable wheel into the venv.
+
+### wasm-pack + wasm32 target
+
+Both were missing on the host. Installed inline during Task 3:
+
+- `wasm-pack`: installed via `cargo install wasm-pack` (lands in `~/.cargo/bin/`)
+- `wasm32-unknown-unknown` target: installed via `rustup target add wasm32-unknown-unknown`
