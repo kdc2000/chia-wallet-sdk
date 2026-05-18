@@ -50,5 +50,11 @@ The venv lives at `pyo3/.venv/` (already in `pyo3/.gitignore:13`). Re-runs requi
 
 Both were missing on the host. Installed inline during Task 3:
 
-- `wasm-pack`: installed via `cargo install wasm-pack` (lands in `~/.cargo/bin/`)
+- `wasm-pack`: installed via `cargo install wasm-pack --version 0.13.1 --locked` (lands in `~/.cargo/bin/`). Pinned to 0.13.1 because the current latest (0.15.0) depends on `cargo-platform@0.3.3` which requires rustc 1.91, and the workspace is pinned to rustc 1.90.0 via `rust-toolchain.toml`. wasm-pack 0.13.1 has no such constraint and builds the same nodejs-target output.
 - `wasm32-unknown-unknown` target: installed via `rustup target add wasm32-unknown-unknown`
+
+### Wave 2 Vec<PublicKey> marshaling: PASSED without fallback (auto-detected by bindy-macro)
+
+The RESEARCH.md Open Question Q1 predicted that wasm-pack might fail on the remaining `Vec<chia_bls::PublicKey>` in `TweakData.tweak_points` (after Plan 05-02's wrapper-struct mitigation for `IndexMap<Bytes32, _>`). The actual build outcome: **wasm-pack build --target nodejs exits 0 cleanly** — no `Vec<PublicKey>` marshaling errors. The generated `wasm/pkg/chia_wallet_sdk_wasm.d.ts` declares `TweakData.tweakPoints: PublicKey[]` at line 2603 and the constructor takes `PublicKey[]` directly. No inline `bindings.json` `wasm` / `wasm_stubs` Vec<PublicKey> entries were needed; the bindy-macro auto-handles `Vec<T>` where `T` is a bindy class (including `remote: true` types like `PublicKey` from `bindings/bls.json`).
+
+The fallback paths documented in the plan (Option A — explicit type-group entry; Option B — `TweakPoints(Vec<PublicKey>)` newtype) remain unapplied. If a future bindings change introduces a `Vec<chia_bls::PublicKey>` shape on a different surface and it fails to marshal, the precedent for the inline fix is `Vec<Bytes32>` at `bindings.json:33-34` + line 46-47.
