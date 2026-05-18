@@ -445,3 +445,22 @@ impl Simulator {
         self.data.next_timestamp += 1;
     }
 }
+
+#[cfg(test)]
+mod block_accessor_tests {
+    use super::*;
+
+    #[test]
+    fn block_spends_empty_for_unused_height() {
+        let sim = Simulator::new();
+        assert!(sim.block_spends(0).is_empty());
+        assert!(sim.block_spends(1).is_empty());
+    }
+
+    #[test]
+    fn block_outputs_empty_for_unused_height() {
+        let sim = Simulator::new();
+        assert!(sim.block_outputs(0).is_empty());
+        assert!(sim.block_outputs(1).is_empty());
+    }
+}
