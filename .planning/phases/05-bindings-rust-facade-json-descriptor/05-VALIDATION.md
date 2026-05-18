@@ -47,8 +47,8 @@ created: 2026-05-17
 | napi build produces `index.d.ts` with required symbols | 05-03 | 2 | BIND-01 (SC1) | shape check | `cd napi && pnpm install && pnpm build && grep -E 'SilentPaymentAddress\|SilentPaymentKeys\|TweakData\|DetectedSpCoin\|LabelRegistry\|scanFromTweaks\|deriveOneTimePuzzleHash\|computeInputHash\|aggregateSenderSks' index.d.ts` | ✅ Plan 05-03 Task 1 | ✅ green |
 | pyo3 maturin develop succeeds | 05-03 | 2 | BIND-01 (SC1) | unit (build) | `cd pyo3 && maturin develop` | ✅ Plan 05-03 Task 2 | ✅ green |
 | wasm-pack build succeeds (nodejs target) | 05-03 | 2 | BIND-01 (SC1) | unit (build) | `cd wasm && wasm-pack build --target nodejs` | ✅ Plan 05-03 Task 3 | ✅ green |
-| AVA address round-trip test | 05-04 | 3 | BIND-01 (SC2) | integration (TS) | `cd napi && pnpm test --match 'silent-payment*'` | ⬜ Plan 05-04 Task 1 | ⬜ pending |
-| SendDestination TS construction smoke | 05-04 | 3 | BIND-02 (SC3) | integration (TS) | `cd napi && pnpm test --match 'silent-payment*'` (same file, second test) | ⬜ Plan 05-04 Task 1 | ⬜ pending |
+| AVA address round-trip test | 05-04 | 3 | BIND-01 (SC2) | integration (TS) | `cd napi && pnpm test --match 'silent-payment*'` | ✅ Plan 05-04 Task 1 | ✅ green |
+| SendDestination TS construction smoke | 05-04 | 3 | BIND-02 (SC3) | integration (TS) | `cd napi && pnpm test --match 'silent-payment*'` (same file, second test) | ✅ Plan 05-04 Task 1 | ✅ green |
 | Descriptor↔facade drift check | 05-04 | 3 | BIND-01/02 | grep audit | `bash scripts/sp_descriptor_facade_drift.sh` (see Plan 05-04 Task 2) | ⬜ Plan 05-04 Task 2 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
