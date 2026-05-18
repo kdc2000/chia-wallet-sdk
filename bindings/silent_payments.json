@@ -1,0 +1,11 @@
+{
+  "SilentPayments": {
+    "type": "class",
+    "methods": {
+      "probe_noop": {
+        "type": "static",
+        "return": "u32"
+      }
+    }
+  }
+}
