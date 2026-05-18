@@ -132,10 +132,7 @@ impl SilentPaymentKeys {
         Ok(*self.0.spend_pk())
     }
 
-    pub fn unlabeled_address(
-        &self,
-        network: SilentPaymentNetwork,
-    ) -> Result<SilentPaymentAddress> {
+    pub fn unlabeled_address(&self, network: SilentPaymentNetwork) -> Result<SilentPaymentAddress> {
         Ok(self.0.unlabeled_address(network.into()).into())
     }
 
