@@ -12,6 +12,8 @@
 //! per Phase 4 SEND-08 — wallets holding a scan key see every payment to its
 //! address, and memos land on chain in plaintext.
 
+use std::sync::{Arc, Mutex};
+
 use bindy::Result;
 use chia_bls::{PublicKey, SecretKey};
 use chia_protocol::Bytes32;
@@ -147,48 +149,61 @@ impl SilentPaymentKeys {
 }
 
 // ─── LabelRegistry (full register/forward/lookup/len/is_empty API) ───────
+//
+// Wrapped in Arc<Mutex<_>> so the bindy-generated `&self` dispatch can mutate
+// the underlying registry — bindy methods are always `&self` on the wrapper,
+// matching the Spends/FinishedSpends precedent in action_system.rs.
 
 #[derive(Clone)]
-pub struct LabelRegistry(chia_sdk_utils::silent_payments::LabelRegistry);
+pub struct LabelRegistry(Arc<Mutex<chia_sdk_utils::silent_payments::LabelRegistry>>);
 
 impl LabelRegistry {
     pub fn new() -> Result<Self> {
-        Ok(Self(chia_sdk_utils::silent_payments::LabelRegistry::new()))
+        Ok(Self(Arc::new(Mutex::new(
+            chia_sdk_utils::silent_payments::LabelRegistry::new(),
+        ))))
     }
 
     /// Register label index `m` against scan secret key `scan_sk`.
-    pub fn register(&mut self, scan_sk: SecretKey, m: u32) -> Result<()> {
-        self.0.register(&scan_sk, m);
+    pub fn register(&self, scan_sk: SecretKey, m: u32) -> Result<()> {
+        self.0.lock().unwrap().register(&scan_sk, m);
         Ok(())
     }
 
     pub fn forward(&self, m: u32) -> Result<Option<PublicKey>> {
-        Ok(self.0.forward(m).copied())
+        Ok(self.0.lock().unwrap().forward(m).copied())
     }
 
     pub fn lookup(&self, label_pk: PublicKey) -> Result<Option<u32>> {
-        Ok(self.0.lookup(&label_pk))
+        Ok(self.0.lock().unwrap().lookup(&label_pk))
     }
 
     pub fn len(&self) -> Result<u32> {
-        u32::try_from(self.0.len())
+        u32::try_from(self.0.lock().unwrap().len())
             .map_err(|_| bindy::Error::Custom("LabelRegistry length overflows u32".into()))
     }
 
     pub fn is_empty(&self) -> Result<bool> {
-        Ok(self.0.is_empty())
+        Ok(self.0.lock().unwrap().is_empty())
     }
 }
 
 impl From<chia_sdk_utils::silent_payments::LabelRegistry> for LabelRegistry {
     fn from(value: chia_sdk_utils::silent_payments::LabelRegistry) -> Self {
-        Self(value)
+        Self(Arc::new(Mutex::new(value)))
     }
 }
 
 impl From<LabelRegistry> for chia_sdk_utils::silent_payments::LabelRegistry {
     fn from(value: LabelRegistry) -> Self {
-        value.0
+        // bindy passes `LabelRegistry` by value into static methods like
+        // `SilentPayments::scan_from_tweaks`. Unwrap the Arc<Mutex<_>>;
+        // try_unwrap is the cheap path, fall back to cloning the inner if
+        // another handle is alive.
+        match Arc::try_unwrap(value.0) {
+            Ok(mutex) => mutex.into_inner().unwrap(),
+            Err(arc) => arc.lock().unwrap().clone(),
+        }
     }
 }
 
