@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-05-18T21:12:36.656Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-05-18T23:03:37.346Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 29
-  completed_plans: 36
+  total_plans: 34
+  completed_plans: 37
   percent: 88
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 05 — bindings-rust-facade-json-descriptor
+**Current focus:** Phase 06 — simulator-round-trip-bindings-e2e-example
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Phase 5 complete; Phase 6 unblocked
+Phase: 06 (simulator-round-trip-bindings-e2e-example) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-05-18
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
@@ -86,6 +86,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 05 P02 | 13min | 3 tasks | 9 files |
 | Phase 05-bindings-rust-facade-json-descriptor P03 | 13min | 3 tasks | 4 files |
 | Phase 05-bindings-rust-facade-json-descriptor P04 | 5min | 3 tasks | 7 files |
+| Phase 06-simulator-round-trip-bindings-e2e-example P01 | 14min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 05]: Plan 05-04: 4 AVA tests in napi/__test__/silent_payments.spec.ts (2 SC2 address round-trip + 2 SC3 SendDestination smoke) all pass; full pnpm test exits 0 with 51 tests passed (4 new SP + 47 pre-existing). Descriptor↔facade drift audit script (scripts/sp_descriptor_facade_drift.sh) reports zero drift — 22 methods on both sides. REQUIREMENTS.md BIND-01 + BIND-02 descriptions updated with post-04.2 wording (was referencing the deleted SilentPaymentSend).
 - [Phase 05]: Plan 05-04 deviation [Rule 3 - Blocking]: napi/__test__/action_system.spec.ts had 10 pre-existing `Action.send(id, wallet.puzzleHash, ...)` call sites passing raw Uint8Array as the second arg. The post-04.2 binding-side Action.send signature requires SendDestination, so these failed TS compilation. Wrapped each in SendDestination.puzzleHash(...) inline; documented the breaking-change pattern in PHASE-SUMMARY.md lessons #5. The Rust `From<Bytes32> for SendDestination` ergonomic does NOT translate through bindy.
 - [Phase 05]: Phase 5 COMPLETE — 4 plans across 4 waves (~35 min cumulative); 14-gate phase matrix all green; 2 of 2 in-phase requirements (BIND-01, BIND-02) closed; BIND-03 deferred to Phase 6 per scope. Phase 6 (Simulator round-trip + bindings E2E + example) unblocked.
+- [Phase 06-simulator-round-trip-bindings-e2e-example]: Plan 06-01: chia-sdk-test gains chip-0057 feature with dep:chia-sdk-driver + dep:chia-sdk-utils + chia-sdk-{driver,types,utils}/chip-0057 cascade. Both deps declared optional in [dependencies] so no-features build unaffected. Workspace root cascade extended (chia-sdk-test/chip-0057). CI matrix gains -F chip-0057 line. dep:chia-sdk-utils added as a Rule-2 forward-proofing fix beyond plan's literal spec (legacy implicit-activation warning). cargo machete false-positive on chia-sdk-driver+chia-sdk-utils DOCUMENTED per plan's explicit Task 1/3 guidance — Plan 06-02 closes gap; no [package.metadata.cargo-machete] ignored entries added.
 
 ### Roadmap Evolution
 
@@ -161,6 +163,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-18T21:12:36.649Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-simulator-round-trip-bindings-e2e-example/06-CONTEXT.md
+Last session: 2026-05-18T23:03:37.339Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None

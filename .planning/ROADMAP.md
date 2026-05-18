@@ -172,7 +172,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 4.1. Sage-style send-side binding refactor (INSERTED) | 2/2 | Complete    | 2026-05-17 |
 | 4.2. Unify SP send into Action::send via SendDestination enum (INSERTED) | 3/3 | Complete    | 2026-05-17 |
 | 5. Bindings (Rust facade + JSON descriptor) | 4/4   | Complete    | 2026-05-18 |
-| 6. Simulator round-trip + bindings E2E + example | 0/TBD | Not started | - |
+| 6. Simulator round-trip + bindings E2E + example | 1/5 | In Progress|  |
 
 ## Coverage
 
