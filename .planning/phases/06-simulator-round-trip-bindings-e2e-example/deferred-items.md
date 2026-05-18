@@ -27,3 +27,21 @@ Out-of-scope issues discovered during Phase 6 execution. Logged per the GSD exec
 - OR: align CI's clippy step with the local gate by adding `-- -D warnings` (currently CI is permissive). Either resolves the discrepancy.
 
 **NOT a Plan 06-01 blocker.** All five build permutations pass; CI clippy (without `-D warnings`) passes; scoped clippy on chia-sdk-test passes.
+
+## Pre-existing `missing_copy_implementations` on `SendDestination` (no-features build)
+
+**Discovered:** 2026-05-18 during Plan 06-03 Task 3 verification sweep.
+
+**Location:** `crates/chia-sdk-driver/src/action_system/send_destination.rs:31`.
+
+**Behavior:**
+- Without `chip-0057`, `SendDestination` only has one variant (`PuzzleHash(Bytes32)`); the workspace `warn missing_copy_implementations` lint suggests `impl Copy`.
+- Under `chip-0057`, the enum gains `SilentPayment(Box<SilentPaymentAddress>)`, which is not `Copy`, so the lint correctly does not fire.
+- Workspace lint policy treats this as a `warning`, not `deny`. `cargo build --release -p chia-sdk-driver` (no features) reports the warning but exits 0. The default workspace `warn` level for missing_copy_implementations is correct.
+
+**Why deferred:**
+- The lint pre-existed at Plan 06-03 start (verified by `git checkout HEAD~2 -- crates/chia-sdk-driver/src/silent_payments/` + `cargo build -p chia-sdk-driver`).
+- Originates from Phase 04.2 Plan 04.2-01's introduction of `SendDestination`; not in scope for Plan 06-03 (Wave 3 E2E tests).
+- Adding `#[derive(Copy)]` to `SendDestination` would require it to be unconditional and would break under `chip-0057` (Box is not Copy). The proper fix is either a feature-gated conditional derive (complex) or accepting the warning.
+
+**NOT a Plan 06-03 blocker.** Workspace-level `cargo build --release -p chia-sdk-driver` exits 0 (warning only). All 3 Plan 06-03 E2E tests pass; scoped `cargo clippy -p chia-sdk-driver --features chip-0057 --all-targets -- -D warnings` passes cleanly because under chip-0057 the lint does not fire.

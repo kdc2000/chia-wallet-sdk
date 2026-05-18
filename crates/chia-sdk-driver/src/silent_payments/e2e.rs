@@ -34,9 +34,7 @@ use chia_puzzle_types::{DeriveSynthetic, Memos};
 use chia_sdk_test::{BlsPairWithCoin, Simulator};
 use chia_sdk_types::Conditions;
 use chia_sdk_types::silent_payments::ScalarField;
-use chia_sdk_utils::silent_payments::{
-    LabelRegistry, SilentPaymentKeys, SilentPaymentNetwork,
-};
+use chia_sdk_utils::silent_payments::{LabelRegistry, SilentPaymentKeys, SilentPaymentNetwork};
 use clvm_traits::ToClvm;
 use clvmr::Allocator;
 use indexmap::indexmap;
