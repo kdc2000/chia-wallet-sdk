@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-05-18T23:03:37.346Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-05-18T23:26:35.091Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 34
-  completed_plans: 37
+  completed_plans: 38
   percent: 88
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 06 (simulator-round-trip-bindings-e2e-example) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-18
 
@@ -87,6 +87,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 05-bindings-rust-facade-json-descriptor P03 | 13min | 3 tasks | 4 files |
 | Phase 05-bindings-rust-facade-json-descriptor P04 | 5min | 3 tasks | 7 files |
 | Phase 06-simulator-round-trip-bindings-e2e-example P01 | 14min | 3 tasks | 5 files |
+| Phase 06 P02 | 17min | 3 tasks tasks | 4 files files |
 
 ## Accumulated Context
 
@@ -142,6 +143,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 05]: Plan 05-04 deviation [Rule 3 - Blocking]: napi/__test__/action_system.spec.ts had 10 pre-existing `Action.send(id, wallet.puzzleHash, ...)` call sites passing raw Uint8Array as the second arg. The post-04.2 binding-side Action.send signature requires SendDestination, so these failed TS compilation. Wrapped each in SendDestination.puzzleHash(...) inline; documented the breaking-change pattern in PHASE-SUMMARY.md lessons #5. The Rust `From<Bytes32> for SendDestination` ergonomic does NOT translate through bindy.
 - [Phase 05]: Phase 5 COMPLETE — 4 plans across 4 waves (~35 min cumulative); 14-gate phase matrix all green; 2 of 2 in-phase requirements (BIND-01, BIND-02) closed; BIND-03 deferred to Phase 6 per scope. Phase 6 (Simulator round-trip + bindings E2E + example) unblocked.
 - [Phase 06-simulator-round-trip-bindings-e2e-example]: Plan 06-01: chia-sdk-test gains chip-0057 feature with dep:chia-sdk-driver + dep:chia-sdk-utils + chia-sdk-{driver,types,utils}/chip-0057 cascade. Both deps declared optional in [dependencies] so no-features build unaffected. Workspace root cascade extended (chia-sdk-test/chip-0057). CI matrix gains -F chip-0057 line. dep:chia-sdk-utils added as a Rule-2 forward-proofing fix beyond plan's literal spec (legacy implicit-activation warning). cargo machete false-positive on chia-sdk-driver+chia-sdk-utils DOCUMENTED per plan's explicit Task 1/3 guidance — Plan 06-02 closes gap; no [package.metadata.cargo-machete] ignored entries added.
+- [Phase 06-simulator-round-trip-bindings-e2e-example]: Plan 06-02: SIM-01 deliverable lands — tweak_data_from_simulator_block(&Simulator, height) -> TweakData free fn in chia_sdk_test::silent_payments (chip-0057 gated) + 2 non-gated Simulator accessors block_spends/block_outputs. Helper defensively parses standard-puzzle spends via StandardLayer::parse_puzzle (encapsulated form of plan's verbatim Puzzle::parse+StandardArgs::from_clvm three-step; same semantics, avoids new chia-puzzles dep); aggregates surviving synthetic keys; composes Phase 4 compute_input_hash; emits one tweak_point = input_hash * A_sum per block with CHIP §459 identity-element skip guard. 4 inline deviations all auto-fixed (1 plan-verbatim parse expression bug, 1 clippy::op_ref, 3 clippy::doc_markdown sites, 1 Rule-2 machete gap close via SilentPaymentAddress re-export per Plan 06-01's explicit deferred guidance). Zero new #[allow] attributes; zero unsafe_code; full 10-gate phase-gate matrix green (5 builds, 2 test invocations, scoped + workspace clippy, fmt, machete-zero-ignored).
 
 ### Roadmap Evolution
 
@@ -163,6 +165,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-18T23:03:37.339Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-05-18T23:26:35.081Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None

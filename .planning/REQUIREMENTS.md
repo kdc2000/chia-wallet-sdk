@@ -54,7 +54,7 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 
 ### Simulator Integration (`chia-sdk-test`)
 
-- [ ] **SIM-01** — Test helper (`chia-sdk-test::silent_payments::tweak_data_from_simulator_block` or similar, behind `chip-0057`) generates `TweakData` from a simulator block by collecting that block's standard-puzzle spends, extracting their synthetic pubkeys, computing per-spend `tweak_point = input_hash * A_sum`, and pairing with the block's outputs. Lives in the public test crate so binding test suites can reach it via the public API.
+- [x] **SIM-01** — Test helper (`chia-sdk-test::silent_payments::tweak_data_from_simulator_block` or similar, behind `chip-0057`) generates `TweakData` from a simulator block by collecting that block's standard-puzzle spends, extracting their synthetic pubkeys, computing per-spend `tweak_point = input_hash * A_sum`, and pairing with the block's outputs. Lives in the public test crate so binding test suites can reach it via the public API.
 - [ ] **SIM-02** — End-to-end test against `Simulator`: sender wallet sends XCH to an unlabeled silent-payment address → block farmed → `tweak_data_from_simulator_block` → recipient `scan_from_tweaks` finds the coin → recipient derives `onetime_sk` and spends the detected coin.
 - [ ] **SIM-03** — Same end-to-end flow with a **labeled** recipient address to verify labeled detection works against a real on-chain coin.
 
