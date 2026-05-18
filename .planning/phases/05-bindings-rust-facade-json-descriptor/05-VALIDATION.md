@@ -44,7 +44,7 @@ created: 2026-05-17
 | `silent_payments.rs` facade compiles | 05-02 | 1 | BIND-01 (SC1) | unit (build) | `cargo build -p chia-sdk-bindings --all-features` | ⬜ Plan 05-02 Task 1 | ⬜ pending |
 | `bindings/silent_payments.json` resolves under bindy_napi! | 05-02 | 1 | BIND-01 (SC1) | unit (build) | `cargo build -p chia-wallet-sdk-napi --all-features` | ⬜ Plan 05-02 Task 1 | ⬜ pending |
 | `bindings/action_system.json` SendDestination entry | 05-02 | 1 | BIND-02 (SC3) | unit (build) | `cargo build -p chia-wallet-sdk-napi --all-features` | ⬜ Plan 05-02 Task 2 | ⬜ pending |
-| napi build produces `index.d.ts` with required symbols | 05-03 | 2 | BIND-01 (SC1) | shape check | `cd napi && pnpm install && pnpm build && grep -E 'SilentPaymentAddress\|SilentPaymentKeys\|TweakData\|DetectedSpCoin\|LabelRegistry\|scanFromTweaks\|deriveOneTimePuzzleHash\|computeInputHash\|aggregateSenderSks' index.d.ts` | ⬜ Plan 05-03 Task 1 | ⬜ pending |
+| napi build produces `index.d.ts` with required symbols | 05-03 | 2 | BIND-01 (SC1) | shape check | `cd napi && pnpm install && pnpm build && grep -E 'SilentPaymentAddress\|SilentPaymentKeys\|TweakData\|DetectedSpCoin\|LabelRegistry\|scanFromTweaks\|deriveOneTimePuzzleHash\|computeInputHash\|aggregateSenderSks' index.d.ts` | ✅ Plan 05-03 Task 1 | ✅ green |
 | pyo3 maturin develop succeeds | 05-03 | 2 | BIND-01 (SC1) | unit (build) | `cd pyo3 && maturin develop` | ⬜ Plan 05-03 Task 2 | ⬜ pending |
 | wasm-pack build succeeds (nodejs target) | 05-03 | 2 | BIND-01 (SC1) | unit (build) | `cd wasm && wasm-pack build --target nodejs` | ⬜ Plan 05-03 Task 3 | ⬜ pending |
 | AVA address round-trip test | 05-04 | 3 | BIND-01 (SC2) | integration (TS) | `cd napi && pnpm test --match 'silent-payment*'` | ⬜ Plan 05-04 Task 1 | ⬜ pending |
