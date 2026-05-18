@@ -336,6 +336,34 @@ impl From<ScalarField> for chia_sdk_types::silent_payments::ScalarField {
 #[derive(Clone)]
 pub struct SilentPayments;
 
+// ─── SP key registration wrappers (Spends::with_silent_payment_keys) ─────
+//
+// bindy does not natively marshal `Vec<(K, V)>` tuple types across the FFI
+// boundary, so the two registration maps that `Spends::with_silent_payment_keys`
+// consumes are surfaced as `Vec<SilentPaymentRegisteredKey>` and
+// `Vec<SilentPaymentRegisteredSecretKey>` respectively. The facade converts to
+// `IndexMap<Bytes32, _>` internally before delegating to the driver.
+
+/// One `(p2_puzzle_hash, synthetic_pk)` entry used to register the chip-0057
+/// silent-payment key bundle on `Spends` before `prepare`.
+#[derive(Clone)]
+pub struct SilentPaymentRegisteredKey {
+    pub p2_puzzle_hash: Bytes32,
+    pub public_key: PublicKey,
+}
+
+/// One `(p2_puzzle_hash, synthetic_sk)` entry used to register the chip-0057
+/// silent-payment key bundle on `Spends` before `prepare`.
+///
+/// Privacy warning: `secret_key` carries sensitive synthetic-secret-key
+/// material — wallets must treat the wrapping vec like the SKs themselves
+/// (zeroize on drop, do not log).
+#[derive(Clone)]
+pub struct SilentPaymentRegisteredSecretKey {
+    pub p2_puzzle_hash: Bytes32,
+    pub secret_key: SecretKey,
+}
+
 impl SilentPayments {
     /// Detect silent-payment outputs in a `TweakData` blob.
     ///
