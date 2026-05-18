@@ -143,6 +143,22 @@
       }
     }
   },
+  "SilentPaymentRegisteredKey": {
+    "type": "class",
+    "new": true,
+    "fields": {
+      "p2_puzzle_hash": "Bytes32",
+      "public_key": "PublicKey"
+    }
+  },
+  "SilentPaymentRegisteredSecretKey": {
+    "type": "class",
+    "new": true,
+    "fields": {
+      "p2_puzzle_hash": "Bytes32",
+      "secret_key": "SecretKey"
+    }
+  },
   "SilentPayments": {
     "type": "class",
     "methods": {
