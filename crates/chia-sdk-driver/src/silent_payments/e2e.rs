@@ -214,9 +214,147 @@ fn test_simulator_e2e_unlabeled() -> Result<()> {
         "detected coin must be spent after follow-on spend"
     );
 
-    // Reference `LabelRegistry` here so the unused-import warning does not fire
-    // — Task 2's labeled tests register labels via `LabelRegistry::new()`.
-    let _registry_canary: LabelRegistry = LabelRegistry::new();
+    Ok(())
+}
+
+/// SIM-03 labeled half: same flow as [`test_simulator_e2e_unlabeled`] using a
+/// labeled recipient address (m=1). Asserts the scanner correctly detects with
+/// `label: Some(1)` and the labeled coin spends successfully.
+#[test]
+fn test_simulator_e2e_labeled() -> Result<()> {
+    let (mut sim, mut ctx, sender, recipient) = setup_e2e()?;
+    let recipient_address = recipient.labeled_address(SilentPaymentNetwork::Testnet, 1)?;
+    let height_before = sim.height();
+
+    let mut spends = Spends::new(sender.puzzle_hash);
+    spends.add(sender.coin);
+    let deltas = spends.apply(
+        &mut ctx,
+        &[Action::send(
+            Id::Xch,
+            SendDestination::SilentPayment(Box::new(recipient_address)),
+            200,
+            Memos::None,
+        )],
+    )?;
+    let pk_map = indexmap! { sender.puzzle_hash => sender.pk };
+    let sk_map = indexmap! { sender.puzzle_hash => sender.sk.clone() };
+    spends.with_silent_payment_keys(pk_map.clone(), sk_map);
+    spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map)?;
+    sim.spend_coins(ctx.take(), std::slice::from_ref(&sender.sk))?;
+
+    // Register m=1 in the recipient's LabelRegistry so the scanner can detect it.
+    let mut labels = LabelRegistry::new();
+    labels.register(recipient.scan_sk(), 1);
+
+    let tweak_data = build_tweak_data(&sim, height_before);
+    let detections = scan_from_tweaks(
+        recipient.scan_sk(),
+        recipient.spend_sk(),
+        recipient.spend_pk(),
+        &tweak_data,
+        Some(&labels),
+        K_MAX_DEFAULT,
+    );
+    assert_eq!(detections.len(), 1, "expected exactly 1 labeled detection");
+    let detected = &detections[0];
+    assert_eq!(detected.label, Some(1), "labeled at m=1");
+    assert_eq!(detected.amount, 200);
+
+    // Follow-on spend (labeled): scanner already absorbed `label_scalar` into
+    // `onetime_sk`, so `derive_synthetic()` works identically to the unlabeled
+    // case (per scanner.rs's `labeled_sk = base_sk + label_scalar` logic).
+    let synthetic_secret = detected.onetime_sk.derive_synthetic();
+    let conditions = Conditions::new()
+        .create_coin(sender.puzzle_hash, detected.amount - 1, Memos::None)
+        .reserve_fee(1);
+    let coin = Coin::new(
+        detected.parent_coin_id,
+        detected.puzzle_hash,
+        detected.amount,
+    );
+    StandardLayer::new(synthetic_secret.public_key()).spend(&mut ctx, coin, conditions)?;
+    sim.spend_coins(ctx.take(), std::slice::from_ref(&synthetic_secret))?;
+
+    let post_state = sim
+        .coin_state(detected.coin_id)
+        .expect("detected coin in state");
+    assert!(
+        post_state.spent_height.is_some(),
+        "labeled detected coin must be spent after follow-on spend"
+    );
+
+    Ok(())
+}
+
+/// SIM-03 m=0 half (REDESIGNED): The SDK does NOT auto-emit m=0 self-change
+/// outputs (the original D-04 assumption is FALSE — see 06-RESEARCH §"Open
+/// Questions" §1). This test documents the actual contract:
+///
+/// 1. `LabelRegistry::register(scan_sk, 0)` is callable internally (per
+///    `chia-sdk-utils/src/silent_payments/labels.rs:14-16` doc-comment).
+/// 2. A self-send to one's own UNLABELED address detects normally with
+///    `label: None` — the m=0 registry entry does NOT promote the detection.
+/// 3. The labeled detection branch in `scan_from_tweaks` only runs when no
+///    unlabeled match is found at the current k (per `scanner.rs:~124`'s
+///    `if !found` ordering) — so registering m=0 cannot spuriously hijack
+///    unlabeled detections.
+///
+/// Cross-reference ADDR-06: `labeled_address(0)` returns
+/// `Err(ReservedChangeLabel)` at the public boundary. m=0 is reserved for
+/// wallet-author-managed internal change tracking, NOT a public address shape.
+#[test]
+fn test_simulator_e2e_m0_self_change() -> Result<()> {
+    let (mut sim, mut ctx, sender, recipient) = setup_e2e()?;
+    // Self-send: the recipient SP address is the one we treat as "self".
+    // (Note: the sender's XCH coin comes from `sim.bls()` — a different key
+    // pair — but the recipient SP address is the one we treat as "self" for
+    // the test. The m=0 contract being asserted is about how the recipient's
+    // own LabelRegistry interacts with detection of its own unlabeled inbound
+    // payments — the XCH source identity is incidental.)
+    let recipient_address = recipient.unlabeled_address(SilentPaymentNetwork::Testnet);
+    let height_before = sim.height();
+
+    let mut spends = Spends::new(sender.puzzle_hash);
+    spends.add(sender.coin);
+    let deltas = spends.apply(
+        &mut ctx,
+        &[Action::send(
+            Id::Xch,
+            SendDestination::SilentPayment(Box::new(recipient_address)),
+            300,
+            Memos::None,
+        )],
+    )?;
+    let pk_map = indexmap! { sender.puzzle_hash => sender.pk };
+    let sk_map = indexmap! { sender.puzzle_hash => sender.sk.clone() };
+    spends.with_silent_payment_keys(pk_map.clone(), sk_map);
+    spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map)?;
+    sim.spend_coins(ctx.take(), std::slice::from_ref(&sender.sk))?;
+
+    // Register m=0 in the recipient's LabelRegistry — internal-only API path.
+    // This MUST be possible (per labels.rs:14-16 doc) AND MUST NOT corrupt
+    // unlabeled detection of the self-send below.
+    let mut labels = LabelRegistry::new();
+    labels.register(recipient.scan_sk(), 0);
+
+    let tweak_data = build_tweak_data(&sim, height_before);
+    let detections = scan_from_tweaks(
+        recipient.scan_sk(),
+        recipient.spend_sk(),
+        recipient.spend_pk(),
+        &tweak_data,
+        Some(&labels),
+        K_MAX_DEFAULT,
+    );
+
+    assert_eq!(detections.len(), 1, "self-send should detect exactly once");
+    let detected = &detections[0];
+    assert_eq!(
+        detected.label, None,
+        "m=0 in registry must NOT promote unlabeled self-send to label: Some(0)"
+    );
+    assert_eq!(detected.amount, 300);
 
     Ok(())
 }
