@@ -139,7 +139,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. AVA test in `napi/__test__/silent_payments.ts` asserts address round-trip: generate a `SilentPaymentKeys` from a fixed mnemonic, encode the unlabeled address, decode it back, and assert `scan_pk`/`spend_pk` bytes match the originals. (Cross-language send + scan round-trip is Phase 6's concern; Phase 5 proves the descriptor compiles and a basic call works.)
   3. `bindings/action_system.json` gains a `SendDestination` opaque-handle class entry with factory methods `puzzle_hash(Bytes32)` + `silent_payment(SilentPaymentAddress)` and introspectors `is_puzzle_hash`/`as_puzzle_hash`/`is_silent_payment`/`as_silent_payment`. (Phase 04.2 SC12 pre-committed this pattern; supersedes the original SC3 wording, which referenced the `silent_payment_send` factory that 04.2 deleted.) A TS caller constructs an SP send via `Action.send(Id.xch(), SendDestination.silentPayment(addr), amount, memos)`.
   4. `bindy-macro` static-functions schema verified ahead of descriptor commit (pre-flight action item from the architecture research): either confirmed natively supported (the `SilentPayments` zero-field class with `static_functions` works) or the fallback strategy is applied (free functions distributed onto carrier types).
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 05-01-PLAN.md — Wave 0 pre-flight: chip-0057 unconditional deps wiring (D-01) + zero-field SilentPayments stub probe + Wave 0 scaffolding + VALIDATION.md per-task map populated
+- [ ] 05-02-PLAN.md — Full chia-sdk-bindings::silent_payments facade (~250 lines, 9 types per D-02/D-03) + bindings/silent_payments.json (9 entries) + SendDestination opaque-handle class added to action_system.json per D-04 + Action.send signature change + Spends.with_silent_payment_keys
+- [ ] 05-03-PLAN.md — Cross-target build verification: napi build (pnpm build), pyo3 build (maturin develop), wasm-pack build (--target nodejs) with Vec<PublicKey> marshaling fallback if Open Q1 fires
+- [ ] 05-04-PLAN.md — AVA round-trip test (silent_payments.spec.ts: 4 named tests for SC2+SC3) + descriptor↔facade drift audit script + REQUIREMENTS.md/STATE.md updates + 05-PHASE-SUMMARY.md (closes BIND-01 + BIND-02)
 **UI hint**: no
 
 ### Phase 6: Simulator round-trip + bindings E2E + example
@@ -167,7 +171,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 4. Send-side action | 5/5 | Complete    | 2026-05-16 |
 | 4.1. Sage-style send-side binding refactor (INSERTED) | 2/2 | Complete    | 2026-05-17 |
 | 4.2. Unify SP send into Action::send via SendDestination enum (INSERTED) | 3/3 | Complete    | 2026-05-17 |
-| 5. Bindings (Rust facade + JSON descriptor) | 0/TBD | Not started | - |
+| 5. Bindings (Rust facade + JSON descriptor) | 0/4   | Not started | - |
 | 6. Simulator round-trip + bindings E2E + example | 0/TBD | Not started | - |
 
 ## Coverage
@@ -201,4 +205,4 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 7. **Workspace lint policy (`WS-03`)** — Every phase's code must pass `deny clippy::all`, `warn pedantic`, `deny unsafe_code`, `deny dead_code`, and `cargo machete`. Phase 1 establishes the feature-gating skeleton; later phases inherit.
 
 ---
-*Last updated: 2026-05-17 after Phase 04.2 planning — 3 plans across 3 waves (Wave A additive: 01; Wave A wire-up + dead_code-deny resolution: 02; Wave B atomic delete-and-migrate + 8 test relocations + 2 NEW Wave 0 tests: 03); ACTION-API-01 newly traced; SEND-04 re-validation queued.*
+*Last updated: 2026-05-17 after Phase 5 planning — 4 plans across 4 waves (Wave 0 pre-flight: 01; Wave 1 facade+descriptor: 02; Wave 2 cross-target builds: 03; Wave 3 AVA tests+drift audit+close-out: 04); BIND-01 + BIND-02 queued for closure. Previously: *Last updated: 2026-05-17 after Phase 04.2 planning — 3 plans across 3 waves (Wave A additive: 01; Wave A wire-up + dead_code-deny resolution: 02; Wave B atomic delete-and-migrate + 8 test relocations + 2 NEW Wave 0 tests: 03); ACTION-API-01 newly traced; SEND-04 re-validation queued.*
