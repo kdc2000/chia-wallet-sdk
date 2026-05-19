@@ -926,6 +926,7 @@ name = "chia-wallet-sdk"
 version = "0.33.0"
 dependencies = [
  "anyhow",
+ "bip39",
  "chia-bls 0.36.1",
  "chia-consensus",
  "chia-protocol",
@@ -948,6 +949,7 @@ dependencies = [
  "clvm-utils",
  "clvmr",
  "hex-literal",
+ "indexmap",
 ]
 
 [[package]]
