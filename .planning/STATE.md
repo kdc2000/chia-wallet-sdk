@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-03-PLAN.md (SIM-02 + SIM-03 closed at SDK level)
-last_updated: "2026-05-18T23:57:56.183Z"
-last_activity: 2026-05-18
+stopped_at: Completed 06-04-PLAN.md (BIND-03 closed cross-language)
+last_updated: "2026-05-19T00:32:52.616Z"
+last_activity: 2026-05-19
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 34
-  completed_plans: 39
+  completed_plans: 40
   percent: 88
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 06 (simulator-round-trip-bindings-e2e-example) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
-Last activity: 2026-05-18
+Last activity: 2026-05-19
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
@@ -89,6 +89,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 06-simulator-round-trip-bindings-e2e-example P01 | 14min | 3 tasks | 5 files |
 | Phase 06 P02 | 17min | 3 tasks tasks | 4 files files |
 | Phase 06 P03 | 23min | 3 tasks | 3 files |
+| Phase 06 P04 | 29min | 6 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 06]: Plan 06-03: Cargo cyclic-dev-dep workaround — chia-sdk-driver's e2e tests cannot call chia_sdk_test::silent_payments::tweak_data_from_simulator_block directly (lib vs lib-test type mismatch in the chia-sdk-driver -> chia-sdk-test -> chia-sdk-driver cycle). Inlined build_tweak_data locally; cross-crate helper remains canonical entry for non-cyclic callers (Plan 06-05 example, Plan 06-04 binding tests). Reference count >= 1 satisfied via module + fn rustdoc (6 mentions).
 - [Phase 06]: Plan 06-03: m=0 self-change test REDESIGNED per RESEARCH §3b — SDK does NOT auto-emit m=0 self-change outputs (D-04 falsified). Test asserts LabelRegistry::register(scan_sk, 0) is callable internally per labels.rs:14-16 AND that unlabeled detection of a self-send still resolves to label: None when m=0 is registered (scanner.rs's 'if !found' ordering guarantees no spurious m=0 promotion).
 - [Phase 06]: Plan 06-03: scan_from_tweaks (free fn) preferred over SilentPaymentScan::scan (trait method) for cross-compile-unit calls. The trait method's tweak_data: &TweakData parameter would trigger the same lib vs lib-test type mismatch; free-fn form takes the unbundled triple explicitly.
+- [Phase 06]: Plan 06-04: BIND-03 closed end-to-end across napi/pyo3/wasm — one Simulator.tweakDataFromBlock binding facade method + one descriptor entry + chip-0057 wired onto chia-sdk-test dep transitively from chia-sdk-bindings. Vec<chia_bls::PublicKey> on TweakData.tweakPoints marshals correctly at runtime across all 3 FFI surfaces (first runtime test). [Rule 2 deviation] Added Spends::finish_silent_payments public chip-0057-gated method to chia-sdk-driver because sdk::Spends::prepare doesn't trigger the chip-0057 SP branch (only finish_with_keys does, and sp_finish_branch is private). Binding's prepare now calls finish_silent_payments before sdk::Spends::prepare. Rust finish_with_keys unchanged; new method purely additive forward-looking value. Three cross-language tests pass including follow-on spend of detected SP coin.
 
 ### Roadmap Evolution
 
@@ -169,6 +171,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-18T23:57:56.176Z
-Stopped at: Completed 06-03-PLAN.md (SIM-02 + SIM-03 closed at SDK level)
+Last session: 2026-05-19T00:32:52.608Z
+Stopped at: Completed 06-04-PLAN.md (BIND-03 closed cross-language)
 Resume file: None
