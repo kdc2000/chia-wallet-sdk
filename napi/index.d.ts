@@ -2835,6 +2835,7 @@ export declare class Simulator {
   lookupPuzzleHashes(puzzleHashes: Array<Uint8Array>, includeHints: boolean): Array<CoinState>
   unspentCoins(puzzleHash: Uint8Array, includeHints: boolean): Array<Coin>
   createBlock(): void
+  tweakDataFromBlock(height: number): TweakData
 }
 
 export declare class Softfork {
