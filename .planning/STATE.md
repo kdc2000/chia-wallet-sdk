@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 06-05-PLAN.md (EX-01 closed; v1 silent-payments requirement-complete)
-last_updated: "2026-05-19T00:52:35.827Z"
+last_updated: "2026-05-19T01:12:08.936Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 8
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 ## Current Position
 
-Phase: 06 (simulator-round-trip-bindings-e2e-example) — EXECUTING
-Plan: 5 of 5
+Phase: 06
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-05-19
 
