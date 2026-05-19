@@ -104,7 +104,9 @@ chia-puzzles = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
+bip39 = { workspace = true }
 hex-literal = { workspace = true }
+indexmap = { workspace = true }
 
 [workspace.dependencies]
 chia-wallet-sdk = { version = "0.33.0", path = "." }
