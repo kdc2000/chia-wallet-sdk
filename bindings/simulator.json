@@ -115,7 +115,13 @@
         },
         "return": "Vec<Coin>"
       },
-      "create_block": {}
+      "create_block": {},
+      "tweak_data_from_block": {
+        "args": {
+          "height": "u32"
+        },
+        "return": "TweakData"
+      }
     }
   },
   "BlsPair": {
