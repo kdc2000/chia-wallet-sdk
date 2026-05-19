@@ -5,7 +5,7 @@ use chia_bls::SecretKey;
 use chia_protocol::{Bytes32, Coin, CoinSpend, CoinState, SpendBundle};
 use chia_sdk_test::SimulatorConfig;
 
-use crate::BlsPairWithCoin;
+use crate::{BlsPairWithCoin, TweakData};
 
 #[derive(Default, Clone)]
 pub struct Simulator(Arc<Mutex<chia_sdk_test::Simulator>>);
@@ -82,6 +82,22 @@ impl Simulator {
 
     pub fn coin_spend(&self, coin_id: Bytes32) -> Result<Option<CoinSpend>> {
         Ok(self.0.lock().unwrap().coin_spend(coin_id))
+    }
+
+    /// Construct a [`TweakData`] from one block of the simulator's history
+    /// (CHIP-0057 silent-payments test helper).
+    ///
+    /// Wraps `chia_sdk_test::silent_payments::tweak_data_from_simulator_block`,
+    /// converting the driver-side `TweakData` into the binding-facade
+    /// [`TweakData`] via the existing `From` impl in `crate::silent_payments`.
+    pub fn tweak_data_from_block(&self, height: u32) -> Result<TweakData> {
+        Ok(
+            chia_sdk_test::silent_payments::tweak_data_from_simulator_block(
+                &self.0.lock().unwrap(),
+                height,
+            )
+            .into(),
+        )
     }
 
     pub fn spend_coins(
