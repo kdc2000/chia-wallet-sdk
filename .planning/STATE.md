@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 06-04-PLAN.md (BIND-03 closed cross-language)
-last_updated: "2026-05-19T00:32:52.616Z"
+status: verifying
+stopped_at: Completed 06-05-PLAN.md (EX-01 closed; v1 silent-payments requirement-complete)
+last_updated: "2026-05-19T00:52:35.827Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 34
-  completed_plans: 40
+  completed_plans: 41
   percent: 88
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 Phase: 06 (simulator-round-trip-bindings-e2e-example) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-19
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
@@ -90,6 +90,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 06 P02 | 17min | 3 tasks tasks | 4 files files |
 | Phase 06 P03 | 23min | 3 tasks | 3 files |
 | Phase 06 P04 | 29min | 6 tasks | 9 files |
+| Phase 06 P05 | 12min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 06]: Plan 06-03: m=0 self-change test REDESIGNED per RESEARCH §3b — SDK does NOT auto-emit m=0 self-change outputs (D-04 falsified). Test asserts LabelRegistry::register(scan_sk, 0) is callable internally per labels.rs:14-16 AND that unlabeled detection of a self-send still resolves to label: None when m=0 is registered (scanner.rs's 'if !found' ordering guarantees no spurious m=0 promotion).
 - [Phase 06]: Plan 06-03: scan_from_tweaks (free fn) preferred over SilentPaymentScan::scan (trait method) for cross-compile-unit calls. The trait method's tweak_data: &TweakData parameter would trigger the same lib vs lib-test type mismatch; free-fn form takes the unbundled triple explicitly.
 - [Phase 06]: Plan 06-04: BIND-03 closed end-to-end across napi/pyo3/wasm — one Simulator.tweakDataFromBlock binding facade method + one descriptor entry + chip-0057 wired onto chia-sdk-test dep transitively from chia-sdk-bindings. Vec<chia_bls::PublicKey> on TweakData.tweakPoints marshals correctly at runtime across all 3 FFI surfaces (first runtime test). [Rule 2 deviation] Added Spends::finish_silent_payments public chip-0057-gated method to chia-sdk-driver because sdk::Spends::prepare doesn't trigger the chip-0057 SP branch (only finish_with_keys does, and sp_finish_branch is private). Binding's prepare now calls finish_silent_payments before sdk::Spends::prepare. Rust finish_with_keys unchanged; new method purely additive forward-looking value. Three cross-language tests pass including follow-on spend of detected SP coin.
+- [Phase 06]: Plan 06-05: examples/silent_payment.rs (119 lines) lands as runnable EX-01 demo mirroring cat_spends.rs rhythm — mnemonic -> unlabeled + labeled(m=1) Mainnet addresses -> 2 SP sends in one tx -> farm -> tweak_data_from_simulator_block (via fully-qualified path; prelude doesn't re-export) -> scan via recipient.scan (trait method, no cyclic-dev-dep issue at example layer) -> detect both -> derive_synthetic + StandardLayer follow-on spends. 5 stage markers (Stage 1/5..Stage 5/5) trace the flow. bip39 + indexmap added as umbrella crate dev-deps. EX-01 [ ]->[x] in REQUIREMENTS.md closes 5th/5 Phase 6 requirement; v1 silent-payments work is requirement-complete.
 
 ### Roadmap Evolution
 
@@ -171,6 +173,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-19T00:32:52.608Z
-Stopped at: Completed 06-04-PLAN.md (BIND-03 closed cross-language)
+Last session: 2026-05-19T00:52:21.727Z
+Stopped at: Completed 06-05-PLAN.md (EX-01 closed; v1 silent-payments requirement-complete)
 Resume file: None
