@@ -142,6 +142,7 @@ def test_unlabeled_e2e():
     sim.spend_coins(follow_clvm.coin_spends(), [synthetic_sk])
 
     after_spend = sim.coin_state(detected_coin_id)
+    assert after_spend is not None, "coin state present after follow-on spend"
     assert (
         after_spend.spent_height is not None
     ), "detected SP coin successfully spent"
