@@ -178,9 +178,17 @@ impl Spends {
         let mut spends = self.spends.lock().unwrap();
 
         let change_puzzle_hash = spends.change_puzzle_hash;
-        let spends = std::mem::replace(&mut *spends, sdk::Spends::new(change_puzzle_hash));
+        let mut spends = std::mem::replace(&mut *spends, sdk::Spends::new(change_puzzle_hash));
 
         let mut ctx = self.clvm.lock().unwrap();
+
+        // Run the chip-0057 silent-payment finish branch BEFORE prepare()
+        // (mirrors `sdk::Spends::finish_with_keys` ordering — the SP-emitted
+        // `CreateCoin` conditions must land on parents' `payment_assertions`
+        // before `emit_conditions` fires inside prepare).
+        //
+        // No-op when no `Action::send(SilentPayment, ...)` has been applied.
+        spends.finish_silent_payments(&mut ctx, Relation::None)?;
 
         let spends = spends.prepare(&mut ctx, &deltas.0, Relation::None)?;
 

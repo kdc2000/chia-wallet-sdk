@@ -120,6 +120,45 @@ impl Spends<Unfinished> {
         self
     }
 
+    /// Run the CHIP-0057 silent-payment finish branch out-of-band.
+    ///
+    /// Used by callers that need [`Spends::prepare`] semantics (returning a
+    /// [`Spends<Finished>`] rather than the [`Outputs`] produced by
+    /// [`Spends::finish_with_keys`]) but still want the chip-0057 SP branch to
+    /// run — notably the bindings layer (`chia-sdk-bindings::Spends::prepare`),
+    /// which composes `with_silent_payment_keys` + `apply` + `prepare` into a
+    /// pipeline that does not call `finish_with_keys`.
+    ///
+    /// This method is a no-op when no `Action::send` with a
+    /// `SendDestination::SilentPayment` destination has been applied
+    /// (`silent_payments_pending` is empty); otherwise it runs the same
+    /// `sp_finish_branch` that [`Spends::finish_with_keys`] runs internally:
+    /// aggregate sender SKs → derive one-time puzzle hashes → push
+    /// `CreateCoin` conditions onto the parent's `payment_assertions` →
+    /// emit the recipient coins into `outputs.xch`.
+    ///
+    /// Errors propagate from `sp_finish_branch`: `SilentPaymentRequiresInputBinding`,
+    /// `SilentPaymentKeysNotRegistered`, `SilentPaymentNoXchInputs`,
+    /// `SilentPaymentMultiPartyUnsupported`, etc.
+    ///
+    /// After this returns Ok, callers should follow with
+    /// [`Spends::prepare`] for the rest of the spend-completion flow.
+    ///
+    /// Privacy warning: same as [`Spends::finish_with_keys`] — consumes the
+    /// registered SK map and emits the recipient one-time puzzle hashes
+    /// derived from it.
+    #[cfg(feature = "chip-0057")]
+    pub fn finish_silent_payments(
+        &mut self,
+        ctx: &mut SpendContext,
+        relation: Relation,
+    ) -> Result<(), DriverError> {
+        if !self.silent_payments_pending.is_empty() {
+            sp_finish_branch(ctx, self, relation)?;
+        }
+        Ok(())
+    }
+
     pub fn apply(
         &mut self,
         ctx: &mut SpendContext,
