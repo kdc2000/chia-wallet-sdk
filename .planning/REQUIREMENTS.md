@@ -60,7 +60,7 @@ Source of truth for scoped v1 requirements. Phase mapping is filled in by the ro
 
 ### Example
 
-- [ ] **EX-01** — `examples/silent_payment.rs` shows the full send → scan → spend flow runnable against the simulator. Structure mirrors `examples/cat_spends.rs` and `examples/spend_simulator.rs`.
+- [x] **EX-01** — `examples/silent_payment.rs` shows the full send → scan → spend flow runnable against the simulator. Structure mirrors `examples/cat_spends.rs` and `examples/spend_simulator.rs`.
 
 ## v2 Requirements (deferred)
 
