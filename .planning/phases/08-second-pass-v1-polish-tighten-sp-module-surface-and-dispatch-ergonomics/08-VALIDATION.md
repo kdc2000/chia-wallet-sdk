@@ -2,8 +2,8 @@
 phase: 8
 slug: second-pass-v1-polish-tighten-sp-module-surface-and-dispatch-ergonomics
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-20
 ---
 
