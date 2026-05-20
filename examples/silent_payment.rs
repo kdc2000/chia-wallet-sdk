@@ -19,7 +19,8 @@ use chia_wallet_sdk::prelude::*;
 use indexmap::indexmap;
 
 /// BIP-39 TV1 mnemonic — stable, well-known, deterministic across runs.
-/// Matches the fixture used in Phase 5 AVA tests and Plan 06-03 Rust E2E tests.
+/// Matches the fixture used by the CHIP-0057 test vectors and the SDK's
+/// silent-payments unit + binding tests.
 const TV1_MNEMONIC: &str =
     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
@@ -40,7 +41,7 @@ fn main() -> Result<()> {
     println!("  labeled(1): {}", labeled_addr.encode()?);
 
     // 2. Send 100 mojos to the unlabeled address and 200 mojos to labeled(m=1)
-    //    in one tx via the Phase 4.2 unified Action::send + SendDestination surface.
+    //    in one tx via the unified Action::send + SendDestination surface.
     let height_before = sim.height();
     let mut spends = Spends::new(sender.puzzle_hash);
     spends.add(sender.coin);
@@ -98,8 +99,8 @@ fn main() -> Result<()> {
     }
 
     // 5. Spend: for each detected coin, derive the synthetic secret key from
-    //    onetime_sk (mandatory — the puzzle currys StandardArgs(synthetic_key);
-    //    raw onetime_sk would fail signature verification per RESEARCH Pitfall 6),
+    //    onetime_sk (mandatory — the puzzle currys StandardArgs(synthetic_key),
+    //    so signing with the raw onetime_sk would produce an invalid signature),
     //    then spend via StandardLayer leaving (amount - 1) and a 1-mojo fee.
     for d in &detections {
         let synthetic_secret = d.onetime_sk.derive_synthetic();

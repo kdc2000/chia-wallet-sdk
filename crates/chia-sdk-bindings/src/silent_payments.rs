@@ -1,16 +1,20 @@
 //! Silent-payments (chip-0057) binding facade.
 //!
-//! Per CONTEXT.md D-01, chip-0057 is unconditional on this crate's deps, so
-//! the facade has no feature-gating attributes at all. Per D-02, the
-//! four free functions (`scan_from_tweaks`, `derive_one_time_puzzle_hash`,
-//! `compute_input_hash`, `aggregate_sender_sks`) are exposed as static methods
-//! on the zero-field `SilentPayments` namespace class. Per D-03, `ScalarField`
-//! is exposed as its own class (NOT type-grouped to `{bytes}`) so the unsigned
-//! mod-r invariant is preserved at the FFI boundary.
+//! chip-0057 is enabled unconditionally on this crate's chia-sdk-{driver,utils,
+//! types,test} dependencies, so the facade carries no cargo feature of its own
+//! and no `#[cfg(feature = "chip-0057")]` attributes. The four free-function
+//! primitives (`scan_from_tweaks`, `derive_one_time_puzzle_hash`,
+//! `compute_input_hash`, `aggregate_sender_sks`) are surfaced as static methods
+//! on a zero-field `SilentPayments` namespace class — the same shape used by
+//! the `Constants` and `Clvm` facades elsewhere in this crate. `ScalarField`
+//! is exposed as its own bindy class (not type-grouped to `{bytes}`) so the
+//! unsigned mod-r reduction invariant survives the FFI boundary and cannot be
+//! bypassed by callers handing in a raw 32-byte buffer.
 //!
-//! Privacy warning: silent-payment memos and scan keys carry chip-0057 hazards
-//! per Phase 4 SEND-08 — wallets holding a scan key see every payment to its
-//! address, and memos land on chain in plaintext.
+//! Privacy warning: silent-payment memos and scan keys carry chip-0057 hazards.
+//! Any party holding the recipient's scan secret key can detect every payment
+//! to that address, and memos attached to silent-payment outputs land on chain
+//! in plaintext.
 
 use std::sync::{Arc, Mutex};
 
@@ -20,7 +24,7 @@ use chia_protocol::Bytes32;
 
 use crate::Mnemonic;
 
-// ─── SilentPaymentNetwork (unit-variant enum per RESEARCH Pattern 4) ─────
+// ─── SilentPaymentNetwork (unit-variant enum) ────────────────────────────
 
 /// Network discriminator for silent-payment addresses (mainnet `spxch` /
 /// testnet `tspxch`).
@@ -289,22 +293,25 @@ impl From<chia_sdk_driver::DetectedSpCoin> for DetectedSpCoin {
     }
 }
 
-// ─── ScalarField (D-03 — class, NOT type-group) ──────────────────────────
+// ─── ScalarField (own class, NOT type-grouped to {bytes}) ────────────────
 
-/// CHIP-0057 mod-r scalar with unsigned reduction at construction (D-03).
+/// CHIP-0057 mod-r scalar with unsigned reduction at construction.
 ///
 /// Use `ScalarField.fromBytes(bytes)` (TS) / `ScalarField.from_bytes(bytes)`
 /// (py) to construct from any 32-byte input — the factory reduces mod r so
 /// wallet authors cannot accidentally pass an unreduced value into
-/// `SilentPayments.deriveOneTimePuzzleHash`.
+/// `SilentPayments.deriveOneTimePuzzleHash`. Exposing this as a dedicated
+/// class (rather than collapsing to a raw `{bytes}` type group) is what makes
+/// the unsigned-vs-signed reduction choice survive the FFI boundary.
 #[derive(Clone)]
 pub struct ScalarField(chia_sdk_types::silent_payments::ScalarField);
 
 impl ScalarField {
     pub fn from_bytes(bytes: Bytes32) -> Result<Self> {
-        // D-03 / Pitfall 4: MUST use the unsigned-reducing factory. The
-        // unchecked / no-reduction sibling on `ScalarField` is deliberately
-        // not surfaced through this facade.
+        // MUST use the unsigned-reducing factory. The unchecked / no-reduction
+        // sibling on `ScalarField` is deliberately not surfaced through this
+        // facade — exposing it would let a caller hand in a value above r,
+        // producing silently-undetectable on-chain payments.
         Ok(Self(
             chia_sdk_types::silent_payments::ScalarField::from_bytes_unsigned(bytes.into()),
         ))
@@ -327,9 +334,12 @@ impl From<ScalarField> for chia_sdk_types::silent_payments::ScalarField {
     }
 }
 
-// ─── SilentPayments (zero-field namespace with 4 statics per D-02) ───────
+// ─── SilentPayments (zero-field namespace with 4 statics) ────────────────
 
-/// Static-functions namespace per D-02. Hosts the four free-fn primitives.
+/// Static-functions namespace. Hosts the four free-fn protocol primitives —
+/// `scanFromTweaks`, `deriveOneTimePuzzleHash`, `computeInputHash`, and
+/// `aggregateSenderSks` — under one class name. Mirrors the namespace shape
+/// used by `Constants` and `Clvm` elsewhere in the facade.
 #[derive(Clone)]
 pub struct SilentPayments;
 
