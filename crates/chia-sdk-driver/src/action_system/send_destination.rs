@@ -16,8 +16,6 @@ use chia_sdk_utils::silent_payments::SilentPaymentAddress;
 /// publishes one static address and every payment lands at a fresh,
 /// unlinkable one-time puzzle hash derived via ECDH).
 ///
-/// Cannot derive `Copy` because `SilentPaymentAddress` is `Clone`-only.
-///
 /// `impl From<Bytes32>` lets every existing `Action::send(id, ph, amount, memos)`
 /// caller continue to compile unchanged after `Action::send`'s second parameter
 /// becomes `impl Into<SendDestination>` in Plan 04.2-02.
