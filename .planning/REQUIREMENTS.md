@@ -70,7 +70,7 @@ These requirements were added after v1 close-out following a maintainer-style co
 - [x] **CLEANUP-02** — The chip-0057 SP arm of `Action::send` moves out of `crates/chia-sdk-driver/src/actions/send.rs` (1080 lines, up from 374) into a sibling file. Public surface unchanged. `actions/send.rs` ends ≤ 600 lines.
 - [x] **CLEANUP-03** — The public `pub fn finish_silent_payments` added on `chia_sdk_driver::Spends` in Phase 6 Plan 06-04 is removed, made internal, or marked `#[doc(hidden)]`. The bindings layer's `Spends::prepare` reaches the SP finish branch through a less leaky mechanism (calling `finish_with_keys` directly, an internal trait method, or a `#[doc(hidden)]` shim with rationale).
 - [ ] **CLEANUP-04** — The inlined `build_tweak_data` helper in `crates/chia-sdk-driver/src/silent_payments/e2e.rs` is removed; tests call the canonical `chia_sdk_test::silent_payments::tweak_data_from_simulator_block` directly. If Cargo's cyclic-dev-dep type confusion blocks the call, tests relocate to a top-level integration target where the cycle resolves. All 3 e2e tests still pass.
-- [ ] **CLEANUP-06** — All 8 prior phases' `*-VALIDATION.md` frontmatter has `nyquist_compliant: true` and `wave_0_complete: true`. The `phase complete` CLI command (or its caller in `execute-phase.md`) is patched so future phases auto-flip these flags when VERIFICATION.md reports `status: passed`.
+- [x] **CLEANUP-06** — All 8 prior phases' `*-VALIDATION.md` frontmatter has `nyquist_compliant: true` and `wave_0_complete: true`. The `phase complete` CLI command (or its caller in `execute-phase.md`) is patched so future phases auto-flip these flags when VERIFICATION.md reports `status: passed`.
 
 ## v2 Requirements (deferred)
 

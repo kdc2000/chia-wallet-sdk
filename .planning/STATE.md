@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed Plan 07-03 (CLEANUP-03); ready for Plan 07-04
-last_updated: "2026-05-20T16:20:45.249Z"
+stopped_at: Completed Plan 07-04 (CLEANUP-06); ready for Plan 07-05
+last_updated: "2026-05-20T16:33:06.696Z"
 last_activity: 2026-05-20
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 39
-  completed_plans: 44
+  completed_plans: 45
   percent: 88
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 07 (code-review-cleanup) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-20
 
@@ -94,6 +94,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 07-code-review-cleanup P01 | 11min | 3 tasks | 17 files |
 | Phase 07-code-review-cleanup P02 | 8min | 2 tasks tasks | 3 files files |
 | Phase 07 P03 | 21min | 2 tasks | 2 files |
+| Phase 07-code-review-cleanup P04 | 8min | 2 tasks tasks | 8 files files |
 
 ## Accumulated Context
 
@@ -159,6 +160,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 07-code-review-cleanup]: Plan 07-01: Rustdoc gets the heaviest rewrites because //! and /// render to docs.rs and IDE tooltips — bindings facade module-doc + driver silent_payments/mod.rs both fully rewritten to read as standalone API documentation.
 - [Phase 07-code-review-cleanup]: Plan 07-02: chip-0057 SP arm extracted from actions/send.rs (1080→399 lines) into new flat-sibling actions/silent_payment_send.rs (711 lines). pub(crate) handle_silent_payment_send entry point + spend_silent_payment + memo_hint_guard helpers + mod silent_payment_tests (10 tests, 8 SEND-* + 2 Wave 0 acceptance) all live in the new file. send.rs SP arm reduced from 8 inline lines to 4 delegating lines. actions.rs gains #[cfg(feature = chip-0057)] mod silent_payment_send; (no pub use). Public API surface Action::send(id, SendDestination::SilentPayment(addr), amount, memos) unchanged. Rule 3 inline fix: added missing Asset trait import (not in plan skeleton); Rule 1: used Memos (not plan-skeleton-listed Memos<NodePtr>) matching project convention. Atomic commit 190f4d5a.
 - [Phase 07]: [Phase 07-code-review-cleanup]: Plan 07-03: Pushed chip-0057 SP finish branch into Spends::prepare (chia_sdk_driver) at the top of the method body before create_change/emit_conditions; finish_silent_payments (10-line method + 28-line rustdoc) deleted from public surface per D-02. finish_with_keys loses inline SP branch + cfg_attr(unused_mut) attribute + mut self -> self signature simplification. Binding-side Spends::prepare wrapper drops the explicit finish_silent_payments(&mut ctx, Relation::None)? call (4 lines + rustdoc parenthetical fix); Rule 1 inline fix: dropped now-unused mut on local spends rebinding at chia-sdk-bindings/src/action_system.rs:181 (was needed only when finish_silent_payments borrowed &mut spends). Transient workspace --all-features build break between Task 1 (driver delete) and Task 2 (binding delete) commits — same precedent as Plan 04.1-01; resolved by Task 2. CLEANUP-03 grep oracles both 0; full 3-binding test surface green (napi 52/52 incl. silent_payments_e2e BIND-03, wasm 8/8 incl. BIND-03 wasm E2E, pyo3 2/2 incl. test_silent_payments.py); chia-sdk-driver chip-0057 driver suite 1088/1088 (incl. round_trip_matches_derive_one_time_puzzle_hash + 3 assert_concurrent_relation_emits_cycle tests). Pre-existing chia-sdk-daemon clippy warnings + no-features SendDestination missing_copy_implementations both verified pre-existing on main pre-Task-1 — same out-of-scope disposition as Plan 01-05.
+- [Phase 07-code-review-cleanup]: Plan 07-04: 7 stale VALIDATION.md files flipped to nyquist_compliant: true + wave_0_complete: true via manual Read+Edit (not frontmatter merge — that CLI has a data-loss bug on files with body --- dividers). Phase 5 untouched (already correct). Phase 7's own VALIDATION.md untouched (will flip when Phase 7 completes via the Part B auto-flip).
+- [Phase 07-code-review-cleanup]: Plan 07-04 Part B: $HOME/.claude/get-shit-done/bin/lib/phase.cjs::cmdPhaseComplete patched (lines 861-924) to auto-flip VALIDATION.md frontmatter when matching VERIFICATION.md reports status: passed. Patch is idempotent (needsFlip predicate short-circuits when both flags already true) and non-fatal (try/catch — phase complete still succeeds on VALIDATION.md errors). Patch lives outside the repo; not git-tracked.
+- [Phase 07-code-review-cleanup]: Plan 07-04 Rule 1 deviation: gsd-tools frontmatter.cjs::extractFrontmatter has a regex bug — matches --- blocks anywhere in file and picks the LAST one. Drops all non-flag frontmatter fields on VALIDATION.md (which has body --- dividers). Worked around by inline parsing in the Part B patch (single-file fix, avoids Rule 4 architectural change to the shared helper used by 20+ call sites). frontmatter merge CLI carries the same bug; correct fallback for future failures is manual Read+Edit, not the CLI.
 
 ### Roadmap Evolution
 
@@ -181,6 +185,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-20T16:20:45.239Z
-Stopped at: Completed Plan 07-03 (CLEANUP-03); ready for Plan 07-04
+Last session: 2026-05-20T16:32:53.617Z
+Stopped at: Completed Plan 07-04 (CLEANUP-06); ready for Plan 07-05
 Resume file: None
