@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 7 context gathered (5 decisions; CLEANUP-05 dropped after convention discovery)
-last_updated: "2026-05-20T13:36:23.634Z"
-last_activity: 2026-05-19
+status: executing
+stopped_at: Completed Plan 07-01 (CLEANUP-01); ready for Plan 07-02
+last_updated: "2026-05-20T15:37:35.718Z"
+last_activity: 2026-05-20
 progress:
   total_phases: 9
   completed_phases: 8
-  total_plans: 34
-  completed_plans: 41
+  total_plans: 39
+  completed_plans: 42
   percent: 88
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 06 — simulator-round-trip-bindings-e2e-example
+**Current focus:** Phase 07 — code-review-cleanup
 
 ## Current Position
 
-Phase: 06
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-19
+Phase: 07 (code-review-cleanup) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-20
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
@@ -91,6 +91,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 06 P03 | 23min | 3 tasks | 3 files |
 | Phase 06 P04 | 29min | 6 tasks | 9 files |
 | Phase 06 P05 | 12min | 3 tasks | 4 files |
+| Phase 07-code-review-cleanup P01 | 11min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 06]: Plan 06-03: scan_from_tweaks (free fn) preferred over SilentPaymentScan::scan (trait method) for cross-compile-unit calls. The trait method's tweak_data: &TweakData parameter would trigger the same lib vs lib-test type mismatch; free-fn form takes the unbundled triple explicitly.
 - [Phase 06]: Plan 06-04: BIND-03 closed end-to-end across napi/pyo3/wasm — one Simulator.tweakDataFromBlock binding facade method + one descriptor entry + chip-0057 wired onto chia-sdk-test dep transitively from chia-sdk-bindings. Vec<chia_bls::PublicKey> on TweakData.tweakPoints marshals correctly at runtime across all 3 FFI surfaces (first runtime test). [Rule 2 deviation] Added Spends::finish_silent_payments public chip-0057-gated method to chia-sdk-driver because sdk::Spends::prepare doesn't trigger the chip-0057 SP branch (only finish_with_keys does, and sp_finish_branch is private). Binding's prepare now calls finish_silent_payments before sdk::Spends::prepare. Rust finish_with_keys unchanged; new method purely additive forward-looking value. Three cross-language tests pass including follow-on spend of detected SP coin.
 - [Phase 06]: Plan 06-05: examples/silent_payment.rs (119 lines) lands as runnable EX-01 demo mirroring cat_spends.rs rhythm — mnemonic -> unlabeled + labeled(m=1) Mainnet addresses -> 2 SP sends in one tx -> farm -> tweak_data_from_simulator_block (via fully-qualified path; prelude doesn't re-export) -> scan via recipient.scan (trait method, no cyclic-dev-dep issue at example layer) -> detect both -> derive_synthetic + StandardLayer follow-on spends. 5 stage markers (Stage 1/5..Stage 5/5) trace the flow. bip39 + indexmap added as umbrella crate dev-deps. EX-01 [ ]->[x] in REQUIREMENTS.md closes 5th/5 Phase 6 requirement; v1 silent-payments work is requirement-complete.
+- [Phase 07-code-review-cleanup]: Plan 07-01: Apply strip-reread-repair (Pattern A/B/C) across 17 silent_payments files; 60 comment hits removed; e2e.rs deliberately untouched (Plan 07-05 deletes file). Surviving comments cite CHIP-0057 / BIP-352 or restate technical constraints in plain English.
+- [Phase 07-code-review-cleanup]: Plan 07-01: Rustdoc gets the heaviest rewrites because //! and /// render to docs.rs and IDE tooltips — bindings facade module-doc + driver silent_payments/mod.rs both fully rewritten to read as standalone API documentation.
 
 ### Roadmap Evolution
 
@@ -174,6 +177,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-20T13:36:23.626Z
-Stopped at: Phase 7 context gathered (5 decisions; CLEANUP-05 dropped after convention discovery)
-Resume file: .planning/phases/07-code-review-cleanup/07-CONTEXT.md
+Last session: 2026-05-20T15:37:35.711Z
+Stopped at: Completed Plan 07-01 (CLEANUP-01); ready for Plan 07-02
+Resume file: None
