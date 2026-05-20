@@ -28,26 +28,15 @@
 //! Hash routines in this module use `chia_sha2::Sha256` exclusively; the workspace
 //! grep ban forbids `use sha2::` imports under `silent_payments/`.
 
-mod aggregate;
-pub use aggregate::aggregate_sender_sks;
-
-mod input_hash;
-pub use input_hash::compute_input_hash;
-
-mod one_time;
-pub use one_time::derive_one_time_puzzle_hash;
-
 mod protocol;
 pub use protocol::{
-    compute_shared_secret_from_tweak, derive_onetime_pk, derive_onetime_sk, derive_output_tweak,
+    aggregate_sender_sks, compute_input_hash, compute_shared_secret_from_tweak,
+    derive_one_time_puzzle_hash, derive_onetime_pk, derive_onetime_sk, derive_output_tweak,
     puzzle_hash_for_pk,
 };
-
 mod scanner;
 pub use scanner::{K_MAX_DEFAULT, SilentPaymentScan, scan_from_tweaks};
-
 mod send_keys;
 pub(crate) use send_keys::*;
-
 mod types;
 pub use types::{DetectedSpCoin, OutputMeta, TweakData};
