@@ -2,8 +2,8 @@
 phase: 6
 slug: simulator-round-trip-bindings-e2e-example
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-18
 ---
 
