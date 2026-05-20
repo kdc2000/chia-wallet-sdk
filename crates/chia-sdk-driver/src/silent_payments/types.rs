@@ -70,7 +70,8 @@ mod tests {
 
     /// Defensive test: malformed 48-byte pubkey bytes are rejected at
     /// `PublicKey::from_bytes`, not inside the scanner. Documents the
-    /// deserialization boundary referenced by `03-RESEARCH.md` §11 test #8.
+    /// deserialization boundary so a future change to scanner-internal
+    /// pubkey parsing doesn't silently swallow malformed bytes.
     #[test]
     fn malformed_pubkey_caught_at_deserialization() {
         let result = PublicKey::from_bytes(&[0xff; 48]);

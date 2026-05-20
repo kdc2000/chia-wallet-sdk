@@ -148,10 +148,10 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
-    // BIP-39 test vector mnemonic — also the TV1 mnemonic per RESEARCH §8 line 520.
+    // BIP-39 test vector mnemonic — also the CHIP-0057 TV1 mnemonic.
     const TV1_MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
-    // TV1 pinned bytes (RESEARCH §8 lines 528-533).
+    // TV1 pinned bytes (CHIP-0057 test vector 1).
     const TV1_B_SCAN: [u8; 32] =
         hex!("132567e4dec19a4f50d9e9a549f16283dfb5aa4ad1ffdb6a505fcfcc56a690f6");
     const TV1_B_SPEND: [u8; 32] =
@@ -165,7 +165,7 @@ mod tests {
         "f6f31e22e0831ba5088c952625a75c74"
     );
 
-    // TV1 unlabeled mainnet address (RESEARCH §8 line 539).
+    // TV1 unlabeled mainnet address (CHIP-0057 test vector 1).
     const TV1_MAINNET_ADDR: &str = "spxch15p85qjlmlhynz9ek3x07xtfzwkasq7q52yxr2g6jjjr66atnvp6h8t0zp5cuw5g8kspnrllhntyfdzhutqqe9az04d3y7cfnd8me9mlnyg828j5z96urn2evjvy72f7m7me3ughqsvd62zyvj5nztf6uwsfn2u2q";
 
     fn tv1_keys_from_mnemonic() -> SilentPaymentKeys {

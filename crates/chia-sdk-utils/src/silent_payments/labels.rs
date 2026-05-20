@@ -111,7 +111,7 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
-    // TV1 pinned bytes (RESEARCH §8 lines 528-533).
+    // TV1 pinned bytes (CHIP-0057 test vector 1).
     const TV1_B_SCAN: [u8; 32] =
         hex!("132567e4dec19a4f50d9e9a549f16283dfb5aa4ad1ffdb6a505fcfcc56a690f6");
     const TV1_B_SPEND: [u8; 32] =
@@ -121,7 +121,7 @@ mod tests {
         "f6f31e22e0831ba5088c952625a75c74"
     );
 
-    // TV3 (m = 1) pinned bytes (RESEARCH §8 lines 552-555).
+    // TV3 (CHIP-0057 test vector 3 — m = 1) pinned bytes.
     const TV3_LABEL_SCALAR: [u8; 32] =
         hex!("48fa440acca87f501b9984b5d23327d0b7766a4baa913dfb3001d412c48ce465");
     const TV3_LABEL_PK: [u8; 48] = hex!(

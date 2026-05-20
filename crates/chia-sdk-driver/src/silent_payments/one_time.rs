@@ -17,14 +17,16 @@
 //!
 //! The `aggregated_sender_sk` parameter is the result of `aggregate_sender_sks`
 //! over the wallet's synthetic SKs for every XCH input of the transaction
-//! (`Spends::finish_with_silent_payment_keys` computes this at finish time —
-//! Plan 04-03). The `input_hash` is from `compute_input_hash` over the same
-//! coin-id set and the aggregated synthetic PK.
+//! (`Spends::finish_with_keys` computes this at finish time inside the
+//! chip-0057 SP branch). The `input_hash` is from `compute_input_hash` over the
+//! same coin-id set and the aggregated synthetic PK.
 //!
-//! See `04-RESEARCH.md` Section 11 Pitfall A: this function does NOT compute
-//! the aggregated PK internally — that's the caller's job. The caller must
+//! Synthetic-vs-raw key boundary: this function does NOT compute the
+//! aggregated PK internally — that's the caller's job. The caller must
 //! round-trip the aggregated SK back through
-//! `SecretKey::from_bytes(...).public_key()` before calling `compute_input_hash`.
+//! `SecretKey::from_bytes(...).public_key()` before calling `compute_input_hash`,
+//! otherwise the receiver and sender will disagree on the input hash and
+//! detection will silently fail.
 
 use chia_bls::PublicKey;
 use chia_protocol::Bytes32;
@@ -45,8 +47,8 @@ use crate::silent_payments::{derive_onetime_pk, derive_output_tweak, puzzle_hash
 /// `aggregated_sender_sk` is the sum-mod-r of the sender's synthetic SKs for
 /// every XCH input in this transaction (`aggregate_sender_sks`). `input_hash`
 /// is the per-spend-group input-hash (`compute_input_hash`). `k` is the
-/// per-recipient counter on `Spends` (Plan 04-04) — 0 for the first output to
-/// `scan_pk`, 1 for the second, etc.
+/// per-recipient counter on `Spends` — 0 for the first output to `scan_pk`,
+/// 1 for the second, etc.
 ///
 /// Privacy warning: this function emits a puzzle hash that, when used in a
 /// `CreateCoin` condition, lands an output at a fresh one-time address on chain.
