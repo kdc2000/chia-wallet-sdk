@@ -234,7 +234,10 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
   3. **POLISH-03** — `crates/chia-sdk-driver/src/action_system/send_destination.rs` contains the `Box<SilentPaymentAddress>` rationale in exactly one location (the variant-level rustdoc). The enum-level `/// Cannot derive Copy because SilentPaymentAddress is Clone-only.` paragraph (currently lines 21-23) is removed. Verified by `grep -c 'Cannot derive \`Copy\`' crates/chia-sdk-driver/src/action_system/send_destination.rs` returning 0 and `grep -c 'large_enum_variant' crates/chia-sdk-driver/src/action_system/send_destination.rs` returning exactly 1.
   4. **POLISH-04** — `crates/chia-sdk-driver/src/actions/send.rs` chip-0057 dispatch (currently lines 44-62) is restructured to a single exhaustive `match` where the `SilentPayment` arm calls `handle_silent_payment_send(...)` and `return`s directly from inside the arm. The `unreachable!("handled above")` arm is removed. Verified by `grep -c 'unreachable!' crates/chia-sdk-driver/src/actions/send.rs` returning 0 and `grep -c 'handle_silent_payment_send' crates/chia-sdk-driver/src/actions/send.rs` returning exactly 1.
 
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 8 to break down)
+- [ ] 08-01-PLAN.md — POLISH-01: Replace public-module `pub use foo::*;` wildcards in `silent_payments/mod.rs` with explicit named re-exports (Wave 1)
+- [ ] 08-02-PLAN.md — POLISH-03: De-duplicate `SendDestination` Boxing rationale — drop enum-level "Cannot derive Copy" paragraph; keep variant-level (Wave 1)
+- [ ] 08-03-PLAN.md — POLISH-04: Restructure `Action::send` chip-0057 dispatch — single exhaustive match; remove `unreachable!("handled above")` (Wave 1)
+- [ ] 08-04-PLAN.md — POLISH-02: Atomic fold of `aggregate.rs` + `input_hash.rs` + `one_time.rs` into `protocol.rs`; collapse mod.rs to final D-01 shape (Wave 2)
