@@ -225,10 +225,15 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 - [x] 07-05-PLAN.md — CLEANUP-04 delete e2e.rs; relocate 3 e2e tests to tests/silent_payments_e2e.rs integration target using canonical helper
 
 ### Phase 8: Second-pass v1 polish — tighten SP module surface and dispatch ergonomics
+**Goal**: Address 4 residual structural nits in the chip-0057 silent-payments code identified by a post-Phase-7 quality survey (2026-05-20). Distinct from the 5 issues Phase 7 already fixed; same shape (pure refactor, no behavior change, no API removals). Closes the polish gap before upstream merge.
+**Depends on**: Phase 7
+**Requirements**: POLISH-01, POLISH-02, POLISH-03, POLISH-04
+**Success Criteria** (what must be TRUE):
+  1. **POLISH-01** — `crates/chia-sdk-driver/src/silent_payments/mod.rs` contains zero `pub use foo::*;` wildcard re-exports (the existing `pub(crate) use send_keys::*;` is permitted — it's crate-private). All `pub use` lines name their re-exported symbols explicitly. The public surface (`scan_from_tweaks`, `SilentPaymentScan`, `K_MAX_DEFAULT`, `TweakData`, `OutputMeta`, `DetectedSpCoin`, `aggregate_sender_sks`, `compute_input_hash`, `derive_one_time_puzzle_hash`, and the 5 protocol primitives) and `src/prelude.rs:41-45` re-export list are byte-identical to pre-phase. Verified by `grep -cE '^pub use [a-z_]+::\*;' crates/chia-sdk-driver/src/silent_payments/mod.rs` returning 0 and `cargo build --release --workspace --all-features` clean.
+  2. **POLISH-02** — `crates/chia-sdk-driver/src/silent_payments/aggregate.rs`, `input_hash.rs`, and `one_time.rs` are deleted. Their contents (single `pub fn` + tests each) live inside `crates/chia-sdk-driver/src/silent_payments/protocol.rs`. `wc -l crates/chia-sdk-driver/src/silent_payments/protocol.rs` ≤ 700 (target ~640). All external callsites (`chia-sdk-bindings`, `chia-sdk-test`, `actions/silent_payment_send.rs`, `action_system/spends.rs`, `tests/silent_payments_e2e.rs`, `src/prelude.rs`) resolve identically — verified by full workspace build + the chip-0057 driver test suite running the same test count as pre-phase.
+  3. **POLISH-03** — `crates/chia-sdk-driver/src/action_system/send_destination.rs` contains the `Box<SilentPaymentAddress>` rationale in exactly one location (the variant-level rustdoc). The enum-level `/// Cannot derive Copy because SilentPaymentAddress is Clone-only.` paragraph (currently lines 21-23) is removed. Verified by `grep -c 'Cannot derive \`Copy\`' crates/chia-sdk-driver/src/action_system/send_destination.rs` returning 0 and `grep -c 'large_enum_variant' crates/chia-sdk-driver/src/action_system/send_destination.rs` returning exactly 1.
+  4. **POLISH-04** — `crates/chia-sdk-driver/src/actions/send.rs` chip-0057 dispatch (currently lines 44-62) is restructured to a single exhaustive `match` where the `SilentPayment` arm calls `handle_silent_payment_send(...)` and `return`s directly from inside the arm. The `unreachable!("handled above")` arm is removed. Verified by `grep -c 'unreachable!' crates/chia-sdk-driver/src/actions/send.rs` returning 0 and `grep -c 'handle_silent_payment_send' crates/chia-sdk-driver/src/actions/send.rs` returning exactly 1.
 
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 7
 **Plans:** 0 plans
 
 Plans:
