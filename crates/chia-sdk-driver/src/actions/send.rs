@@ -38,28 +38,19 @@ impl SpendAction for SendAction {
         spends: &mut Spends,
         _index: usize,
     ) -> Result<(), DriverError> {
-        // chip-0057 SP arm: delegate to the dedicated module so this dispatch
-        // stays generic. The helper fires SilentPaymentRequiresXch (Id check)
-        // BEFORE the memo-hint guard BEFORE parent reservation.
-        #[cfg(feature = "chip-0057")]
-        if let SendDestination::SilentPayment(addr) = &self.destination {
-            return crate::actions::silent_payment_send::handle_silent_payment_send(
-                ctx,
-                spends,
-                &self.id,
-                addr,
-                self.amount,
-                self.memos,
-            );
-        }
-
-        // PuzzleHash destination — exhaustive extraction. Under chip-0057 the
-        // SilentPayment(_) arm is statically handled above; the early return
-        // makes the post-handled match exhaustiveness arm unreachable!().
         let puzzle_hash = match &self.destination {
             SendDestination::PuzzleHash(ph) => *ph,
             #[cfg(feature = "chip-0057")]
-            SendDestination::SilentPayment(_) => unreachable!("handled above"),
+            SendDestination::SilentPayment(addr) => {
+                return crate::actions::silent_payment_send::handle_silent_payment_send(
+                    ctx,
+                    spends,
+                    &self.id,
+                    addr,
+                    self.amount,
+                    self.memos,
+                );
+            }
         };
 
         let output = Output::new(puzzle_hash, self.amount);
