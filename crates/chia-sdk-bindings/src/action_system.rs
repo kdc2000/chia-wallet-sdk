@@ -60,8 +60,8 @@ impl Spends {
     }
 
     /// Register the silent-payment synthetic key maps so the chip-0057 branch
-    /// of `Spends::prepare` (in `chia_sdk_driver::Spends::finish_with_keys`)
-    /// can derive each pending one-time puzzle hash.
+    /// that runs inside `chia_sdk_driver::Spends::prepare` can derive each
+    /// pending one-time puzzle hash.
     ///
     /// bindy does not natively marshal `IndexMap<K, V>` or `Vec<(K, V)>`
     /// across the FFI boundary, so the two registration maps are surfaced as
@@ -178,17 +178,9 @@ impl Spends {
         let mut spends = self.spends.lock().unwrap();
 
         let change_puzzle_hash = spends.change_puzzle_hash;
-        let mut spends = std::mem::replace(&mut *spends, sdk::Spends::new(change_puzzle_hash));
+        let spends = std::mem::replace(&mut *spends, sdk::Spends::new(change_puzzle_hash));
 
         let mut ctx = self.clvm.lock().unwrap();
-
-        // Run the chip-0057 silent-payment finish branch BEFORE prepare()
-        // (mirrors `sdk::Spends::finish_with_keys` ordering — the SP-emitted
-        // `CreateCoin` conditions must land on parents' `payment_assertions`
-        // before `emit_conditions` fires inside prepare).
-        //
-        // No-op when no `Action::send(SilentPayment, ...)` has been applied.
-        spends.finish_silent_payments(&mut ctx, Relation::None)?;
 
         let spends = spends.prepare(&mut ctx, &deltas.0, Relation::None)?;
 
