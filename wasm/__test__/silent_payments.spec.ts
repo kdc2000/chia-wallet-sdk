@@ -7,13 +7,15 @@
 // setPanicHook() call at module load per wasm-pack convention (matches
 // wasm/__test__/wasm.spec.ts:14 precedent).
 //
-// Per D-01: TweakData is constructed on the Rust side (via
-// Simulator.tweakDataFromBlock) and crossed the FFI boundary. First runtime
-// test of `Vec<chia_bls::PublicKey>` marshaling on TweakData.tweakPoints
-// across the wasm-bindgen FFI.
+// TweakData is constructed on the Rust side (via Simulator.tweakDataFromBlock)
+// and crossed the FFI boundary unchanged. This is the first runtime test of
+// `Vec<chia_bls::PublicKey>` marshaling on TweakData.tweakPoints across the
+// wasm-bindgen FFI.
 //
-// Per D-07: cross-language tests cover the unlabeled flow only; labeled
-// coverage stays Rust-only (Plan 06-03).
+// Cross-language coverage is scoped to the unlabeled flow; the labeled
+// detection branch is exercised by the Rust-side E2E tests in
+// crates/chia-sdk-driver/src/silent_payments/e2e.rs against the CHIP-0057
+// test vectors.
 
 import test from "ava";
 import {
