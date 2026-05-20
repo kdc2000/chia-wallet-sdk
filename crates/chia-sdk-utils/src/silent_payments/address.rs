@@ -125,12 +125,11 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
-    // ─── TV1 ───────────────────────────────────────────────────────────────
+    // ─── TV1 (CHIP-0057 test vector 1) ─────────────────────────────────────
     // BIP-39 test mnemonic: "abandon abandon abandon abandon abandon abandon
     //                       abandon abandon abandon abandon abandon about"
     // SCAN_PATH:  m/12381/8444/12/0
     // SPEND_PATH: m/12381/8444/13/0
-    // From RESEARCH §8 lines 528-545.
 
     const TV1_SCAN_PK_BYTES: [u8; 48] = hex!(
         "a04f404bfbfdc9311736899fe32d2275bb007814510c3523529487ad75736075"
@@ -144,9 +143,8 @@ mod tests {
     const TV1_MAINNET_ADDR: &str = "spxch15p85qjlmlhynz9ek3x07xtfzwkasq7q52yxr2g6jjjr66atnvp6h8t0zp5cuw5g8kspnrllhntyfdzhutqqe9az04d3y7cfnd8me9mlnyg828j5z96urn2evjvy72f7m7me3ughqsvd62zyvj5nztf6uwsfn2u2q";
     const TV1_TESTNET_ADDR: &str = "tspxch15p85qjlmlhynz9ek3x07xtfzwkasq7q52yxr2g6jjjr66atnvp6h8t0zp5cuw5g8kspnrllhntyfdzhutqqe9az04d3y7cfnd8me9mlnyg828j5z96urn2evjvy72f7m7me3ughqsvd62zyvj5nztf6uwsnlcstc";
 
-    // ─── TV3 (labeled, m = 1) ──────────────────────────────────────────────
+    // ─── TV3 (CHIP-0057 test vector 3 — labeled, m = 1) ────────────────────
     // B_m = B_spend + label_pk; recipient's scan_pk is unchanged from TV1.
-    // From RESEARCH §8 lines 547-565.
 
     const TV3_B_M_BYTES: [u8; 48] = hex!(
         "965250fb8503cff4c244f360ab84075bfe2da01091745d0e8ce36024ab12e962"

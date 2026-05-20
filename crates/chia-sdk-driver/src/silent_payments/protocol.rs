@@ -106,7 +106,7 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
-    // ─── TV1 pinned bytes (RESEARCH §10a) ──────────────────────────────────
+    // ─── TV1 pinned bytes (CHIP-0057 test vector 1) ────────────────────────
 
     const TV1_SCAN_SK: [u8; 32] =
         hex!("132567e4dec19a4f50d9e9a549f16283dfb5aa4ad1ffdb6a505fcfcc56a690f6");

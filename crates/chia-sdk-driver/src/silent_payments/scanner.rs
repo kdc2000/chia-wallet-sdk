@@ -9,13 +9,16 @@
 //!
 //! - **CHIP §459 identity-element skip:** if `tweak_point.is_inf()`, skip silently.
 //!   Without this, an adversarial indexer can produce a predictable shared secret
-//!   and force false positives. See `03-RESEARCH.md` §9.
+//!   and force false positives.
 //! - **CHIP §416 `K_max` cap:** bounded `for k in 0..k_max` (not `loop { ... }`)
 //!   prevents DOS by forged matches. Default `K_MAX_DEFAULT = 2400` per CHIP §446
 //!   (the Chia mempool maximum number of silent-payment outputs per spend bundle).
 //!
-//! The labeled-detection branch is added in Plan 03-04 (CHIP §RECV-04 labeled
-//! k-termination rule).
+//! The labeled-detection branch (CHIP §RECV-04 labeled k-termination rule) is
+//! interleaved with the unlabeled branch below: at each `k` the scanner first
+//! checks the unlabeled candidate, then iterates the registered labels; the `k`
+//! loop terminates only when BOTH the unlabeled candidate AND every labeled
+//! candidate miss.
 
 use std::collections::HashSet;
 
@@ -45,8 +48,8 @@ pub const K_MAX_DEFAULT: usize = 2400;
 /// For each `tweak_point` in `data.tweak_points`, performs one ECDH operation
 /// (`scan_sk * tweak_point`, hashed to a 32-byte shared secret) and iterates
 /// `k = 0, 1, 2, ...` up to `k_max`, deriving the candidate one-time puzzle
-/// hash and checking against `data.outputs`. Labeled detection (per
-/// `labels`) is interleaved per CHIP §RECV-04 in Plan 03-04.
+/// hash and checking against `data.outputs`. Labeled detection (per `labels`)
+/// is interleaved per CHIP §RECV-04.
 ///
 /// **CHIP §459 guard:** identity-element tweak points are skipped silently —
 /// they produce a predictable shared secret that would otherwise enable
@@ -58,16 +61,15 @@ pub const K_MAX_DEFAULT: usize = 2400;
 ///
 /// **Termination:** the `k` loop stops at the first miss (`if !found { break; }`)
 /// — except labeled detections continue if either an unlabeled OR any labeled
-/// candidate matches at the current `k` (the labeled rule lands in Plan 03-04).
+/// candidate matches at the current `k`.
 //
 // `clippy::similar_names` on the `spend_sk` / `spend_pk` parameter pair is
-// genuinely unavoidable here: Plan 03-03 hard-locks the function signature
-// (`pub fn scan_from_tweaks(scan_sk: &SecretKey, spend_sk: &SecretKey, spend_pk:
-// &PublicKey, ...)`) and Plan 03-04 references both names directly in the
-// labeled-detection branch it appends. The single-byte difference (`sk` vs `pk`)
-// is below clippy's similarity threshold but rebinding the params would either
-// break the locked signature or break Plan 03-04's structural expectations.
-// Allowed at function scope only, not at module scope.
+// genuinely unavoidable here: the function signature's `&PublicKey, &SecretKey`
+// parameter pair triggers clippy::similar_names, and the labeled-detection
+// branch below references both names directly — local rebinding would either
+// break the signature or break the labeled-branch's structural expectations.
+// The single-byte difference (`sk` vs `pk`) is below clippy's similarity
+// threshold. Allowed at function scope only, not at module scope.
 #[allow(clippy::similar_names)]
 #[must_use]
 pub fn scan_from_tweaks(
@@ -170,8 +172,6 @@ pub fn scan_from_tweaks(
 /// exposes the bundled flow as a driver-side trait. Wallet authors who
 /// prefer the raw-args flow — for example, hardware-split signers where
 /// `spend_sk` lives on a device — call [`scan_from_tweaks`] directly.
-///
-/// See `03-RESEARCH.md` Open Question 3 for the design discussion.
 pub trait SilentPaymentScan {
     /// Scan `tweak_data` for silent-payment outputs addressed to this key
     /// bundle. Equivalent to calling [`scan_from_tweaks`] with this bundle's
@@ -208,7 +208,7 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
-    // ─── TV1 pinned bytes (RESEARCH §10a) ──────────────────────────────────
+    // ─── TV1 pinned bytes (CHIP-0057 test vector 1) ────────────────────────
 
     const TV1_SCAN_SK: [u8; 32] =
         hex!("132567e4dec19a4f50d9e9a549f16283dfb5aa4ad1ffdb6a505fcfcc56a690f6");
@@ -231,7 +231,7 @@ mod tests {
     const TV1_ONETIME_SK: [u8; 32] =
         hex!("3c399c61ae130724903b3b650e936ff042b7646764289a33519e17100a89db37");
 
-    // ─── TV4 pinned bytes (RESEARCH §10d) ──────────────────────────────────
+    // ─── TV4 pinned bytes (CHIP-0057 test vector 4 — multi-input) ──────────
 
     const TV4_A_SUM: [u8; 48] = hex!(
         "a223ab27f801044cd98c8314014b8073347b0e5aae43c69b78b5ca2a562ee9f7"
@@ -342,7 +342,7 @@ mod tests {
         );
     }
 
-    // ─── TV3 pinned bytes (RESEARCH §10c) ──────────────────────────────────
+    // ─── TV3 pinned bytes (CHIP-0057 test vector 3 — labeled, m = 1) ───────
 
     const TV3_INPUT_HASH: [u8; 32] =
         hex!("58a1875602949aa6bfaf9cb4837957e7175ffb0b14422dbc8d371799f98e66f5");
@@ -440,13 +440,13 @@ mod tests {
         );
     }
 
-    /// CRYPTO-03 success criterion 2 + bespoke `k = 1` vector (RESEARCH §10e).
+    /// CRYPTO-03 success criterion 2 + bespoke `k = 1` vector.
     ///
     /// All CHIP TVs hit `k = 0`, so a naive `ser32(k) = k.to_le_bytes()`
     /// implementation would pass them all. This test pins a `k = 1` detection
     /// so a little-endian regression is caught.
     ///
-    /// Construction (in-test derivation path per RESEARCH § Open Question 2):
+    /// Construction (in-test derivation path):
     /// compute the `k = 1` expected `puzzle_hash` from TV1's `shared_secret`
     /// using the SDK's own protocol primitives, then build a `TweakData`
     /// carrying that `puzzle_hash` plus TV1's `k = 0` `puzzle_hash` (to keep
@@ -692,7 +692,9 @@ mod tests {
     /// Verify the bundled `SilentPaymentScan::scan` method on
     /// `SilentPaymentKeys` produces byte-for-byte identical results to the
     /// free function `scan_from_tweaks`. Demonstrates the two API surfaces
-    /// coexist (RESEARCH Open Question 3).
+    /// coexist — the trait method exists for callers who hold a bundled
+    /// `SilentPaymentKeys`, while the free function is the entry point for
+    /// hardware-split signers where `spend_sk` lives on a device.
     #[test]
     fn silent_payment_keys_scan_method_matches_free_fn_tv1() {
         use chia_sdk_utils::silent_payments::SilentPaymentKeys;

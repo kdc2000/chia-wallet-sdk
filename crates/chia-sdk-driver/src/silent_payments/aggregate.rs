@@ -5,21 +5,23 @@
 //! a scalar — *not* a `SecretKey` — because the next step in the send-side flow
 //! (`derive_one_time_puzzle_hash`) needs the scalar form (for ECDH) AND the
 //! aggregated public key (for `compute_input_hash`). Recovering the PK is a
-//! `chia_bls::SecretKey::from_bytes(scalar.as_bytes()).public_key()` round-trip
-//! — see `04-RESEARCH.md` §11 Pitfall A.
+//! `chia_bls::SecretKey::from_bytes(scalar.as_bytes()).public_key()` round-trip;
+//! callers must not skip this step and reuse a raw-key aggregate where a
+//! synthetic-key aggregate is required.
 //!
-//! See `Spends::finish_with_silent_payment_keys` (Plan 04-03) for the
-//! Spends-level multi-party hard-error path that this free function does NOT
-//! perform. This function is a pure aggregator over the SKs the caller hands
-//! it; if the caller passes a partial-control SK slice, the result is silently
-//! wrong on chain. The Spends-level check is the prevention mechanism.
+//! `Spends::finish_with_keys` performs the Spends-level multi-party hard-error
+//! check (every wallet-controlled input must have a registered synthetic SK).
+//! This free function does NOT perform that check — it is a pure aggregator
+//! over the SKs the caller hands it. If the caller passes a partial-control SK
+//! slice, the result is silently wrong on chain. The Spends-level check is the
+//! prevention mechanism.
 //!
 //! Synthetic-vs-raw key boundary: the `sks` slice MUST contain synthetic SKs
 //! (the ones whose PKs are curried into `StandardArgs::synthetic_key`). The SDK
-//! enforces this structurally via the `Spends::finish_with_silent_payment_keys`
-//! `synthetic_sks: &IndexMap<Bytes32, SecretKey>` parameter (Plan 04-03) — that
-//! map's contract is "every value is a synthetic SK for its keyed
-//! `p2_puzzle_hash`" — and pass that slice's values into this function.
+//! enforces this structurally via the `Spends::finish_with_keys` `secret_keys:
+//! &IndexMap<Bytes32, SecretKey>` parameter — that map's contract is "every
+//! value is a synthetic SK for its keyed `p2_puzzle_hash`" — and pass that
+//! slice's values into this function.
 
 use chia_bls::SecretKey;
 use chia_sdk_types::silent_payments::ScalarField;
@@ -33,9 +35,9 @@ use chia_sdk_types::silent_payments::ScalarField;
 /// Each input SK is fed through [`ScalarField::from_bytes_raw`] (NOT
 /// `from_bytes_unsigned`) because `chia_bls::SecretKey` is already constrained
 /// to `< r` by construction. The addition then reduces mod r. There is a
-/// `1/r ≈ 2^-255` chance the sum is zero (cosmic-ray-level probability — see
-/// `04-RESEARCH.md` §11 Pitfall H); callers that downstream call
-/// `SecretKey::from_bytes(self.as_bytes())` must accept this vanishing risk.
+/// `1/r ≈ 2^-255` chance the sum is zero (cosmic-ray-level probability);
+/// callers that downstream call `SecretKey::from_bytes(self.as_bytes())` must
+/// accept this vanishing risk.
 ///
 /// Privacy warning: this function takes secret-key material. The resulting
 /// [`ScalarField`] is sensitive — wallets must treat it like an SK (zeroize on

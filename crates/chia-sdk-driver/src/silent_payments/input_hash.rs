@@ -7,13 +7,17 @@
 //! public key.
 //!
 //! Sender and receiver must both compute the same `input_hash` over the same
-//! coin-id-set and the same aggregated PK; the receiver assembles the set via
-//! CHIP-0057 Pass 2b announcement grouping (opcodes 60/61 — Plan 04-04).
+//! coin-id-set and the same aggregated PK. The receiver reconstructs the
+//! sender's input set indirectly: the SDK binds every wallet-controlled input
+//! into a single atomic spend bundle via [`crate::Relation::AssertConcurrent`]
+//! (opcode 64), and the indexer groups coins by that cycle when computing the
+//! per-group `tweak_point = input_hash * A_sum`.
 //!
-//! See `04-RESEARCH.md` Section 5 for the announcement-binding rationale and
-//! Pitfall A for the synthetic-vs-raw PK round-trip caveat (the caller derives
-//! `A_sum` from the aggregated synthetic SK via
-//! `SecretKey::from_bytes(aggregated_sk.as_bytes()).public_key()`).
+//! Synthetic-vs-raw PK round-trip caveat: the caller must derive `A_sum` from
+//! the aggregated synthetic SK via
+//! `SecretKey::from_bytes(aggregated_sk.as_bytes()).public_key()` — reusing a
+//! raw-key aggregate here will silently produce on-chain coins that no
+//! scanner can detect.
 //!
 //! Lexicographic minimum: byte-string lex order over the 32-byte coin id
 //! representations. CHIP-0057 Pass 2a and
@@ -32,7 +36,7 @@ use chia_sdk_types::silent_payments::{CHIA_SP_INPUTS, ScalarField, tagged_hash};
 /// lexicographically-smallest 32-byte id is selected internally.
 /// `aggregated_sender_pk` is the 48-byte compressed serialization of
 /// `Sigma synthetic_sk_i * G`, computed at finish time by
-/// `Spends::finish_with_silent_payment_keys` (Plan 04-03).
+/// [`crate::Spends::finish_with_keys`] (chip-0057 SP branch).
 ///
 /// Returns a [`ScalarField`] reduced unsigned mod-r. The scalar is used both
 /// (a) by the sender to derive each output's per-output tweak (via
@@ -42,7 +46,7 @@ use chia_sdk_types::silent_payments::{CHIA_SP_INPUTS, ScalarField, tagged_hash};
 /// # Panics
 /// Panics if `coin_ids` is empty. The action-system caller guarantees a
 /// non-empty XCH-input set before calling this function — see
-/// `DriverError::SilentPaymentNoXchInputs` (Plan 04-03).
+/// `DriverError::SilentPaymentNoXchInputs`.
 ///
 /// Privacy warning: the `input_hash` scalar is a deterministic public function of
 /// the spent coin ids + aggregated sender PK; both are visible on chain after

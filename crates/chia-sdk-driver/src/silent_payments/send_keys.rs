@@ -111,10 +111,9 @@ mod tests {
     ///
     /// The SK-coverage check is NOT triggered: both Alice's and Bob's SKs are
     /// registered, so under `Relation::AssertConcurrent` the call would
-    /// succeed. The gate fires first in `sp_finish_branch` per Pitfall 7.
-    ///
-    /// Reshaped in Plan 04.2-02 to use the new API (D-06 preserve invariant —
-    /// behavior identical, fires from the new `sp_finish_branch`).
+    /// succeed. The input-binding gate is sequenced ahead of the SK-coverage
+    /// check inside `sp_finish_branch` so a misconfigured multi-input send
+    /// fails fast rather than producing detectable-but-unbound output coins.
     #[test]
     fn multi_input_requires_assert_concurrent_relation() -> Result<()> {
         let mut sim = Simulator::new();
