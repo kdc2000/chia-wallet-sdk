@@ -222,4 +222,4 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 - [x] 07-02-PLAN.md — CLEANUP-02 extract chip-0057 SP arm from actions/send.rs into actions/silent_payment_send.rs flat sibling
 - [x] 07-03-PLAN.md — CLEANUP-03 push sp_finish_branch into Spends::prepare; delete Spends::finish_silent_payments and the binding-side caller
 - [x] 07-04-PLAN.md — CLEANUP-06 flip 7 stale VALIDATION.md nyquist flags + patch gsd-tools phase complete to auto-flip going forward
-- [ ] 07-05-PLAN.md — CLEANUP-04 delete e2e.rs; relocate 3 e2e tests to tests/silent_payments_e2e.rs integration target using canonical helper
+- [x] 07-05-PLAN.md — CLEANUP-04 delete e2e.rs; relocate 3 e2e tests to tests/silent_payments_e2e.rs integration target using canonical helper

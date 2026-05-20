@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed Plan 07-04 (CLEANUP-06); ready for Plan 07-05
-last_updated: "2026-05-20T16:33:06.696Z"
+status: verifying
+stopped_at: Completed 07-05-PLAN.md (CLEANUP-04); Phase 7 ready for verification
+last_updated: "2026-05-20T16:53:37.518Z"
 last_activity: 2026-05-20
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 39
-  completed_plans: 45
+  completed_plans: 46
   percent: 88
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 Phase: 07 (code-review-cleanup) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-20
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
@@ -95,6 +95,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 07-code-review-cleanup P02 | 8min | 2 tasks tasks | 3 files files |
 | Phase 07 P03 | 21min | 2 tasks | 2 files |
 | Phase 07-code-review-cleanup P04 | 8min | 2 tasks tasks | 8 files files |
+| Phase 07-code-review-cleanup P05 | 17min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 07-code-review-cleanup]: Plan 07-04: 7 stale VALIDATION.md files flipped to nyquist_compliant: true + wave_0_complete: true via manual Read+Edit (not frontmatter merge — that CLI has a data-loss bug on files with body --- dividers). Phase 5 untouched (already correct). Phase 7's own VALIDATION.md untouched (will flip when Phase 7 completes via the Part B auto-flip).
 - [Phase 07-code-review-cleanup]: Plan 07-04 Part B: $HOME/.claude/get-shit-done/bin/lib/phase.cjs::cmdPhaseComplete patched (lines 861-924) to auto-flip VALIDATION.md frontmatter when matching VERIFICATION.md reports status: passed. Patch is idempotent (needsFlip predicate short-circuits when both flags already true) and non-fatal (try/catch — phase complete still succeeds on VALIDATION.md errors). Patch lives outside the repo; not git-tracked.
 - [Phase 07-code-review-cleanup]: Plan 07-04 Rule 1 deviation: gsd-tools frontmatter.cjs::extractFrontmatter has a regex bug — matches --- blocks anywhere in file and picks the LAST one. Drops all non-flag frontmatter fields on VALIDATION.md (which has body --- dividers). Worked around by inline parsing in the Part B patch (single-file fix, avoids Rule 4 architectural change to the shared helper used by 20+ call sites). frontmatter merge CLI carries the same bug; correct fallback for future failures is manual Read+Edit, not the CLI.
+- [Phase 07-code-review-cleanup]: Plan 07-05: Inlined build_tweak_data in src/silent_payments/e2e.rs deleted (358 lines + entire file); 3 e2e tests relocated to crates/chia-sdk-driver/tests/silent_payments_e2e.rs calling canonical chia_sdk_test::silent_payments::tweak_data_from_simulator_block directly. chip-0057 feature cascade extended with chia-sdk-test/chip-0057 to compile the integration target. Cargo's integration-test build model resolves the cyclic-dev-dep type confusion that forced the Phase 6 inlining (chia-sdk-driver -> chia-sdk-test -> chia-sdk-driver -> two distinct TweakData types in lib-test compile unit).
+- [Phase 07-code-review-cleanup]: Plan 07-05: CLEANUP-01 acceptance grep fully closes — Plan 01 deliberately left e2e.rs untouched per RESEARCH Open Q2 sequencing recommendation; file deletion in this plan resolves the residual 4 hits. Full CLEANUP-01 grep across all 17 target files now returns 0 with no exclusion clause.
+- [Phase 07-code-review-cleanup]: Plan 07-05: Pre-existing missing_copy_implementations warning on SendDestination (no-features build) and match_wildcard_for_single_variants in chia-sdk-daemon both verified pre-existing on main via git stash; same out-of-scope disposition as Phase 6 / Phase 1 deferred-items.md; CI-style cargo clippy --workspace --all-features --all-targets (without -D warnings) exits 0, scoped clippy under chip-0057 with -D warnings exits 0.
 
 ### Roadmap Evolution
 
@@ -185,6 +189,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-20T16:32:53.617Z
-Stopped at: Completed Plan 07-04 (CLEANUP-06); ready for Plan 07-05
+Last session: 2026-05-20T16:53:37.510Z
+Stopped at: Completed 07-05-PLAN.md (CLEANUP-04); Phase 7 ready for verification
 Resume file: None
