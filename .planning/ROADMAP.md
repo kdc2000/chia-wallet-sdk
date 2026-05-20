@@ -174,7 +174,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4.2. Unify SP send into Action::send via SendDestination enum (INSERTED) | 3/3 | Complete    | 2026-05-17 |
 | 5. Bindings (Rust facade + JSON descriptor) | 4/4   | Complete    | 2026-05-18 |
 | 6. Simulator round-trip + bindings E2E + example | 5/5 | Complete    | 2026-05-19 |
-| 7. Code review cleanup | 0/TBD | Not started | - |
+| 7. Code review cleanup | 0/5 | Not started | - |
 
 ## Coverage
 
@@ -217,4 +217,9 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
   3. **CLEANUP-03** — Tighten `Spends::finish_silent_payments` bindings leak. The public `pub fn finish_silent_payments` added on `chia_sdk_driver::Spends` in Phase 6 Plan 06-04 is removed or replaced. Either: (a) binding-side `Spends::prepare` calls `Spends::finish_with_keys` directly (with empty secret keys when no SP is registered), OR (b) the SP finish branch becomes an internal trait method invoked by `prepare` itself, OR (c) the method is renamed `finish_silent_payments_for_bindings` and marked `#[doc(hidden)]` with the rationale in rustdoc. Acceptance: `grep -c 'pub fn finish_silent_payments\b' crates/chia-sdk-driver/src/action_system/spends.rs` returns 0, OR returns 1 with `#[doc(hidden)]` present immediately above it. Cross-language E2E tests still pass.
   4. **CLEANUP-04** — Drop `e2e.rs` inlined-helper workaround. The inlined `build_tweak_data()` helper in `crates/chia-sdk-driver/src/silent_payments/e2e.rs` is removed; tests call the canonical `chia_sdk_test::silent_payments::tweak_data_from_simulator_block` instead. If Cargo's cyclic-dev-dep type confusion still blocks the direct call, the tests relocate to a top-level integration test target (`crates/chia-sdk-driver/tests/silent_payments_e2e.rs`) where the cycle resolves. Acceptance: `grep -c 'fn build_tweak_data' crates/chia-sdk-driver/src/silent_payments/e2e.rs` returns 0 (file may also be relocated); all 3 e2e tests still pass.
   5. **CLEANUP-06** — Nyquist VALIDATION.md frontmatter flip + process fix. All 8 prior phases' `*-VALIDATION.md` frontmatter has `nyquist_compliant: true` and `wave_0_complete: true` (currently only Phase 5 does — 7 of 8 carry template drift). The `phase complete` CLI command (or its caller in `execute-phase.md`) is patched so future phases auto-flip these flags when VERIFICATION.md is `status: passed`. Verified by inspecting the modified CLI code or by a regression test.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 07-01-PLAN.md — CLEANUP-01 strip planning-artifact references from source comments (17 files; e2e.rs handled by Plan 05)
+- [ ] 07-02-PLAN.md — CLEANUP-02 extract chip-0057 SP arm from actions/send.rs into actions/silent_payment_send.rs flat sibling
+- [ ] 07-03-PLAN.md — CLEANUP-03 push sp_finish_branch into Spends::prepare; delete Spends::finish_silent_payments and the binding-side caller
+- [ ] 07-04-PLAN.md — CLEANUP-06 flip 7 stale VALIDATION.md nyquist flags + patch gsd-tools phase complete to auto-flip going forward
+- [ ] 07-05-PLAN.md — CLEANUP-04 delete e2e.rs; relocate 3 e2e tests to tests/silent_payments_e2e.rs integration target using canonical helper
