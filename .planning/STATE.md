@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-05-20T20:10:24.197Z"
+status: verifying
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-05-20T20:29:42.917Z"
 last_activity: 2026-05-20
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 43
-  completed_plans: 49
+  completed_plans: 50
   percent: 88
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 Phase: 08 (second-pass-v1-polish-tighten-sp-module-surface-and-dispatch-ergonomics) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-20
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
@@ -99,6 +99,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 08 P01 | 5min | 2 tasks | 1 files |
 | Phase 08 P02 | 4min | 1 tasks | 1 files |
 | Phase 08 P03 | 7min | 2 tasks | 1 files |
+| Phase 08 P04 | 14min | 2 tasks tasks | 5 files files |
 
 ## Accumulated Context
 
@@ -176,6 +177,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 08]: Plan 08-02: removed 2 lines (not plan-anticipated 3) from send_destination.rs to preserve the rustdoc paragraph separator between the ECDH purpose statement and the impl From<Bytes32> explanation. Collapsing both bracketing /// blanks would merge two conceptual paragraphs in the rendered output; the 2-line shape honors the explicit three-coherent-paragraphs success criterion.
 - [Phase 08]: Plan 08-02: POLISH-03 closed via surgical 2-line delete of enum-level Cannot derive Copy paragraph in send_destination.rs. Variant-level Boxing rationale + clippy::large_enum_variant reference preserved byte-identical as canonical location. Plan 04.2-02 reference survives (out of POLISH-03 scope per Pitfall 3; CLEANUP-01s Plan 0[1-6]- regex does not match Plan 04.2-).
 - [Phase 08]: Plan 08-03: POLISH-04 closed via single exhaustive match in SendAction::spend. The chip-0057 SP arm returns from inside the match (replacing if-let early-return + post-match unreachable!() arm). Both unreachable! hits (line 58 comment + line 62 executable arm — Risk R4 / Open Q1 from 08-RESEARCH.md) deleted in one atomic edit. Behavior byte-identical. Net: 23-line pre-edit block -> 14-line post-edit block (rustfmt expands the 6-arg call one-per-line per workspace >100-col canonical, same precedent as Plan 08-01). All 5 dispatch-touching tests + 9 named send tests + scoped clippy -D warnings + workspace --all-features build all green.
+- [Phase 08]: Plan 08-04: POLISH-02 atomic fold of 3 single-pub-fn silent_payments modules (aggregate.rs, input_hash.rs, one_time.rs) into protocol.rs landed in single commit cab84ad2 (Risk R8 honored). Pre-fold: 4 files / 640 lines / 8 tests. Post-fold: 1 file / 500 lines / 8 tests; 22% line reduction from dedup of imports, module-level rustdoc, 3 byte-identical constants, and test fixtures. Flat #[cfg(test)] mod tests {} block (variant a per RESEARCH Open Q3). TV1_AGGREGATED_SENDER_SK + TV4_SENDER_SK_0 byte-identical (0x5002eaf0...) but BOTH kept by name per Pitfall 1 — semantic meaning differs. mod.rs collapsed from Plan 01 intermediate 6-mod shape to final D-01 4-mod shape (single pub use protocol::{8 names} block). All 6 external callsites resolve (full workspace --all-features build clean). 3 inline deviations all Rule-1: clippy doc_lazy_continuation on test rustdoc (replaced + with , in fluent fn-chain reference), rustfmt re-wrap of pub use blocks (workspace-canonical form per Plan 08-01 precedent), doc edits removing dated planning references to deleted Phase-4.1/4.2 artifacts (SilentPaymentSend::memos, opcode-60/61). Zero new #[allow] attributes. driver chip-0057 test count: 1085 unit + 3 e2e (identical pre- and post-fold). protocol.rs 500 lines (well under POLISH-02 700-line ceiling, even lower than ~640 target).
 
 ### Roadmap Evolution
 
@@ -199,6 +201,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-20T20:10:24.189Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-05-20T20:29:42.909Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None
