@@ -120,45 +120,6 @@ impl Spends<Unfinished> {
         self
     }
 
-    /// Run the CHIP-0057 silent-payment finish branch out-of-band.
-    ///
-    /// Used by callers that need [`Spends::prepare`] semantics (returning a
-    /// [`Spends<Finished>`] rather than the [`Outputs`] produced by
-    /// [`Spends::finish_with_keys`]) but still want the chip-0057 SP branch to
-    /// run — notably the bindings layer (`chia-sdk-bindings::Spends::prepare`),
-    /// which composes `with_silent_payment_keys` + `apply` + `prepare` into a
-    /// pipeline that does not call `finish_with_keys`.
-    ///
-    /// This method is a no-op when no `Action::send` with a
-    /// `SendDestination::SilentPayment` destination has been applied
-    /// (`silent_payments_pending` is empty); otherwise it runs the same
-    /// `sp_finish_branch` that [`Spends::finish_with_keys`] runs internally:
-    /// aggregate sender SKs → derive one-time puzzle hashes → push
-    /// `CreateCoin` conditions onto the parent's `payment_assertions` →
-    /// emit the recipient coins into `outputs.xch`.
-    ///
-    /// Errors propagate from `sp_finish_branch`: `SilentPaymentRequiresInputBinding`,
-    /// `SilentPaymentKeysNotRegistered`, `SilentPaymentNoXchInputs`,
-    /// `SilentPaymentMultiPartyUnsupported`, etc.
-    ///
-    /// After this returns Ok, callers should follow with
-    /// [`Spends::prepare`] for the rest of the spend-completion flow.
-    ///
-    /// Privacy warning: same as [`Spends::finish_with_keys`] — consumes the
-    /// registered SK map and emits the recipient one-time puzzle hashes
-    /// derived from it.
-    #[cfg(feature = "chip-0057")]
-    pub fn finish_silent_payments(
-        &mut self,
-        ctx: &mut SpendContext,
-        relation: Relation,
-    ) -> Result<(), DriverError> {
-        if !self.silent_payments_pending.is_empty() {
-            sp_finish_branch(ctx, self, relation)?;
-        }
-        Ok(())
-    }
-
     pub fn apply(
         &mut self,
         ctx: &mut SpendContext,
@@ -519,6 +480,16 @@ impl Spends<Unfinished> {
         deltas: &Deltas,
         relation: Relation,
     ) -> Result<Spends<Finished>, DriverError> {
+        // chip-0057 silent-payment derivation branch — runs FIRST so the
+        // emitted `CreateCoin` conditions land on the parents'
+        // `payment_assertions` before `emit_conditions` fires below. No-op
+        // when no `Action::send` with a `SendDestination::SilentPayment`
+        // destination has been applied.
+        #[cfg(feature = "chip-0057")]
+        if !self.silent_payments_pending.is_empty() {
+            sp_finish_branch(ctx, &mut self, relation)?;
+        }
+
         self.create_change(ctx, deltas)?;
         self.emit_conditions(ctx)?;
         self.emit_relation(relation);
@@ -550,9 +521,10 @@ impl Spends<Unfinished> {
     ///
     /// Privacy warning: under chip-0057, when `silent_payments_pending` is non-empty
     /// (i.e. at least one `Action::send` with a `SendDestination::SilentPayment`
-    /// destination has been applied), a chip-0057 SP branch runs BEFORE
-    /// `prepare()` so the derived `CreateCoin` conditions feed into the parents'
-    /// `payment_assertions` before `emit_conditions`. The branch consumes
+    /// destination has been applied), the chip-0057 SP branch runs inside
+    /// [`Spends::prepare`] (called below) so the derived `CreateCoin`
+    /// conditions feed into the parents' `payment_assertions` before
+    /// `emit_conditions`. The branch consumes
     /// `Spends::silent_payment_synthetic_sks` (registered via
     /// [`Spends::with_silent_payment_keys`]) and emits the recipient's one-time
     /// puzzle hash on the recorded parent. Memos travel in `CreateCoin.memos`
@@ -561,20 +533,12 @@ impl Spends<Unfinished> {
     /// (`DriverError::SilentPaymentMemoHintForbidden`) — no further memo guard
     /// fires here.
     pub fn finish_with_keys(
-        #[cfg_attr(not(feature = "chip-0057"), allow(unused_mut))] mut self,
+        self,
         ctx: &mut SpendContext,
         deltas: &Deltas,
         relation: Relation,
         synthetic_keys: &IndexMap<Bytes32, PublicKey>,
     ) -> Result<Outputs, DriverError> {
-        // chip-0057 SP derivation branch — runs BEFORE prepare() so CreateCoin
-        // emissions feed into the parents' payment_assertions before
-        // emit_conditions.
-        #[cfg(feature = "chip-0057")]
-        if !self.silent_payments_pending.is_empty() {
-            sp_finish_branch(ctx, &mut self, relation)?;
-        }
-
         let spends = self.prepare(ctx, deltas, relation)?;
         let mut coin_spends = HashMap::new();
 
