@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 8 context gathered
-last_updated: "2026-05-20T19:07:31.560Z"
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-05-20T19:53:05.995Z"
 last_activity: 2026-05-20
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 39
-  completed_plans: 46
+  total_plans: 43
+  completed_plans: 47
   percent: 88
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 07 — code-review-cleanup
+**Current focus:** Phase 08 — second-pass-v1-polish-tighten-sp-module-surface-and-dispatch-ergonomics
 
 ## Current Position
 
-Phase: 07
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 08 (second-pass-v1-polish-tighten-sp-module-surface-and-dispatch-ergonomics) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-05-20
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
@@ -96,6 +96,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 07 P03 | 21min | 2 tasks | 2 files |
 | Phase 07-code-review-cleanup P04 | 8min | 2 tasks tasks | 8 files files |
 | Phase 07-code-review-cleanup P05 | 17min | 2 tasks | 4 files |
+| Phase 08 P01 | 5min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 07-code-review-cleanup]: Plan 07-05: Inlined build_tweak_data in src/silent_payments/e2e.rs deleted (358 lines + entire file); 3 e2e tests relocated to crates/chia-sdk-driver/tests/silent_payments_e2e.rs calling canonical chia_sdk_test::silent_payments::tweak_data_from_simulator_block directly. chip-0057 feature cascade extended with chia-sdk-test/chip-0057 to compile the integration target. Cargo's integration-test build model resolves the cyclic-dev-dep type confusion that forced the Phase 6 inlining (chia-sdk-driver -> chia-sdk-test -> chia-sdk-driver -> two distinct TweakData types in lib-test compile unit).
 - [Phase 07-code-review-cleanup]: Plan 07-05: CLEANUP-01 acceptance grep fully closes — Plan 01 deliberately left e2e.rs untouched per RESEARCH Open Q2 sequencing recommendation; file deletion in this plan resolves the residual 4 hits. Full CLEANUP-01 grep across all 17 target files now returns 0 with no exclusion clause.
 - [Phase 07-code-review-cleanup]: Plan 07-05: Pre-existing missing_copy_implementations warning on SendDestination (no-features build) and match_wildcard_for_single_variants in chia-sdk-daemon both verified pre-existing on main via git stash; same out-of-scope disposition as Phase 6 / Phase 1 deferred-items.md; CI-style cargo clippy --workspace --all-features --all-targets (without -D warnings) exits 0, scoped clippy under chip-0057 with -D warnings exits 0.
+- [Phase 08]: Plan 08-01: 5 public-module wildcards in silent_payments/mod.rs replaced with named pub-use blocks for 14 symbols (aggregate_sender_sks, compute_input_hash, derive_one_time_puzzle_hash, 5 protocol primitives, K_MAX_DEFAULT, SilentPaymentScan, scan_from_tweaks, DetectedSpCoin, OutputMeta, TweakData). pub(crate) use send_keys::* preserved per D-01. Intermediate-shape body (4 separate mod declarations) ships now; POLISH-02 (08-04) collapses to single pub use protocol::{...} after deletion of aggregate/input_hash/one_time files.
+- [Phase 08]: Plan 08-01: rustfmt re-wraps multi-line pub use protocol::{...} block to fit under 100-col width; this is the workspace-canonical form. Plan-specified one-symbol-per-line was reverted by cargo fmt --all and committed in rustfmt's preferred shape.
+- [Phase 08]: Plan 08-01: precondition mismatch — chia-sdk-driver/src/lib.rs:40 DOES contain pub use silent_payments::*; (plan expected 0). This is the workspace pattern (all 14 other driver modules use the same wildcard) and IS the documented binding-consumer path (chia_sdk_driver::aggregate_sender_sks at silent_payments.rs:432). Top-level re-export is correct intended behavior; named-list re-exports in silent_payments/mod.rs propagate cleanly through it.
 
 ### Roadmap Evolution
 
@@ -190,6 +194,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-20T19:07:31.540Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-second-pass-v1-polish-tighten-sp-module-surface-and-dispatch-ergonomics/08-CONTEXT.md
+Last session: 2026-05-20T19:52:52.222Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None
