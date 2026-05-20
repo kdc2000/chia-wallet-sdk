@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-05-20T19:53:05.995Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-05-20T20:00:51.758Z"
 last_activity: 2026-05-20
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 43
-  completed_plans: 47
+  completed_plans: 48
   percent: 88
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 08 (second-pass-v1-polish-tighten-sp-module-surface-and-dispatch-ergonomics) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-20
 
@@ -97,6 +97,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 07-code-review-cleanup P04 | 8min | 2 tasks tasks | 8 files files |
 | Phase 07-code-review-cleanup P05 | 17min | 2 tasks | 4 files |
 | Phase 08 P01 | 5min | 2 tasks | 1 files |
+| Phase 08 P02 | 4min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 08]: Plan 08-01: 5 public-module wildcards in silent_payments/mod.rs replaced with named pub-use blocks for 14 symbols (aggregate_sender_sks, compute_input_hash, derive_one_time_puzzle_hash, 5 protocol primitives, K_MAX_DEFAULT, SilentPaymentScan, scan_from_tweaks, DetectedSpCoin, OutputMeta, TweakData). pub(crate) use send_keys::* preserved per D-01. Intermediate-shape body (4 separate mod declarations) ships now; POLISH-02 (08-04) collapses to single pub use protocol::{...} after deletion of aggregate/input_hash/one_time files.
 - [Phase 08]: Plan 08-01: rustfmt re-wraps multi-line pub use protocol::{...} block to fit under 100-col width; this is the workspace-canonical form. Plan-specified one-symbol-per-line was reverted by cargo fmt --all and committed in rustfmt's preferred shape.
 - [Phase 08]: Plan 08-01: precondition mismatch — chia-sdk-driver/src/lib.rs:40 DOES contain pub use silent_payments::*; (plan expected 0). This is the workspace pattern (all 14 other driver modules use the same wildcard) and IS the documented binding-consumer path (chia_sdk_driver::aggregate_sender_sks at silent_payments.rs:432). Top-level re-export is correct intended behavior; named-list re-exports in silent_payments/mod.rs propagate cleanly through it.
+- [Phase 08]: Plan 08-02: removed 2 lines (not plan-anticipated 3) from send_destination.rs to preserve the rustdoc paragraph separator between the ECDH purpose statement and the impl From<Bytes32> explanation. Collapsing both bracketing /// blanks would merge two conceptual paragraphs in the rendered output; the 2-line shape honors the explicit three-coherent-paragraphs success criterion.
+- [Phase 08]: Plan 08-02: POLISH-03 closed via surgical 2-line delete of enum-level Cannot derive Copy paragraph in send_destination.rs. Variant-level Boxing rationale + clippy::large_enum_variant reference preserved byte-identical as canonical location. Plan 04.2-02 reference survives (out of POLISH-03 scope per Pitfall 3; CLEANUP-01s Plan 0[1-6]- regex does not match Plan 04.2-).
 
 ### Roadmap Evolution
 
@@ -194,6 +197,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-20T19:52:52.222Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-05-20T20:00:51.751Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
