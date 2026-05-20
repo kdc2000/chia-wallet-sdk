@@ -2,7 +2,7 @@
 
 ## Overview
 
-Six phases deliver send-side + transport-agnostic-receive silent-payment support into `chia-wallet-sdk` behind a `chip-0057` workspace feature. The build order follows the dependency graph: pure crypto primitives (Phase 1) → address layer (Phase 2) → transport-agnostic scanner + CHIP test-vector closure (Phase 3) → send-side action with Spends integration (Phase 4) → bindings descriptor + per-target compile (Phase 5) → simulator round-trip + cross-language E2E + example (Phase 6). The `ScalarField` type boundary lands in Phase 1 to prevent the signed-vs-unsigned scalar-reduction hazard from contaminating every downstream phase. Workspace integration (feature cascade, CI, lint policy) ships with the first code landing per the CHIP-0037 precedent (commit `bbc7f57f`).
+Seven phases deliver send-side + transport-agnostic-receive silent-payment support into `chia-wallet-sdk` behind a `chip-0057` workspace feature. Build order follows the dependency graph: pure crypto primitives (Phase 1) → address layer (Phase 2) → transport-agnostic scanner + CHIP test-vector closure (Phase 3) → send-side action with Spends integration (Phase 4) → bindings descriptor + per-target compile (Phase 5) → simulator round-trip + cross-language E2E + example (Phase 6) → maintainer-facing code review cleanup before upstream merge (Phase 7). The `ScalarField` type boundary lands in Phase 1 to prevent the signed-vs-unsigned scalar-reduction hazard from contaminating every downstream phase. Workspace integration (feature cascade, CI, lint policy) ships with the first code landing per the CHIP-0037 precedent (commit `bbc7f57f`). Phases 1–6 closed v1's 32 functional requirements; Phase 7 polishes the surface for merge.
 
 ## Phases
 
@@ -12,14 +12,15 @@ Six phases deliver send-side + transport-agnostic-receive silent-payment support
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Crypto primitives & workspace integration** — `ScalarField` newtype, `tagged_hash` + Chia_SP/* tag constants, derivation paths, `chip-0057` feature cascade across types/utils/driver, CI lines, lint policy verification. (completed 2026-05-15)
-- [x] **Phase 2: Address & key types** — `SilentPaymentKeys` (mnemonic + watch-only), `SilentPaymentAddress` (bech32m), labels generation, `LabelRegistry`, `m=0` change-label guard. (completed 2026-05-15)
+- [x] **Phase 1: Crypto primitives & workspace integration** — `ScalarField` newtype, `tagged_hash` + Chia_SP/* tag constants, derivation paths, `chip-0057` feature cascade across types/utils/driver, CI lines, lint policy verification. (completed 2007-05-15)
+- [x] **Phase 2: Address & key types** — `SilentPaymentKeys` (mnemonic + watch-only), `SilentPaymentAddress` (bech32m), labels generation, `LabelRegistry`, `m=0` change-label guard. (completed 2007-05-15)
 - [ ] **Phase 3: Receive primitive & CHIP test-vector closure** — `TweakData`/`DetectedSpCoin`/`OutputMeta`, `compute_shared_secret_from_tweak`, `scan_from_tweaks` with labeled k-termination + `K_max` DOS guard, all CHIP TVs + bespoke `k=1` + adversarial `[0xff;32]` tests pass.
 - [ ] **Phase 4: Send-side action** — `derive_one_time_puzzle_hash`, `compute_input_hash`, `aggregate_sender_sks` (multi-party hard-error), `SilentPaymentSend` action with `Spends` integration, multi-output `Vec<Recipient>`, opcode 60/61 announcement binding, 32-byte memo-hint guard, doc-comment privacy warnings.
-- [x] **Phase 4.1: Sage-style send-side binding refactor (INSERTED)** — drop opcode 60/61 empty-message announcement emission from `silent_payments/send_keys.rs`; rely on the SDK's existing `Relation::AssertConcurrent` cycle (opcode 64 SCC) for multi-input atomicity; add runtime gate rejecting `Relation::None` for multi-input SP sends; pin `Relation::AssertConcurrent` shape; matches the companion `~/silent-payments` Phase 2 design. (completed 2026-05-17)
+- [x] **Phase 4.1: Sage-style send-side binding refactor (INSERTED)** — drop opcode 60/61 empty-message announcement emission from `silent_payments/send_keys.rs`; rely on the SDK's existing `Relation::AssertConcurrent` cycle (opcode 64 SCC) for multi-input atomicity; add runtime gate rejecting `Relation::None` for multi-input SP sends; pin `Relation::AssertConcurrent` shape; matches the companion `~/silent-payments` Phase 2 design. (completed 2007-05-17)
 - [ ] **Phase 4.2: Unify SP send into Action::send via SendDestination enum (INSERTED)** — fold `SilentPaymentSend` into `Action::send` via new `SendDestination` enum; drop dedicated SP action/finish-method/file; SP keys move onto `Spends` via `with_silent_payment_keys` builder; `From<Bytes32>` keeps all 28 existing Rust callers unchanged. Refines the API shape Phase 5 will expose.
-- [x] **Phase 5: Bindings (Rust facade + JSON descriptor)** — `bindings/silent_payments.json` descriptor, `chia-sdk-bindings::silent_payments` re-export facade, `SendDestination` opaque-handle class entry in `action_system.json` (factory + introspector methods per `Id` precedent), napi/pyo3/wasm builds green, AVA address round-trip test. (completed 2026-05-18)
-- [ ] **Phase 6: Simulator round-trip + bindings E2E + example** — `chia-sdk-test::silent_payments::tweak_data_from_simulator_block`, unlabeled and labeled simulator round-trip tests, AVA/pytest/wasm cross-language E2E (address-gen + send + scan-from-tweaks), `examples/silent_payment.rs`.
+- [x] **Phase 5: Bindings (Rust facade + JSON descriptor)** — `bindings/silent_payments.json` descriptor, `chia-sdk-bindings::silent_payments` re-export facade, `SendDestination` opaque-handle class entry in `action_system.json` (factory + introspector methods per `Id` precedent), napi/pyo3/wasm builds green, AVA address round-trip test. (completed 2007-05-18)
+- [x] **Phase 6: Simulator round-trip + bindings E2E + example** — `chia-sdk-test::silent_payments::tweak_data_from_simulator_block`, unlabeled and labeled simulator round-trip tests, AVA/pytest/wasm cross-language E2E (address-gen + send + scan-from-tweaks), `examples/silent_payment.rs`. (completed 2026-05-19)
+- [ ] **Phase 7: Code review cleanup** — Strip planning-artifact references from source comments; split `actions/send.rs` SP arm into a sibling file; tighten the `Spends::finish_silent_payments` bindings leak; replace `e2e.rs` inlined helper with the canonical `tweak_data_from_simulator_block`; split `scanner.rs` test module; flip the 7 stale `VALIDATION.md` `nyquist_compliant` flags and patch `phase complete` to auto-flip them going forward.
 
 ## Phase Details
 
@@ -29,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Requirements**: CRYPTO-01, CRYPTO-02, WS-01, WS-02, WS-03
 **Success Criteria** (what must be TRUE):
   1. `cargo build -p chia-sdk-types -F chip-0057` succeeds; `cargo build --workspace --all-features` succeeds; `cargo build --workspace` (no features) succeeds; `cargo clippy --workspace --all-features --all-targets` is clean.
-  2. Adversarial unit test passes: `ScalarField::from_bytes_unsigned([0xff; 32]).to_bytes()` equals `r - 1` (big-endian), NOT `[0xff; 32]`. (Verifies unsigned reduction over BLS12-381 subgroup order.)
+  2. Adversarial unit test passes: `ScalarField::from_bytes_unsigned([0xff; 32]).to_bytes()` equals `r - 1` (big-endian), NOT `[0xff; 32]`. (Verifies unsigned reduction over BLS07-381 subgroup order.)
   3. Tag-pin unit test passes: `chia_sha2::Sha256::digest("Chia_SP/Inputs")`, `"Chia_SP/SharedSecret"`, `"Chia_SP/Label"` each produce their pinned 32-byte SHA-256 (typos in any tag constant fail the test before any protocol code runs).
   4. `grep -r 'mod_by_group_order' crates/chia-sdk-types/src/silent_payments/` returns zero hits.
   5. `cargo machete` passes with no new `[package.metadata.cargo-machete] ignored` entries.
@@ -161,7 +162,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -172,11 +173,12 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 4.1. Sage-style send-side binding refactor (INSERTED) | 2/2 | Complete    | 2026-05-17 |
 | 4.2. Unify SP send into Action::send via SendDestination enum (INSERTED) | 3/3 | Complete    | 2026-05-17 |
 | 5. Bindings (Rust facade + JSON descriptor) | 4/4   | Complete    | 2026-05-18 |
-| 6. Simulator round-trip + bindings E2E + example | 1/5 | In Progress|  |
+| 6. Simulator round-trip + bindings E2E + example | 5/5 | Complete    | 2026-05-19 |
+| 7. Code review cleanup | 0/TBD | Not started | - |
 
 ## Coverage
 
-All 32 v1 requirements mapped to exactly one phase. See `REQUIREMENTS.md` Traceability table for full REQ-ID → phase mapping.
+All 32 v1 functional requirements mapped to exactly one phase across Phases 1–6. Phase 7 adds 6 CLEANUP-* polish requirements that don't change behavior but address maintainer-review nits before upstream merge. See `REQUIREMENTS.md` Traceability table for full REQ-ID → phase mapping.
 
 | REQ Category | Count | Phase(s) |
 |---|---|---|
@@ -190,7 +192,8 @@ All 32 v1 requirements mapped to exactly one phase. See `REQUIREMENTS.md` Tracea
 | SIM-01..03 | 3 | Phase 6 |
 | BIND-03 | 1 | Phase 6 |
 | EX-01 | 1 | Phase 6 |
-| **Total** | **32** | **6 phases** |
+| CLEANUP-01..06 | 6 | Phase 7 |
+| **Total** | **38** | **7 phases** |
 
 ## Cross-Cutting Concerns
 
@@ -204,5 +207,15 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 6. **m=0 change-label guard** — Phase 2 implements; Phase 6 labeled E2E exercises change detection.
 7. **Workspace lint policy (`WS-03`)** — Every phase's code must pass `deny clippy::all`, `warn pedantic`, `deny unsafe_code`, `deny dead_code`, and `cargo machete`. Phase 1 establishes the feature-gating skeleton; later phases inherit.
 
----
-*Last updated: 2026-05-17 after Phase 5 planning — 4 plans across 4 waves (Wave 0 pre-flight: 01; Wave 1 facade+descriptor: 02; Wave 2 cross-target builds: 03; Wave 3 AVA tests+drift audit+close-out: 04); BIND-01 + BIND-02 queued for closure. Previously: *Last updated: 2026-05-17 after Phase 04.2 planning — 3 plans across 3 waves (Wave A additive: 01; Wave A wire-up + dead_code-deny resolution: 02; Wave B atomic delete-and-migrate + 8 test relocations + 2 NEW Wave 0 tests: 03); ACTION-API-01 newly traced; SEND-04 re-validation queued.*
+### Phase 7: Code review cleanup
+**Goal**: Address the maintainer-facing issues flagged by the post-v1 code review (2026-05-19). The v1 silent-payments work is requirement-complete and architecturally sound, but ships with several expedient choices that a maintainer would push back on at PR review. This phase resolves them in priority order so the v1 surface is ready for upstream merge without follow-up nits.
+**Depends on**: Phase 6
+**Requirements**: CLEANUP-01, CLEANUP-02, CLEANUP-03, CLEANUP-04, CLEANUP-05, CLEANUP-06
+**Success Criteria** (what must be TRUE):
+  1. **CLEANUP-01** — Strip planning-artifact references from source comments. Source comments contain zero references to GSD planning artifacts (`CONTEXT.md`, `RESEARCH.md`, `Plan NN-MM`, `D-NN`, `Pitfall N`, `Pattern N`, `Phase N.M`-style locals). Comments needing decision-rationale cite the CHIP spec section (`CHIP §425`), the BIP (`BIP-352`), or describe the constraint directly. Enforced by `grep -rE 'CONTEXT\.md|RESEARCH(\.md)?|Plan 0[1-6]-|\bD-0[1-9]\b|Pitfall [0-9]|Pattern [0-9]' crates/*/src/silent_payments/ crates/chia-sdk-bindings/src/silent_payments.rs crates/chia-sdk-driver/src/action_system/send_destination.rs examples/silent_payment.rs napi/__test__/silent_payments*.ts pyo3/tests/test_silent_payments.py wasm/__test__/silent_payments.spec.ts` returning 0 hits. (Currently: 128 hits.)
+  2. **CLEANUP-02** — Split `actions/send.rs`. The chip-0057 SP arm of `Action::send` moves out of `crates/chia-sdk-driver/src/actions/send.rs` (currently 1080 lines, up from 374) into a sibling file (e.g. `actions/silent_payment_send.rs`). Public surface unchanged — callers still use `Action::send(id, SendDestination::SilentPayment(addr), amount, memos)`. `actions/send.rs` ends at ≤ 600 lines.
+  3. **CLEANUP-03** — Tighten `Spends::finish_silent_payments` bindings leak. The public `pub fn finish_silent_payments` added on `chia_sdk_driver::Spends` in Phase 6 Plan 06-04 is removed or replaced. Either: (a) binding-side `Spends::prepare` calls `Spends::finish_with_keys` directly (with empty secret keys when no SP is registered), OR (b) the SP finish branch becomes an internal trait method invoked by `prepare` itself, OR (c) the method is renamed `finish_silent_payments_for_bindings` and marked `#[doc(hidden)]` with the rationale in rustdoc. Acceptance: `grep -c 'pub fn finish_silent_payments\b' crates/chia-sdk-driver/src/action_system/spends.rs` returns 0, OR returns 1 with `#[doc(hidden)]` present immediately above it. Cross-language E2E tests still pass.
+  4. **CLEANUP-04** — Drop `e2e.rs` inlined-helper workaround. The inlined `build_tweak_data()` helper in `crates/chia-sdk-driver/src/silent_payments/e2e.rs` is removed; tests call the canonical `chia_sdk_test::silent_payments::tweak_data_from_simulator_block` instead. If Cargo's cyclic-dev-dep type confusion still blocks the direct call, the tests relocate to a top-level integration test target (`crates/chia-sdk-driver/tests/silent_payments_e2e.rs`) where the cycle resolves. Acceptance: `grep -c 'fn build_tweak_data' crates/chia-sdk-driver/src/silent_payments/e2e.rs` returns 0 (file may also be relocated); all 3 e2e tests still pass.
+  5. **CLEANUP-05** — Split `scanner.rs` test module. The embedded `mod tests` in `crates/chia-sdk-driver/src/silent_payments/scanner.rs` (733 lines) moves to a sibling `scanner_tests.rs` or `tests/scanner.rs`. `scanner.rs` ends at ≤ 400 lines.
+  6. **CLEANUP-06** — Nyquist VALIDATION.md frontmatter flip + process fix. All 8 prior phases' `*-VALIDATION.md` frontmatter has `nyquist_compliant: true` and `wave_0_complete: true` (currently only Phase 5 does — 7 of 8 carry template drift). The `phase complete` CLI command (or its caller in `execute-phase.md`) is patched so future phases auto-flip these flags when VERIFICATION.md is `status: passed`. Verified by inspecting the modified CLI code or by a regression test.
+**Plans**: TBD
