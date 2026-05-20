@@ -42,6 +42,3 @@ mod send_keys;
 pub(crate) use send_keys::*;
 mod types;
 pub use types::*;
-
-#[cfg(test)]
-mod e2e;

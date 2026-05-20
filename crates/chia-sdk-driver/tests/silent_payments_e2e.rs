@@ -22,9 +22,7 @@ use bip39::Mnemonic;
 use chia_protocol::Coin;
 use chia_puzzle_types::{DeriveSynthetic, Memos};
 use chia_sdk_driver::silent_payments::{K_MAX_DEFAULT, scan_from_tweaks};
-use chia_sdk_driver::{
-    Action, Id, Relation, SendDestination, SpendContext, Spends, StandardLayer,
-};
+use chia_sdk_driver::{Action, Id, Relation, SendDestination, SpendContext, Spends, StandardLayer};
 use chia_sdk_test::silent_payments::tweak_data_from_simulator_block;
 use chia_sdk_test::{BlsPairWithCoin, Simulator};
 use chia_sdk_types::Conditions;
