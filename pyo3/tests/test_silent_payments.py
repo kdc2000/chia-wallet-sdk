@@ -1,16 +1,18 @@
 """BIND-03 pyo3 unlabeled SP send + scan-from-tweaks E2E.
 
 Closes the Python half of BIND-03. Mirrors napi/__test__/silent_payments_e2e.spec.ts
-in snake_case. Per D-08, this is the first non-trivial pytest in pyo3/tests/; no
-conftest.py until a second consumer exists.
+in snake_case. This is the first non-trivial pytest in pyo3/tests/; no
+conftest.py is introduced until a second consumer needs shared fixtures.
 
-Per D-07: labeled coverage stays Rust-only (Plan 06-03's e2e.rs); cross-language
-tests only exercise the unlabeled flow.
+Cross-language coverage is scoped to the unlabeled flow; labeled detection is
+exercised by the Rust-side E2E tests in
+crates/chia-sdk-driver/src/silent_payments/e2e.rs, where the labeled path is
+already byte-pinned against the CHIP-0057 test vectors.
 
-Per D-01: TweakData is constructed on the Rust side (via
-`Simulator.tweak_data_from_block`) and crossed the FFI boundary. First runtime
-test of `Vec<chia_bls::PublicKey>` marshaling on `TweakData.tweak_points` across
-the pyo3 FFI.
+`TweakData` is constructed on the Rust side (via
+`Simulator.tweak_data_from_block`) and crossed the FFI boundary unchanged.
+This is the first runtime test of `Vec<chia_bls::PublicKey>` marshaling on
+`TweakData.tweak_points` across the pyo3 FFI.
 """
 
 from chia_wallet_sdk import (

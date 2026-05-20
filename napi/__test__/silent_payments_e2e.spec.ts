@@ -2,12 +2,14 @@
 //
 // BIND-03 napi unlabeled SP send + scan-from-tweaks E2E.
 //
-// Closes BIND-03 with full FFI fidelity per D-01: TweakData is constructed
-// on the Rust side and crossed the FFI boundary. First runtime test of
-// Vec<chia_bls::PublicKey> marshaling on TweakData.tweakPoints across napi.
+// Closes BIND-03 with full FFI fidelity: TweakData is constructed on the
+// Rust side and crossed the FFI boundary unchanged. This is the first runtime
+// test of Vec<chia_bls::PublicKey> marshaling on TweakData.tweakPoints across
+// napi.
 //
-// Per D-07: labeled coverage stays Rust-only (Phase 6 Plan 06-03);
-// cross-language tests only exercise the unlabeled flow.
+// Cross-language coverage is scoped to the unlabeled flow; the labeled
+// detection branch is exercised by the Rust-side E2E tests in
+// crates/chia-sdk-driver/src/silent_payments/e2e.rs.
 
 import test from "ava";
 import {

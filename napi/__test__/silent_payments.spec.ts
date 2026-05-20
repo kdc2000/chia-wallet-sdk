@@ -1,9 +1,10 @@
-// AVA test for Phase 5 BIND-01/BIND-02 — Closes SC2 (address round-trip) +
-// SC3 (SendDestination TS construction smoke).
+// AVA tests for BIND-01 / BIND-02 — silent-payment address round-trip and
+// SendDestination construction smoke through the napi facade.
 //
 // Asserts on `PublicKey.toBytes()` byte-equality, NOT on the encoded bech32m
-// string — survives any future bech32m library churn (per RESEARCH §"Common
-// Pitfalls" Anti-Pattern 5 + Phase 04.2 CONTEXT.md <specifics>).
+// string — this keeps the test robust against future bech32m library changes
+// or canonical-form normalizations that might re-shape the textual address
+// without changing the underlying key material.
 //
 // Mnemonic fixture is the BIP-39 standard test vector — also used by the
 // Rust-side `from_mnemonic_tv1_scan_pk_matches` test at
@@ -76,11 +77,11 @@ test("SendDestination.silentPayment composes with Action.send (SC3)", (t) => {
     t.deepEqual(recovered.spendPk.toBytes(), address.spendPk.toBytes());
   }
 
-  // SC3 critical: Action.send accepts SendDestination as the second arg
-  // (this is the post-04.2 unified send shape; pre-04.2 it took Bytes32).
-  // We don't execute the spend — just confirm construction succeeds without
-  // throwing, which proves the bindy descriptor change in Plan 05-02 Task 3
-  // landed correctly. (Full execution is Phase 6's concern.)
+  // Action.send accepts SendDestination as the second arg — this is the
+  // unified send shape (Bytes32 destinations are wrapped via
+  // SendDestination.puzzleHash). We don't execute the spend here; just
+  // confirm construction succeeds without throwing, which proves the bindy
+  // descriptor wiring for SendDestination is intact end-to-end.
   const action = Action.send(Id.xch(), dest, 1000n, undefined);
   t.truthy(action);
 });
