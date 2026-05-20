@@ -239,5 +239,5 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
 Plans:
 - [x] 08-01-PLAN.md — POLISH-01: Replace public-module `pub use foo::*;` wildcards in `silent_payments/mod.rs` with explicit named re-exports (Wave 1)
 - [x] 08-02-PLAN.md — POLISH-03: De-duplicate `SendDestination` Boxing rationale — drop enum-level "Cannot derive Copy" paragraph; keep variant-level (Wave 1)
-- [ ] 08-03-PLAN.md — POLISH-04: Restructure `Action::send` chip-0057 dispatch — single exhaustive match; remove `unreachable!("handled above")` (Wave 1)
+- [x] 08-03-PLAN.md — POLISH-04: Restructure `Action::send` chip-0057 dispatch — single exhaustive match; remove `unreachable!("handled above")` (Wave 1)
 - [ ] 08-04-PLAN.md — POLISH-02: Atomic fold of `aggregate.rs` + `input_hash.rs` + `one_time.rs` into `protocol.rs`; collapse mod.rs to final D-01 shape (Wave 2)
