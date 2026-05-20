@@ -219,7 +219,7 @@ These are NOT phases — they apply to every phase as acceptance gates. Sourced 
   5. **CLEANUP-06** — Nyquist VALIDATION.md frontmatter flip + process fix. All 8 prior phases' `*-VALIDATION.md` frontmatter has `nyquist_compliant: true` and `wave_0_complete: true` (currently only Phase 5 does — 7 of 8 carry template drift). The `phase complete` CLI command (or its caller in `execute-phase.md`) is patched so future phases auto-flip these flags when VERIFICATION.md is `status: passed`. Verified by inspecting the modified CLI code or by a regression test.
 **Plans**: 5 plans
 - [x] 07-01-PLAN.md — CLEANUP-01 strip planning-artifact references from source comments (17 files; e2e.rs handled by Plan 05)
-- [ ] 07-02-PLAN.md — CLEANUP-02 extract chip-0057 SP arm from actions/send.rs into actions/silent_payment_send.rs flat sibling
+- [x] 07-02-PLAN.md — CLEANUP-02 extract chip-0057 SP arm from actions/send.rs into actions/silent_payment_send.rs flat sibling
 - [ ] 07-03-PLAN.md — CLEANUP-03 push sp_finish_branch into Spends::prepare; delete Spends::finish_silent_payments and the binding-side caller
 - [ ] 07-04-PLAN.md — CLEANUP-06 flip 7 stale VALIDATION.md nyquist flags + patch gsd-tools phase complete to auto-flip going forward
 - [ ] 07-05-PLAN.md — CLEANUP-04 delete e2e.rs; relocate 3 e2e tests to tests/silent_payments_e2e.rs integration target using canonical helper
