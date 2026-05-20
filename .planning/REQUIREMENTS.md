@@ -70,7 +70,6 @@ These requirements were added after v1 close-out following a maintainer-style co
 - [ ] **CLEANUP-02** — The chip-0057 SP arm of `Action::send` moves out of `crates/chia-sdk-driver/src/actions/send.rs` (1080 lines, up from 374) into a sibling file. Public surface unchanged. `actions/send.rs` ends ≤ 600 lines.
 - [ ] **CLEANUP-03** — The public `pub fn finish_silent_payments` added on `chia_sdk_driver::Spends` in Phase 6 Plan 06-04 is removed, made internal, or marked `#[doc(hidden)]`. The bindings layer's `Spends::prepare` reaches the SP finish branch through a less leaky mechanism (calling `finish_with_keys` directly, an internal trait method, or a `#[doc(hidden)]` shim with rationale).
 - [ ] **CLEANUP-04** — The inlined `build_tweak_data` helper in `crates/chia-sdk-driver/src/silent_payments/e2e.rs` is removed; tests call the canonical `chia_sdk_test::silent_payments::tweak_data_from_simulator_block` directly. If Cargo's cyclic-dev-dep type confusion blocks the call, tests relocate to a top-level integration target where the cycle resolves. All 3 e2e tests still pass.
-- [ ] **CLEANUP-05** — The embedded `mod tests` in `crates/chia-sdk-driver/src/silent_payments/scanner.rs` (733 lines) moves to a sibling `scanner_tests.rs` or `tests/scanner.rs`. `scanner.rs` ends ≤ 400 lines.
 - [ ] **CLEANUP-06** — All 8 prior phases' `*-VALIDATION.md` frontmatter has `nyquist_compliant: true` and `wave_0_complete: true`. The `phase complete` CLI command (or its caller in `execute-phase.md`) is patched so future phases auto-flip these flags when VERIFICATION.md reports `status: passed`.
 
 ## v2 Requirements (deferred)
@@ -136,8 +135,7 @@ Phase mapping assigned by `ROADMAP.md` (2026-05-15).
 | CLEANUP-02 | Phase 7 | Split chip-0057 arm out of `actions/send.rs` (1080 → ≤ 600 lines) |
 | CLEANUP-03 | Phase 7 | Tighten or hide `Spends::finish_silent_payments` bindings leak |
 | CLEANUP-04 | Phase 7 | Replace inlined `build_tweak_data` in `silent_payments/e2e.rs` with canonical helper |
-| CLEANUP-05 | Phase 7 | Split `scanner.rs` test module to sibling file (733 → ≤ 400 lines) |
 | CLEANUP-06 | Phase 7 | Flip stale `VALIDATION.md` nyquist flags + patch `phase complete` to auto-flip |
 
 ---
-*Last updated: 2026-05-20 after Phase 7 (Code review cleanup) added — 6 CLEANUP-* requirements drawn from the post-v1 maintainer-style code review (2026-05-19). Total v1 functional requirements remain 32 (all `[x]`); Phase 7 adds 6 polish requirements that change no behavior. Previously: Last updated: 2026-05-17 after Phase 04.2 added ACTION-API-01 + updated SEND-04.*
+*Last updated: 2026-05-20 after Phase 7 discuss-phase — CLEANUP-05 dropped from scope after convention discovery (inline `#[cfg(test)] mod tests {}` is universal in chia-sdk-driver; splitting scanner.rs would be the convention violation). Phase 7 now adds 5 polish requirements (CLEANUP-01..04 + CLEANUP-06), not 6. Total v1 functional requirements remain 32 (all `[x]`); v1+polish total is 37 across 7 phases. Previously: Last updated: 2026-05-17 after Phase 04.2 added ACTION-API-01 + updated SEND-04.*
