@@ -4,6 +4,7 @@ use std::{
 };
 
 use bindy::Result;
+use chia_bls::{PublicKey, SecretKey};
 use chia_protocol::{Bytes32, Coin};
 use chia_puzzle_types::{Memos, offer::SettlementPaymentsSolution};
 use chia_sdk_driver::{
@@ -12,6 +13,7 @@ use chia_sdk_driver::{
 use chia_sdk_types::{Condition, conditions::TradePrice};
 use clvm_traits::{FromClvm, ToClvm};
 use clvmr::NodePtr;
+use indexmap::IndexMap;
 
 use crate::{AsProgram, AsPtr, Clvm, Did, Nft, NotarizedPayment, OptionContract, Program, Spend};
 
@@ -55,6 +57,40 @@ impl Spends {
 
     pub fn non_settlement_coin_ids(&self) -> Result<Vec<Bytes32>> {
         Ok(self.spends.lock().unwrap().non_settlement_coin_ids())
+    }
+
+    /// Register the silent-payment synthetic key maps so the chip-0057 branch
+    /// that runs inside `chia_sdk_driver::Spends::prepare` can derive each
+    /// pending one-time puzzle hash.
+    ///
+    /// bindy does not natively marshal `IndexMap<K, V>` or `Vec<(K, V)>`
+    /// across the FFI boundary, so the two registration maps are surfaced as
+    /// `Vec<SilentPaymentRegisteredKey>` and `Vec<SilentPaymentRegisteredSecretKey>`
+    /// (see `crates/chia-sdk-bindings/src/silent_payments.rs`). The
+    /// conversion to the underlying `IndexMap<Bytes32, _>` happens inside this
+    /// method.
+    ///
+    /// Privacy warning: `secret_keys` carries sensitive synthetic-secret-key
+    /// material. Wallets must treat the vec like the SKs themselves (zeroize
+    /// on drop, do not log).
+    pub fn with_silent_payment_keys(
+        &self,
+        synthetic_pks: Vec<crate::SilentPaymentRegisteredKey>,
+        secret_keys: Vec<crate::SilentPaymentRegisteredSecretKey>,
+    ) -> Result<()> {
+        let pk_map: IndexMap<Bytes32, PublicKey> = synthetic_pks
+            .into_iter()
+            .map(|entry| (entry.p2_puzzle_hash, entry.public_key))
+            .collect();
+        let sk_map: IndexMap<Bytes32, SecretKey> = secret_keys
+            .into_iter()
+            .map(|entry| (entry.p2_puzzle_hash, entry.secret_key))
+            .collect();
+        self.spends
+            .lock()
+            .unwrap()
+            .with_silent_payment_keys(pk_map, sk_map);
+        Ok(())
     }
 
     pub fn add_optional_condition(&self, condition: Program) -> Result<()> {
@@ -290,10 +326,15 @@ impl PendingSpend {
 pub struct Action(sdk::Action);
 
 impl Action {
-    pub fn send(id: Id, puzzle_hash: Bytes32, amount: u64, memos: Option<Program>) -> Result<Self> {
+    pub fn send(
+        id: Id,
+        destination: SendDestination,
+        amount: u64,
+        memos: Option<Program>,
+    ) -> Result<Self> {
         Ok(Self(sdk::Action::send(
             id.0,
-            puzzle_hash,
+            destination.0,
             amount,
             memos.map_or(Memos::None, |memos| Memos::Some(memos.1)),
         )))
@@ -441,6 +482,60 @@ impl Id {
 
     pub fn equals(&self, id: Id) -> Result<bool> {
         Ok(self.0 == id.0)
+    }
+}
+
+/// Opaque-handle facade for `chia_sdk_driver::SendDestination`. After
+/// Phase 04.2, every `Action::send` call routes through one of these — the
+/// `puzzle_hash` factory wraps a standard puzzle hash; the `silent_payment`
+/// factory wraps a chip-0057 silent-payment address.
+///
+/// Mirrors the `Id` opaque-handle pattern in this file (factory constructors +
+/// `is_*`/`as_*` introspectors) and slots into `bindings/action_system.json`
+/// the same way `Id` does. chip-0057 is unconditional on chia-sdk-bindings
+/// deps (D-01), so the `silent_payment` arm is always available — no `#[cfg]`
+/// gates required.
+///
+/// Privacy warning: the `silent_payment` arm participates in CHIP-0057's
+/// privacy guarantees. Memos attached to the resulting `Action::send` land on
+/// chain in plaintext and are visible to anyone with the recipient's scan
+/// key; a 32-byte first memo is rejected at apply time by the SP arm's
+/// `DriverError::SilentPaymentMemoHintForbidden` guard.
+#[derive(Clone, Debug)]
+pub struct SendDestination(pub(crate) sdk::SendDestination);
+
+impl SendDestination {
+    pub fn puzzle_hash(puzzle_hash: Bytes32) -> Result<Self> {
+        Ok(Self(sdk::SendDestination::PuzzleHash(puzzle_hash)))
+    }
+
+    pub fn silent_payment(address: crate::SilentPaymentAddress) -> Result<Self> {
+        let driver_addr: chia_sdk_utils::silent_payments::SilentPaymentAddress = address.into();
+        Ok(Self(sdk::SendDestination::SilentPayment(Box::new(
+            driver_addr,
+        ))))
+    }
+
+    pub fn is_puzzle_hash(&self) -> Result<bool> {
+        Ok(matches!(self.0, sdk::SendDestination::PuzzleHash(_)))
+    }
+
+    pub fn as_puzzle_hash(&self) -> Result<Option<Bytes32>> {
+        Ok(match self.0 {
+            sdk::SendDestination::PuzzleHash(ph) => Some(ph),
+            sdk::SendDestination::SilentPayment(_) => None,
+        })
+    }
+
+    pub fn is_silent_payment(&self) -> Result<bool> {
+        Ok(matches!(self.0, sdk::SendDestination::SilentPayment(_)))
+    }
+
+    pub fn as_silent_payment(&self) -> Result<Option<crate::SilentPaymentAddress>> {
+        Ok(match &self.0 {
+            sdk::SendDestination::SilentPayment(addr) => Some((**addr).clone().into()),
+            sdk::SendDestination::PuzzleHash(_) => None,
+        })
     }
 }
 

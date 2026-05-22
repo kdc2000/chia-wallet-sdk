@@ -130,4 +130,42 @@ pub enum DriverError {
 
     #[error("missing vault coin spend in transaction reveal")]
     MissingVaultCoinSpend,
+
+    #[cfg(feature = "chip-0057")]
+    #[error("silent payment error: {0}")]
+    SilentPayment(#[from] chia_sdk_utils::silent_payments::SilentPaymentError),
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent payment requires aggregating synthetic SKs for every input; multi-party flows are unsupported in v1"
+    )]
+    SilentPaymentMultiPartyUnsupported,
+
+    #[cfg(feature = "chip-0057")]
+    #[error("silent payment requires at least one wallet-controlled XCH input")]
+    SilentPaymentNoXchInputs,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "a 32-byte first memo would be promoted to a puzzle_hash hint by the standard wallet, defeating silent-payment privacy"
+    )]
+    SilentPaymentMemoHintForbidden,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent payment multi-input send requires Relation::AssertConcurrent for CHIP-0057 Pass 2b scanner detection; single-input SP sends accept any Relation"
+    )]
+    SilentPaymentRequiresInputBinding,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent payment send requires Spends::with_silent_payment_keys to be called before finish (no SP secret keys registered)"
+    )]
+    SilentPaymentKeysNotRegistered,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent payment destination requires Id::Xch (CAT/NFT/option silent payments are deferred to v2)"
+    )]
+    SilentPaymentRequiresXch,
 }
