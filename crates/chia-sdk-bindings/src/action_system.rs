@@ -539,6 +539,45 @@ impl SendDestination {
     }
 }
 
+/// Cross-binding handle for `chia_sdk_driver::Relation`.
+///
+/// Multi-input silent-payment sends require `Relation::AssertConcurrent` so
+/// the scanner's Pass 2b SCC detection can group the bundle's coins. Without
+/// it, `Spends::prepare` returns `DriverError::SilentPaymentRequiresInputBinding`
+/// when a bundle carries two or more non-ephemeral XCH inputs alongside any
+/// `SendDestination::SilentPayment` send. Pass `Relation.assert_concurrent()`
+/// as the second arg to `Spends.prepare` for any such bundle; single-input
+/// sends accept `Relation.none()` (or omit the arg entirely).
+///
+/// The opaque-handle shape mirrors `Id` and `SendDestination` in this file:
+/// factory constructors per variant + `is_*` introspectors + `equals` for
+/// value comparison. Cross-target binding dispatch is descriptor-driven via
+/// `bindings/action_system.json`.
+#[derive(Clone, Debug)]
+pub struct Relation(pub(crate) sdk::Relation);
+
+impl Relation {
+    pub fn none() -> Result<Self> {
+        Ok(Self(sdk::Relation::None))
+    }
+
+    pub fn assert_concurrent() -> Result<Self> {
+        Ok(Self(sdk::Relation::AssertConcurrent))
+    }
+
+    pub fn is_none(&self) -> Result<bool> {
+        Ok(matches!(self.0, sdk::Relation::None))
+    }
+
+    pub fn is_assert_concurrent(&self) -> Result<bool> {
+        Ok(matches!(self.0, sdk::Relation::AssertConcurrent))
+    }
+
+    pub fn equals(&self, other: Relation) -> Result<bool> {
+        Ok(self.0 == other.0)
+    }
+}
+
 #[derive(Clone)]
 pub struct Outputs {
     inner: sdk::Outputs,

@@ -289,6 +289,29 @@
       }
     }
   },
+  "Relation": {
+    "type": "class",
+    "methods": {
+      "none": {
+        "type": "factory"
+      },
+      "assert_concurrent": {
+        "type": "factory"
+      },
+      "is_none": {
+        "return": "bool"
+      },
+      "is_assert_concurrent": {
+        "return": "bool"
+      },
+      "equals": {
+        "args": {
+          "other": "Relation"
+        },
+        "return": "bool"
+      }
+    }
+  },
   "Outputs": {
     "type": "class",
     "methods": {
