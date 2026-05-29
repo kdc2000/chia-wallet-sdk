@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 09-05-PLAN.md
-last_updated: "2026-05-29T17:09:08.034Z"
+stopped_at: Completed 09-06-PLAN.md
+last_updated: "2026-05-29T17:32:05.938Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 11
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 49
-  completed_plans: 55
+  completed_plans: 56
   percent: 88
 ---
 
@@ -105,6 +105,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 09 P02 | 4min | 1 tasks | 1 files |
 | Phase 09 P04 | 25min | 2 tasks tasks | 6 files files |
 | Phase 09 P05 | 5min | 1 tasks | 3 files |
+| Phase 09 P06 | 19min | 3 tasks tasks | 7 files files |
 
 ## Accumulated Context
 
@@ -188,6 +189,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 09]: Plan 09-02: chia-sdk-test::tweak_data_from_simulator_block collapsed to 5-line adapter over chia_sdk_driver::silent_payments::tweak_data_from_block_spends (BRIDGE-02 closed). File shrunk 121->65 lines. Used .expect() to unwrap canonical helper's Result; simulator-shaped inputs (Simulator::spend_coins only accepts validated CoinSpends) cannot trip the error path, and propagating via ? would break must_have #4 (public signature byte-for-byte unchanged). All 5 oracles (2 inline + 3 Phase 6 e2e: test_simulator_e2e_unlabeled, _labeled, _m0_self_change) pass byte-identically — confirms the standalone-singleton branch of the canonical helper reproduces simulator-helper aggregate-everything semantics for 1-tx-per-block inputs (Pitfall 4 resolved by construction). Zero deviations, zero new #[allow], zero new workspace deps. Drift between simulator and real-block paths now structurally impossible.
 - [Phase 09]: Plan 09-04: Spends.prepare binding signature extended to (deltas, relation: Option<Relation>) across all 3 binding targets. Bindy-macro pyo3 codegen patched (Rule 2) to emit #[pyo3(signature = (..., arg=None))] defaults for the trailing run of Option<T> args — pyo3 forbids required positional after optional, so middle-position Options (e.g., Action.issue_cat.hidden_puzzle_hash) stay required. Hard regression bar PASS: existing test_unlabeled_e2e passes with git diff on pyo3/tests/test_silent_payments.py empty. napi (52/52) + wasm (8/8) + pyo3 (2/2) all green; no caller-source patches needed on any target. BRIDGE-04 closed; 09-06 multi-input cross-binding tests unblocked.
 - [Phase 09]: Plan 09-05: SilentPayments.tweak_data_from_block_spends static method bound across napi/pyo3/wasm via the SilentPayments namespace class (BRIDGE-05 closed). Pure delegate to chia_sdk_driver::silent_payments::tweak_data_from_block_spends (BRIDGE-01 helper); owned Vec<CoinSpend>/Vec<Coin> facade params per bindy marshaling convention; the From<chia_sdk_driver::TweakData> impl on the binding-side TweakData (landed in Phase 5) handles the return conversion. Zero deviations; zero new #[allow]; drift script reports 23 methods both sides (was 22).
+- [Phase 09]: Plan 09-06: BRIDGE-06 closed via three multi-input cross-binding tests (napi/pyo3/wasm) + Simulator.block_spends/block_outputs facade additions + examples/silent_payment.rs multi-input section (Stages 6-9). Hard regression bar holds — existing pyo3 test_unlabeled_e2e diff shows zero deletions (Relation import lives inside the new test_multi_input_e2e function). Phase 6 e2e oracle still byte-identical. Zero deviations; zero new workspace deps; drift script clean (23 methods both sides).
 
 ### Roadmap Evolution
 
@@ -212,6 +214,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-29T17:09:08.023Z
-Stopped at: Completed 09-05-PLAN.md
+Last session: 2026-05-29T17:32:05.930Z
+Stopped at: Completed 09-06-PLAN.md
 Resume file: None
