@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-05-29T17:00:11.060Z"
+status: verifying
+stopped_at: Completed 09-05-PLAN.md
+last_updated: "2026-05-29T17:09:08.034Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 49
-  completed_plans: 54
+  completed_plans: 55
   percent: 88
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 Phase: 09 (real-block-tweakdata-bridge-python-relation-binding) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-29
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
@@ -104,6 +104,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 09 P03 | 3min | 2 tasks | 2 files |
 | Phase 09 P02 | 4min | 1 tasks | 1 files |
 | Phase 09 P04 | 25min | 2 tasks tasks | 6 files files |
+| Phase 09 P05 | 5min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 09]: Plan 09-03: Relation opaque-handle binding lands at chia-sdk-bindings::action_system. Two-step sequencing (Task 1 drops bare Relation import + qualifies sole call site to sdk::Relation::None, Task 2 adds pub struct Relation + 5-method impl + bindings/action_system.json descriptor entry) prevents any transient build break. Mirrors Id/SendDestination opaque-handle precedents byte-for-pattern. Zero deviations; zero new #[allow]; zero new workspace deps; all four binding-target builds clean (--all-features, -F napi, -F wasm, -F pyo3); clippy -D warnings clean. BRIDGE-03 closed; plan 09-04 (Spends.prepare signature extension) and plan 09-06 (cross-binding multi-input tests) unblocked.
 - [Phase 09]: Plan 09-02: chia-sdk-test::tweak_data_from_simulator_block collapsed to 5-line adapter over chia_sdk_driver::silent_payments::tweak_data_from_block_spends (BRIDGE-02 closed). File shrunk 121->65 lines. Used .expect() to unwrap canonical helper's Result; simulator-shaped inputs (Simulator::spend_coins only accepts validated CoinSpends) cannot trip the error path, and propagating via ? would break must_have #4 (public signature byte-for-byte unchanged). All 5 oracles (2 inline + 3 Phase 6 e2e: test_simulator_e2e_unlabeled, _labeled, _m0_self_change) pass byte-identically — confirms the standalone-singleton branch of the canonical helper reproduces simulator-helper aggregate-everything semantics for 1-tx-per-block inputs (Pitfall 4 resolved by construction). Zero deviations, zero new #[allow], zero new workspace deps. Drift between simulator and real-block paths now structurally impossible.
 - [Phase 09]: Plan 09-04: Spends.prepare binding signature extended to (deltas, relation: Option<Relation>) across all 3 binding targets. Bindy-macro pyo3 codegen patched (Rule 2) to emit #[pyo3(signature = (..., arg=None))] defaults for the trailing run of Option<T> args — pyo3 forbids required positional after optional, so middle-position Options (e.g., Action.issue_cat.hidden_puzzle_hash) stay required. Hard regression bar PASS: existing test_unlabeled_e2e passes with git diff on pyo3/tests/test_silent_payments.py empty. napi (52/52) + wasm (8/8) + pyo3 (2/2) all green; no caller-source patches needed on any target. BRIDGE-04 closed; 09-06 multi-input cross-binding tests unblocked.
+- [Phase 09]: Plan 09-05: SilentPayments.tweak_data_from_block_spends static method bound across napi/pyo3/wasm via the SilentPayments namespace class (BRIDGE-05 closed). Pure delegate to chia_sdk_driver::silent_payments::tweak_data_from_block_spends (BRIDGE-01 helper); owned Vec<CoinSpend>/Vec<Coin> facade params per bindy marshaling convention; the From<chia_sdk_driver::TweakData> impl on the binding-side TweakData (landed in Phase 5) handles the return conversion. Zero deviations; zero new #[allow]; drift script reports 23 methods both sides (was 22).
 
 ### Roadmap Evolution
 
@@ -210,6 +212,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-29T17:00:11.052Z
-Stopped at: Completed 09-04-PLAN.md
+Last session: 2026-05-29T17:09:08.023Z
+Stopped at: Completed 09-05-PLAN.md
 Resume file: None
