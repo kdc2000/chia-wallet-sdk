@@ -42,4 +42,5 @@ pub use chia_sdk_driver::silent_payments::{
     DetectedSpCoin, K_MAX_DEFAULT, OutputMeta, SilentPaymentScan, TweakData, compute_input_hash,
     compute_shared_secret_from_tweak, derive_one_time_puzzle_hash, derive_onetime_pk,
     derive_onetime_sk, derive_output_tweak, puzzle_hash_for_pk, scan_from_tweaks,
+    tweak_data_from_block_spends,
 };

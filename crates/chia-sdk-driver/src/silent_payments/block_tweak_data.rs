@@ -288,3 +288,240 @@ fn iterative_tarjan_scc(adj: &[Vec<usize>]) -> Vec<Vec<usize>> {
 
     sccs
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use chia_protocol::{Coin, Program};
+    use chia_puzzle_types::standard::StandardArgs;
+    use chia_sdk_test::Simulator;
+    use chia_sdk_test::silent_payments::tweak_data_from_simulator_block;
+    use chia_sdk_types::Conditions;
+
+    use crate::SpendContext;
+    use crate::StandardLayer;
+
+    /// Build a `(CoinSpend, Coin)` pair for a synthetic-key-controlled coin
+    /// whose solution outputs `conditions`. The caller is responsible for the
+    /// parent coin info; the puzzle hash is derived from `synthetic_pk` so the
+    /// coin shape is internally consistent.
+    fn build_standard_coin_spend(
+        synthetic_pk: PublicKey,
+        parent_coin_info: Bytes32,
+        amount: u64,
+        conditions: Conditions,
+    ) -> CoinSpend {
+        let puzzle_hash: Bytes32 = StandardArgs::curry_tree_hash(synthetic_pk).into();
+        let coin = Coin::new(parent_coin_info, puzzle_hash, amount);
+
+        let mut ctx = SpendContext::new();
+        let layer = StandardLayer::new(synthetic_pk);
+        layer
+            .spend(&mut ctx, coin, conditions)
+            .expect("layer spend");
+        ctx.take().pop().expect("one coin spend")
+    }
+
+    /// An empty block produces no tweak points and no outputs without panic.
+    /// Adding additions with no spends produces zero `tweak_points` and one
+    /// `OutputMeta` per addition.
+    #[test]
+    fn test_empty_block() {
+        let td = tweak_data_from_block_spends(&[], &[]).expect("empty block ok");
+        assert!(td.tweak_points.is_empty());
+        assert!(td.outputs.is_empty());
+
+        let parent: Bytes32 = [0xAAu8; 32].into();
+        let puzzle_hash: Bytes32 = [0xBBu8; 32].into();
+        let coin = Coin::new(parent, puzzle_hash, 100);
+        let td = tweak_data_from_block_spends(&[], &[coin]).expect("additions-only ok");
+        assert!(td.tweak_points.is_empty());
+        assert_eq!(td.outputs.len(), 1);
+        assert_eq!(td.outputs[0].puzzle_hash, puzzle_hash);
+    }
+
+    /// A `CoinSpend` whose puzzle reveal is not the standard p2 puzzle skips
+    /// silently at Stage 1; no tweak point is emitted and the helper does not
+    /// error.
+    #[test]
+    fn test_non_standard_puzzle_skip() {
+        // `Program::default()` deserializes to NIL — not a curried standard puzzle.
+        let parent: Bytes32 = [0x11u8; 32].into();
+        let puzzle_hash: Bytes32 = [0x22u8; 32].into();
+        let coin = Coin::new(parent, puzzle_hash, 1);
+        let spend = CoinSpend::new(coin, Program::default(), Program::default());
+
+        let td = tweak_data_from_block_spends(&[spend], &[]).expect("non-standard skip ok");
+        assert!(td.tweak_points.is_empty(), "non-standard puzzle must skip");
+        assert!(td.outputs.is_empty());
+    }
+
+    /// A standard-puzzle spend whose synthetic key is the BLS12-381 identity
+    /// element yields `A_sum = identity` and therefore `tweak_point = identity`;
+    /// the CHIP §459 guard suppresses emission so `tweak_points` stays empty.
+    #[test]
+    fn test_identity_element_guard() {
+        let identity_pk = PublicKey::default();
+        assert!(identity_pk.is_inf(), "PublicKey::default must be identity");
+
+        let parent: Bytes32 = [0x33u8; 32].into();
+        let spend = build_standard_coin_spend(identity_pk, parent, 1, Conditions::new());
+
+        let td = tweak_data_from_block_spends(&[spend], &[]).expect("identity guard ok");
+        assert!(
+            td.tweak_points.is_empty(),
+            "identity-element tweak_point must be suppressed",
+        );
+    }
+
+    /// A single submitted standard-puzzle spend in the simulator produces the
+    /// same `tweak_points` whether the data flows through the existing
+    /// simulator helper or the new block-shape helper. Locks the standalone
+    /// single-spend branch against drift versus the simulator-helper oracle.
+    #[test]
+    fn test_pass_2a_round_trip_matches_simulator_helper() {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+        let alice = sim.bls(10);
+
+        let layer = StandardLayer::new(alice.pk);
+        layer
+            .spend(&mut ctx, alice.coin, Conditions::new())
+            .expect("alice spend");
+        let coin_spends = ctx.take();
+
+        sim.spend_coins(coin_spends, &[alice.sk]).expect("submit");
+        let height = sim.height();
+
+        let block_spends = sim.block_spends(height);
+        let block_outputs = sim.block_outputs(height);
+
+        let new_td =
+            tweak_data_from_block_spends(&block_spends, &block_outputs).expect("new helper ok");
+        let sim_td = tweak_data_from_simulator_block(&sim, height);
+
+        assert_eq!(
+            new_td.tweak_points.len(),
+            sim_td.tweak_points.len(),
+            "tweak_point count must match simulator helper",
+        );
+        for (a, b) in new_td.tweak_points.iter().zip(sim_td.tweak_points.iter()) {
+            assert_eq!(a.to_bytes(), b.to_bytes(), "tweak_point bytes must match");
+        }
+    }
+
+    /// Two standard-puzzle spends sharing the same `puzzle_hash` fall into a
+    /// single Stage 2a group and emit exactly one aggregated `tweak_point`.
+    /// Verifies the multi-input bucketing path independent of Pass 2b.
+    #[test]
+    fn test_multi_input_round_trip() {
+        let alice = chia_bls::SecretKey::from_seed(&[0x07u8; 32]);
+        let alice_public = alice.public_key();
+
+        let parent_a: Bytes32 = [0x55u8; 32].into();
+        let parent_b: Bytes32 = [0x66u8; 32].into();
+        let spend_a = build_standard_coin_spend(alice_public, parent_a, 100, Conditions::new());
+        let spend_b = build_standard_coin_spend(alice_public, parent_b, 200, Conditions::new());
+
+        assert_eq!(
+            spend_a.coin.puzzle_hash, spend_b.coin.puzzle_hash,
+            "same synthetic_pk must curry to the same puzzle_hash",
+        );
+
+        let td = tweak_data_from_block_spends(&[spend_a, spend_b], &[]).expect("multi-input ok");
+        assert_eq!(
+            td.tweak_points.len(),
+            1,
+            "two spends at the same puzzle_hash form one Stage 2a group",
+        );
+    }
+
+    /// Pass 2b "pollution attack" oracle: a legitimate 2-coin SP cycle
+    /// (`a -> b`, `b -> a`) coexists in the same block with a polluter coin
+    /// whose solution emits `AssertConcurrentSpend(a)`. SCC grouping must
+    /// place `{a, b}` in one group and the polluter alone in its own trivial
+    /// group; `A_sum` for the legitimate pair must NOT be contaminated by the
+    /// polluter's synthetic key.
+    ///
+    /// Concretely, the tweak point emitted for `{a, b}` in the polluted block
+    /// must equal the tweak point emitted when only `{a, b}` are passed to
+    /// the helper in isolation.
+    #[test]
+    fn test_pass_2b_pollution_resistance() {
+        let sk_a = chia_bls::SecretKey::from_seed(&[0x01u8; 32]);
+        let sk_b = chia_bls::SecretKey::from_seed(&[0x02u8; 32]);
+        let sk_polluter = chia_bls::SecretKey::from_seed(&[0x03u8; 32]);
+        let pk_a = sk_a.public_key();
+        let pk_b = sk_b.public_key();
+        let pk_polluter = sk_polluter.public_key();
+
+        // Distinct parent_coin_infos so coin_ids differ from puzzle_hash and
+        // from each other; required for the AssertConcurrentSpend edges to
+        // resolve to the right targets.
+        let parent_a: Bytes32 = [0xA0u8; 32].into();
+        let parent_b: Bytes32 = [0xB0u8; 32].into();
+        let parent_polluter: Bytes32 = [0xC0u8; 32].into();
+
+        // Pre-compute coin_ids so each spend can reference the other.
+        let puzzle_hash_a: Bytes32 = StandardArgs::curry_tree_hash(pk_a).into();
+        let puzzle_hash_b: Bytes32 = StandardArgs::curry_tree_hash(pk_b).into();
+        let puzzle_hash_polluter: Bytes32 = StandardArgs::curry_tree_hash(pk_polluter).into();
+        let coin_a = Coin::new(parent_a, puzzle_hash_a, 100);
+        let coin_b = Coin::new(parent_b, puzzle_hash_b, 200);
+        let coin_polluter = Coin::new(parent_polluter, puzzle_hash_polluter, 300);
+        let id_a = coin_a.coin_id();
+        let id_b = coin_b.coin_id();
+
+        // Closed cycle: a asserts b, b asserts a.
+        let spend_a = build_standard_coin_spend(
+            pk_a,
+            parent_a,
+            100,
+            Conditions::new().assert_concurrent_spend(id_b),
+        );
+        let spend_b = build_standard_coin_spend(
+            pk_b,
+            parent_b,
+            200,
+            Conditions::new().assert_concurrent_spend(id_a),
+        );
+        // Polluter: forward edge into the cycle, no return edge.
+        let spend_polluter = build_standard_coin_spend(
+            pk_polluter,
+            parent_polluter,
+            300,
+            Conditions::new().assert_concurrent_spend(id_a),
+        );
+
+        assert_eq!(spend_a.coin, coin_a);
+        assert_eq!(spend_b.coin, coin_b);
+        assert_eq!(spend_polluter.coin, coin_polluter);
+
+        let polluted =
+            tweak_data_from_block_spends(&[spend_a.clone(), spend_b.clone(), spend_polluter], &[])
+                .expect("polluted block ok");
+        let clean = tweak_data_from_block_spends(&[spend_a, spend_b], &[]).expect("clean block ok");
+
+        assert_eq!(
+            polluted.tweak_points.len(),
+            2,
+            "polluted block must emit two tweak_points (legit SCC + polluter standalone)",
+        );
+        assert_eq!(
+            clean.tweak_points.len(),
+            1,
+            "clean block must emit one tweak_point (the legit SCC)",
+        );
+
+        // The legit SCC's tweak point must match between polluted and clean
+        // runs — proving the polluter's synthetic key did NOT leak into
+        // A_sum. The polluted block emits SCC groups before standalone
+        // groups, so the legit pair lands at index 0.
+        assert_eq!(
+            polluted.tweak_points[0].to_bytes(),
+            clean.tweak_points[0].to_bytes(),
+            "legit SCC tweak_point must be invariant under polluter presence",
+        );
+    }
+}
