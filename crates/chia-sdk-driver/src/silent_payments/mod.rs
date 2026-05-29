@@ -34,6 +34,8 @@ pub use protocol::{
     derive_one_time_puzzle_hash, derive_onetime_pk, derive_onetime_sk, derive_output_tweak,
     puzzle_hash_for_pk,
 };
+mod block_tweak_data;
+pub use block_tweak_data::tweak_data_from_block_spends;
 mod scanner;
 pub use scanner::{K_MAX_DEFAULT, SilentPaymentScan, scan_from_tweaks};
 mod send_keys;
