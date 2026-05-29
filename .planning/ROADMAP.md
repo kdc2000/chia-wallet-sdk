@@ -265,7 +265,7 @@ Plans:
 
 Plans:
 - [x] 09-01-PLAN.md — BRIDGE-01: tweak_data_from_block_spends helper + iterative Tarjan SCC + 6 inline tests + prelude wiring (Wave 1)
-- [ ] 09-02-PLAN.md — BRIDGE-02: collapse tweak_data_from_simulator_block to thin adapter over BRIDGE-01 (Wave 2)
+- [x] 09-02-PLAN.md — BRIDGE-02: collapse tweak_data_from_simulator_block to thin adapter over BRIDGE-01 (Wave 2)
 - [x] 09-03-PLAN.md — BRIDGE-03: Relation opaque-handle binding + descriptor in bindings/action_system.json (Wave 1)
 - [ ] 09-04-PLAN.md — BRIDGE-04: extend Spends.prepare signature to accept Option<Relation> + descriptor update (Wave 2)
 - [ ] 09-05-PLAN.md — BRIDGE-05: bind SilentPayments.tweakDataFromBlockSpends as static method on namespace + descriptor (Wave 2)
