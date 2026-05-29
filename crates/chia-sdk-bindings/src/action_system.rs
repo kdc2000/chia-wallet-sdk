@@ -8,7 +8,7 @@ use chia_bls::{PublicKey, SecretKey};
 use chia_protocol::{Bytes32, Coin};
 use chia_puzzle_types::{Memos, offer::SettlementPaymentsSolution};
 use chia_sdk_driver::{
-    self as sdk, Cat, Delta, HashedPtr, Layer, Relation, SettlementLayer, SpendContext, SpendKind,
+    self as sdk, Cat, Delta, HashedPtr, Layer, SettlementLayer, SpendContext, SpendKind,
 };
 use chia_sdk_types::{Condition, conditions::TradePrice};
 use clvm_traits::{FromClvm, ToClvm};
@@ -182,7 +182,7 @@ impl Spends {
 
         let mut ctx = self.clvm.lock().unwrap();
 
-        let spends = spends.prepare(&mut ctx, &deltas.0, Relation::None)?;
+        let spends = spends.prepare(&mut ctx, &deltas.0, sdk::Relation::None)?;
 
         let mut finished = HashMap::new();
 
