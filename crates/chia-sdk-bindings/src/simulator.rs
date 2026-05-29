@@ -100,6 +100,27 @@ impl Simulator {
         )
     }
 
+    /// Return every coin spend that resolved at `height` (binding facade).
+    ///
+    /// Thin wrapper over `chia_sdk_test::Simulator::block_spends(height)` —
+    /// returns the block's removals as a `Vec<CoinSpend>` suitable for
+    /// passing to `SilentPayments::tweak_data_from_block_spends`. Returns
+    /// an empty vector when no spends resolved at `height`.
+    pub fn block_spends(&self, height: u32) -> Result<Vec<CoinSpend>> {
+        Ok(self.0.lock().unwrap().block_spends(height))
+    }
+
+    /// Return every coin created at `height` (binding facade).
+    ///
+    /// Thin wrapper over `chia_sdk_test::Simulator::block_outputs(height)` —
+    /// returns the block's additions as a `Vec<Coin>` suitable for pairing
+    /// with `block_spends` when calling
+    /// `SilentPayments::tweak_data_from_block_spends`. Returns an empty
+    /// vector when no coins were created at `height`.
+    pub fn block_outputs(&self, height: u32) -> Result<Vec<Coin>> {
+        Ok(self.0.lock().unwrap().block_outputs(height))
+    }
+
     pub fn spend_coins(
         &self,
         coin_spends: Vec<CoinSpend>,

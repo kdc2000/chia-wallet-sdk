@@ -2846,6 +2846,8 @@ export declare class Simulator {
   unspentCoins(puzzleHash: Uint8Array, includeHints: boolean): Array<Coin>
   createBlock(): void
   tweakDataFromBlock(height: number): TweakData
+  blockSpends(height: number): Array<CoinSpend>
+  blockOutputs(height: number): Array<Coin>
 }
 
 export declare class Softfork {

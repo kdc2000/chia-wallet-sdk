@@ -121,6 +121,18 @@
           "height": "u32"
         },
         "return": "TweakData"
+      },
+      "block_spends": {
+        "args": {
+          "height": "u32"
+        },
+        "return": "Vec<CoinSpend>"
+      },
+      "block_outputs": {
+        "args": {
+          "height": "u32"
+        },
+        "return": "Vec<Coin>"
       }
     }
   },
