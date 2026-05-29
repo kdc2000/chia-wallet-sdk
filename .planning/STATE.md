@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-05-29T16:17:25.812Z"
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-05-29T16:23:47.607Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 49
-  completed_plans: 51
+  completed_plans: 52
   percent: 88
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 ## Current Position
 
 Phase: 09 (real-block-tweakdata-bridge-python-relation-binding) — EXECUTING
-Plan: 2 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-05-29
 
@@ -101,6 +101,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 08 P03 | 7min | 2 tasks | 1 files |
 | Phase 08 P04 | 14min | 2 tasks tasks | 5 files files |
 | Phase 09 P01 | 16min | 2 tasks tasks | 3 files files |
+| Phase 09 P03 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 08]: Plan 08-03: POLISH-04 closed via single exhaustive match in SendAction::spend. The chip-0057 SP arm returns from inside the match (replacing if-let early-return + post-match unreachable!() arm). Both unreachable! hits (line 58 comment + line 62 executable arm — Risk R4 / Open Q1 from 08-RESEARCH.md) deleted in one atomic edit. Behavior byte-identical. Net: 23-line pre-edit block -> 14-line post-edit block (rustfmt expands the 6-arg call one-per-line per workspace >100-col canonical, same precedent as Plan 08-01). All 5 dispatch-touching tests + 9 named send tests + scoped clippy -D warnings + workspace --all-features build all green.
 - [Phase 08]: Plan 08-04: POLISH-02 atomic fold of 3 single-pub-fn silent_payments modules (aggregate.rs, input_hash.rs, one_time.rs) into protocol.rs landed in single commit cab84ad2 (Risk R8 honored). Pre-fold: 4 files / 640 lines / 8 tests. Post-fold: 1 file / 500 lines / 8 tests; 22% line reduction from dedup of imports, module-level rustdoc, 3 byte-identical constants, and test fixtures. Flat #[cfg(test)] mod tests {} block (variant a per RESEARCH Open Q3). TV1_AGGREGATED_SENDER_SK + TV4_SENDER_SK_0 byte-identical (0x5002eaf0...) but BOTH kept by name per Pitfall 1 — semantic meaning differs. mod.rs collapsed from Plan 01 intermediate 6-mod shape to final D-01 4-mod shape (single pub use protocol::{8 names} block). All 6 external callsites resolve (full workspace --all-features build clean). 3 inline deviations all Rule-1: clippy doc_lazy_continuation on test rustdoc (replaced + with , in fluent fn-chain reference), rustfmt re-wrap of pub use blocks (workspace-canonical form per Plan 08-01 precedent), doc edits removing dated planning references to deleted Phase-4.1/4.2 artifacts (SilentPaymentSend::memos, opcode-60/61). Zero new #[allow] attributes. driver chip-0057 test count: 1085 unit + 3 e2e (identical pre- and post-fold). protocol.rs 500 lines (well under POLISH-02 700-line ceiling, even lower than ~640 target).
 - [Phase 09]: Plan 09-01: tweak_data_from_block_spends helper + iterative Tarjan SCC (BRIDGE-01) landed. Iterative Tarjan (no recursion) over opcode-64 AssertConcurrentSpend graph defends against adversarial deep graphs and the Pass 2b pollution attack (third-party AssertConcurrentSpend pointing at a legit cycle keeps the polluter in its own trivial SCC). IndexMap-driven puzzle-hash bucketing + pinned emission order (Stage 2a buckets, Stage 2b SCCs in Tarjan finishing order, standalone singletons in input order) make output byte-stable for downstream byte-equality oracles. Driver-side prelude needs no edit (silent_payments::* wildcard already re-exports); only umbrella src/prelude.rs explicit list extended. 6/6 inline tests pass; scoped clippy -D warnings clean; workspace --all-features build clean; zero new workspace deps; zero new #[allow].
+- [Phase 09]: Plan 09-03: Relation opaque-handle binding lands at chia-sdk-bindings::action_system. Two-step sequencing (Task 1 drops bare Relation import + qualifies sole call site to sdk::Relation::None, Task 2 adds pub struct Relation + 5-method impl + bindings/action_system.json descriptor entry) prevents any transient build break. Mirrors Id/SendDestination opaque-handle precedents byte-for-pattern. Zero deviations; zero new #[allow]; zero new workspace deps; all four binding-target builds clean (--all-features, -F napi, -F wasm, -F pyo3); clippy -D warnings clean. BRIDGE-03 closed; plan 09-04 (Spends.prepare signature extension) and plan 09-06 (cross-binding multi-input tests) unblocked.
 
 ### Roadmap Evolution
 
@@ -204,6 +206,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-29T16:17:25.804Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-05-29T16:23:12.520Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None
