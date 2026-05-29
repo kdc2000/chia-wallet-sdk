@@ -3,7 +3,7 @@ phase: 9
 slug: real-block-tweakdata-bridge-python-relation-binding
 status: draft
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-05-29
 updated: 2026-05-29
 ---
