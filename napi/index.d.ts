@@ -2305,6 +2305,15 @@ export declare class ReceiveMessage {
   set data(value: Array<Program>)
 }
 
+export declare class Relation {
+  clone(): Relation
+  static none(): Relation
+  static assertConcurrent(): Relation
+  isNone(): boolean
+  isAssertConcurrent(): boolean
+  equals(other: Relation): boolean
+}
+
 export declare class Remark {
   clone(): Remark
   constructor(rest: Program)
@@ -2883,7 +2892,7 @@ export declare class Spends {
   selectedAssetIds(): Array<Buffer>
   selectedCatAmount(assetId: Uint8Array): bigint
   apply(actions: Array<Action>): Deltas
-  prepare(deltas: Deltas): FinishedSpends
+  prepare(deltas: Deltas, relation?: Relation | undefined | null): FinishedSpends
   withSilentPaymentKeys(syntheticPks: Array<SilentPaymentRegisteredKey>, secretKeys: Array<SilentPaymentRegisteredSecretKey>): void
 }
 

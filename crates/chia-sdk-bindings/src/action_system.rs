@@ -174,7 +174,7 @@ impl Spends {
         Ok(Deltas(deltas))
     }
 
-    pub fn prepare(&self, deltas: Deltas) -> Result<FinishedSpends> {
+    pub fn prepare(&self, deltas: Deltas, relation: Option<Relation>) -> Result<FinishedSpends> {
         let mut spends = self.spends.lock().unwrap();
 
         let change_puzzle_hash = spends.change_puzzle_hash;
@@ -182,7 +182,8 @@ impl Spends {
 
         let mut ctx = self.clvm.lock().unwrap();
 
-        let spends = spends.prepare(&mut ctx, &deltas.0, sdk::Relation::None)?;
+        let relation = relation.map_or(sdk::Relation::None, |r| r.0);
+        let spends = spends.prepare(&mut ctx, &deltas.0, relation)?;
 
         let mut finished = HashMap::new();
 

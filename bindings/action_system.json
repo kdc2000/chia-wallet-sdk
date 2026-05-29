@@ -61,7 +61,8 @@
       },
       "prepare": {
         "args": {
-          "deltas": "Deltas"
+          "deltas": "Deltas",
+          "relation": "Option<Relation>"
         },
         "return": "FinishedSpends"
       },
