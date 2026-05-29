@@ -148,3 +148,103 @@ def test_unlabeled_e2e():
     assert (
         after_spend.spent_height is not None
     ), "detected SP coin successfully spent"
+
+
+def test_multi_input_e2e():
+    """BRIDGE-06 pyo3 multi-input SP send + scan-from-tweaks E2E.
+
+    Mirrors `test_unlabeled_e2e` but with 2 sender coins,
+    `Relation.assert_concurrent()` on `prepare`, and TweakData built via the
+    new `SilentPayments.tweak_data_from_block_spends` helper over
+    `sim.block_spends(h) + sim.block_outputs(h)`.
+
+    Exercises the full Phase 9 binding surface end-to-end: the `Relation`
+    opaque-handle (BRIDGE-03), the extended `Spends.prepare(deltas, relation)`
+    signature (BRIDGE-04), the `SilentPayments.tweak_data_from_block_spends`
+    static method (BRIDGE-05), and the `Simulator.block_spends` /
+    `Simulator.block_outputs` facade additions (BRIDGE-06 prereq).
+    """
+    from chia_wallet_sdk import Relation
+
+    sim = Simulator()
+    clvm = Clvm()
+
+    recipient = SilentPaymentKeys.from_mnemonic(Mnemonic(TV1_MNEMONIC))
+    recipient_address = recipient.unlabeled_address(SilentPaymentNetwork.Testnet)
+
+    # Two non-ephemeral XCH coins with different BLS pairs. The Relation
+    # cycle binding ties them together so the receiver scanner can re-group
+    # them via Pass 2b SCC over opcode-64 AssertConcurrentSpend edges.
+    sender1 = sim.bls(500)
+    sender2 = sim.bls(500)
+    height_before = sim.height()
+
+    spends = Spends(clvm, sender1.puzzle_hash)
+    spends.add_xch(sender1.coin)
+    spends.add_xch(sender2.coin)
+
+    actions = [
+        Action.send(
+            Id.xch(),
+            SendDestination.silent_payment(recipient_address),
+            700,
+            None,
+        )
+    ]
+
+    spends.with_silent_payment_keys(
+        [
+            SilentPaymentRegisteredKey(sender1.puzzle_hash, sender1.pk),
+            SilentPaymentRegisteredKey(sender2.puzzle_hash, sender2.pk),
+        ],
+        [
+            SilentPaymentRegisteredSecretKey(sender1.puzzle_hash, sender1.sk),
+            SilentPaymentRegisteredSecretKey(sender2.puzzle_hash, sender2.sk),
+        ],
+    )
+
+    deltas = spends.apply(actions)
+
+    # Pass Relation.assert_concurrent() so the driver-side gate
+    # (non_ephemeral_xch_count >= 2) is satisfied. Without it,
+    # DriverError::SilentPaymentRequiresInputBinding fires inside prepare().
+    finished = spends.prepare(deltas, Relation.assert_concurrent())
+
+    for pending in finished.pending_spends():
+        is_s1 = pending.coin().puzzle_hash == sender1.puzzle_hash
+        pk = sender1.pk if is_s1 else sender2.pk
+        finished.insert(
+            pending.coin().coin_id(),
+            clvm.standard_spend(pk, clvm.delegated_spend(pending.conditions())),
+        )
+    finished.spend()
+
+    sim.spend_coins(clvm.coin_spends(), [sender1.sk, sender2.sk])
+
+    # BRIDGE-05 entry point: drive TweakData construction through the new
+    # helper, not the older Simulator.tweak_data_from_block path. The
+    # Simulator facade exposes block_spends / block_outputs per the
+    # BRIDGE-06 Task 1 additions.
+    block_spends = sim.block_spends(height_before)
+    block_outputs = sim.block_outputs(height_before)
+    tweak_data = SilentPayments.tweak_data_from_block_spends(
+        block_spends, block_outputs
+    )
+    assert (
+        len(tweak_data.tweak_points) == 1
+    ), "one SP transaction group -> one tweak_point"
+
+    labels = LabelRegistry()
+    detections = SilentPayments.scan_from_tweaks(
+        recipient.scan_sk(),
+        recipient.spend_sk(),
+        recipient.spend_pk(),
+        tweak_data,
+        labels,
+        K_MAX_DEFAULT,
+    )
+
+    assert len(detections) == 1, "scanner finds exactly one SP output"
+    assert detections[0].k == 0, "first output at this scan_pk -> k=0"
+    assert detections[0].label is None, "unlabeled detection -> label is None"
+    assert detections[0].amount == 700, "multi-input SP output amount round-trips"
