@@ -241,3 +241,13 @@ Plans:
 - [x] 08-02-PLAN.md — POLISH-03: De-duplicate `SendDestination` Boxing rationale — drop enum-level "Cannot derive Copy" paragraph; keep variant-level (Wave 1)
 - [x] 08-03-PLAN.md — POLISH-04: Restructure `Action::send` chip-0057 dispatch — single exhaustive match; remove `unreachable!("handled above")` (Wave 1)
 - [x] 08-04-PLAN.md — POLISH-02: Atomic fold of `aggregate.rs` + `input_hash.rs` + `one_time.rs` into `protocol.rs`; collapse mod.rs to final D-01 shape (Wave 2)
+
+### Phase 9: Real-block TweakData bridge + Python Relation binding
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 8
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 9 to break down)
