@@ -199,6 +199,14 @@
           "sks": "Vec<SecretKey>"
         },
         "return": "ScalarField"
+      },
+      "tweak_data_from_block_spends": {
+        "type": "static",
+        "args": {
+          "coin_spends": "Vec<CoinSpend>",
+          "additions": "Vec<Coin>"
+        },
+        "return": "TweakData"
       }
     }
   }

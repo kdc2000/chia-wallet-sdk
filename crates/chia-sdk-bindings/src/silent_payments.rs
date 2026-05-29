@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex};
 
 use bindy::Result;
 use chia_bls::{PublicKey, SecretKey};
-use chia_protocol::Bytes32;
+use chia_protocol::{Bytes32, Coin, CoinSpend};
 
 use crate::Mnemonic;
 
@@ -431,5 +431,30 @@ impl SilentPayments {
 
     pub fn aggregate_sender_sks(sks: Vec<SecretKey>) -> Result<ScalarField> {
         Ok(chia_sdk_driver::aggregate_sender_sks(&sks).into())
+    }
+
+    /// Build a `TweakData` from a real-block `Vec<CoinSpend>` + `Vec<Coin>`
+    /// (post-decompression). The canonical entry point for any wallet
+    /// processing real blocks (testnet11, mainnet) — not just the in-process
+    /// simulator — and for transport clients that materialise block data from
+    /// upstream RPC.
+    ///
+    /// Delegates to the driver-side
+    /// `chia_sdk_driver::silent_payments::tweak_data_from_block_spends`, which
+    /// implements same-puzzle-hash bucketing and iterative Tarjan SCC over
+    /// opcode-64 `AssertConcurrentSpend` edges to recover transaction-group
+    /// shape from a flat list of spends. Non-standard puzzles (CAT, NFT,
+    /// arbitrary mod hashes) skip silently; BLS12-381 identity-element tweak
+    /// points are suppressed (CHIP §459). See the driver-side module docs for
+    /// the full grouping algorithm.
+    pub fn tweak_data_from_block_spends(
+        coin_spends: Vec<CoinSpend>,
+        additions: Vec<Coin>,
+    ) -> Result<TweakData> {
+        let driver_td = chia_sdk_driver::silent_payments::tweak_data_from_block_spends(
+            &coin_spends,
+            &additions,
+        )?;
+        Ok(driver_td.into())
     }
 }

@@ -2818,6 +2818,7 @@ export declare class SilentPayments {
   static deriveOneTimePuzzleHash(scanPk: PublicKey, spendPk: PublicKey, aggregatedSenderSk: ScalarField, inputHash: ScalarField, k: number): Buffer
   static computeInputHash(coinIds: Array<Uint8Array>, aggregatedSenderPk: PublicKey): ScalarField
   static aggregateSenderSks(sks: Array<SecretKey>): ScalarField
+  static tweakDataFromBlockSpends(coinSpends: Array<CoinSpend>, additions: Array<Coin>): TweakData
 }
 
 export declare class Simulator {
