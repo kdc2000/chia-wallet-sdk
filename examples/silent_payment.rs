@@ -4,7 +4,10 @@
 //! recipient SP keys (BIP-39 mnemonic) → two SP sends in one tx (unlabeled +
 //! labeled m=1) → farm → extract `TweakData` via `tweak_data_from_simulator_block`
 //! → scan → detect both outputs → spend each via `StandardLayer` after
-//! `.derive_synthetic()`.
+//! `.derive_synthetic()` (Stages 1-5), plus a multi-input section (Stages
+//! 6-9) demonstrating the `tweak_data_from_block_spends` helper over the
+//! simulator's block accessors with `Relation::AssertConcurrent` cycle
+//! binding for two non-ephemeral XCH inputs.
 //!
 //! Tweak-data extraction uses only the test-crate helper — no transport
 //! client is referenced (forward-compat). The labeled address uses m=1;
@@ -114,6 +117,84 @@ fn main() -> Result<()> {
             "Stage 5/5 — Spent detected coin {} (label={:?}).",
             d.coin_id, d.label
         );
+    }
+
+    // ─── Multi-input SP send demo ────────────────────────────────────────
+    // Same recipient, two sender coins bound by Relation::AssertConcurrent.
+    // Demonstrates the canonical multi-input flow that downstream wallets
+    // use when assembling multi-coin SP sends — the receive-side scanner
+    // re-groups the inputs via Pass 2b SCC over opcode-64
+    // AssertConcurrentSpend edges so a single TweakData tweak_point
+    // emerges for the multi-input transaction.
+
+    let sender_a = sim.bls(500);
+    let sender_b = sim.bls(500);
+    let height_before_multi = sim.height();
+
+    let mut spends_multi = Spends::new(sender_a.puzzle_hash);
+    spends_multi.add(sender_a.coin);
+    spends_multi.add(sender_b.coin);
+
+    let multi_addr = recipient.unlabeled_address(SilentPaymentNetwork::Mainnet);
+    let deltas_multi = spends_multi.apply(
+        ctx,
+        &[Action::send(
+            Id::Xch,
+            SendDestination::SilentPayment(Box::new(multi_addr)),
+            700,
+            Memos::None,
+        )],
+    )?;
+
+    let multi_pks = indexmap! {
+        sender_a.puzzle_hash => sender_a.pk,
+        sender_b.puzzle_hash => sender_b.pk,
+    };
+    spends_multi.with_silent_payment_keys(
+        multi_pks.clone(),
+        indexmap! {
+            sender_a.puzzle_hash => sender_a.sk.clone(),
+            sender_b.puzzle_hash => sender_b.sk.clone(),
+        },
+    );
+    // Relation::AssertConcurrent is mandatory for multi-input SP sends —
+    // without it, finish_with_keys returns SilentPaymentRequiresInputBinding.
+    spends_multi.finish_with_keys(ctx, &deltas_multi, Relation::AssertConcurrent, &multi_pks)?;
+    sim.spend_coins(ctx.take(), &[sender_a.sk.clone(), sender_b.sk.clone()])?;
+    println!(
+        "Stage 6/9 — Sent 700 mojos via multi-input SP send (2 coins, Relation::AssertConcurrent)."
+    );
+
+    // Stage 7: extract via the canonical tweak_data_from_block_spends helper
+    // over the simulator's block accessors. This is the same code path
+    // real-block callers use after generator decompression — the SDK is
+    // simulator-agnostic at this layer.
+    let multi_spends = sim.block_spends(height_before_multi);
+    let multi_additions = sim.block_outputs(height_before_multi);
+    let tweak_data_multi = tweak_data_from_block_spends(&multi_spends, &multi_additions)?;
+    println!(
+        "Stage 7/9 — Extracted TweakData via tweak_data_from_block_spends: {} tweak_point(s), {} output(s).",
+        tweak_data_multi.tweak_points.len(),
+        tweak_data_multi.outputs.len(),
+    );
+
+    // Stage 8: scan and detect.
+    let detections_multi = recipient.scan(&tweak_data_multi, None, K_MAX_DEFAULT);
+    println!(
+        "Stage 8/9 — Multi-input scan: detected {} output(s).",
+        detections_multi.len()
+    );
+
+    // Stage 9: spend the detected multi-input coin.
+    for d in &detections_multi {
+        let synthetic_secret = d.onetime_sk.derive_synthetic();
+        let conditions = Conditions::new()
+            .create_coin(sender_a.puzzle_hash, d.amount - 1, Memos::None)
+            .reserve_fee(1);
+        let coin = Coin::new(d.parent_coin_id, d.puzzle_hash, d.amount);
+        StandardLayer::new(synthetic_secret.public_key()).spend(ctx, coin, conditions)?;
+        sim.spend_coins(ctx.take(), std::slice::from_ref(&synthetic_secret))?;
+        println!("Stage 9/9 — Spent multi-input detected coin {}.", d.coin_id);
     }
 
     Ok(())
