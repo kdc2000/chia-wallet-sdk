@@ -111,7 +111,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   13. Workspace gates green: `cargo build --release --workspace --all-features`, `cargo clippy -p chia-sdk-driver --features chip-0057 --all-targets -- -D warnings`, `cargo fmt --all --check`, `cargo machete`. Phase 1/4/4.1 grep bans still hold (`mod_by_group_order`, `^use sha2::`, `Sha256::digest` in `silent_payments/`; FINGERPRINT-01 grep gates from 04.1; Phase 4 Privacy-warning coverage).
 **Plans**: 3 plans
 - [x] 04.2-01-PLAN.md — Wave A foundation: 2 DriverError variants + SendDestination enum + 2 Spends chip-0057 fields + with_silent_payment_keys builder (additive only; consumers wired in Plan 02)
-- [x] 04.2-02-PLAN.md — Wave A wire-up: Action::send Into<SendDestination> + SendAction.destination + chip-0057 SP arm in SendAction::spend + sp_finish_branch in Spends::finish_with_keys + reshape 3 send_keys.rs tests (kills dead_code-deny)
+- [x] 04.2-02-PLAN.md — Wave A wire-up: Action::send Into<SendDestination> + SendAction.destination replaces puzzle_hash + chip-0057 SP arm in SendAction::spend + sp_finish_branch in Spends::finish_with_keys + reshape 3 send_keys.rs tests (kills dead_code-deny)
 - [x] 04.2-03-PLAN.md — Wave B atomic delete-and-migrate: drop old SilentPaymentSend API + actions/silent_payment_send.rs + finish_with_silent_payment_keys; relocate 8 tests + add 2 NEW Wave 0 tests to actions/send.rs; prelude swap; REQUIREMENTS.md ACTION-API-01 entry; final phase gate
 **UI hint**: no
 
@@ -193,7 +193,9 @@ All 32 v1 functional requirements mapped to exactly one phase across Phases 1–
 | BIND-03 | 1 | Phase 6 |
 | EX-01 | 1 | Phase 6 |
 | CLEANUP-01..04, CLEANUP-06 | 5 | Phase 7 |
-| **Total** | **37** | **7 phases** |
+| POLISH-01..04 | 4 | Phase 8 |
+| BRIDGE-01..06 | 6 | Phase 9 |
+| **Total** | **47** | **9 phases** |
 
 ## Cross-Cutting Concerns
 
@@ -244,10 +246,27 @@ Plans:
 
 ### Phase 9: Real-block TweakData bridge + Python Relation binding
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Close two downstream Python-consumer-blocking gaps in the v1 CHIP-0057 surface. (1) Extract the simulator helper's pure logic into a real-block-callable helper `chia_sdk_driver::silent_payments::tweak_data_from_block_spends(&[CoinSpend], &[Coin])` that implements full Pass 2a + Pass 2b SCC grouping (the existing simulator helper aggregates the whole block as one group — correct for simulator's 1-tx-per-block convention, wrong for real multi-tx blocks). (2) Bind `chia_sdk_driver::Relation` to pyo3/napi/wasm via the opaque-handle pattern and extend `Spends.prepare(deltas)` to `Spends.prepare(deltas, Option<Relation>)` so Python callers can drive multi-input SP sends. Pure additive; no API breakage to v1 surface.
+
+**Requirements**: BRIDGE-01, BRIDGE-02, BRIDGE-03, BRIDGE-04, BRIDGE-05, BRIDGE-06
+
 **Depends on:** Phase 8
-**Plans:** 0 plans
+
+**Success Criteria** (what must be TRUE):
+  1. **BRIDGE-01** — `chia_sdk_driver::silent_payments::tweak_data_from_block_spends` exists in new sibling file `crates/chia-sdk-driver/src/silent_payments/block_tweak_data.rs` with the exact signature `pub fn tweak_data_from_block_spends(coin_spends: &[CoinSpend], additions: &[Coin]) -> Result<TweakData, DriverError>`. Inline `#[cfg(test)] mod tests {}` covers Pass 2a same-puzzle-hash grouping, Pass 2b multi-input SCC, Pass 2b pollution attack (canonical correctness oracle), non-standard-puzzle skip, CHIP §459 identity-element guard, empty-block edge case. Uses iterative Tarjan SCC (no recursion — adversarial-input safe).
+  2. **BRIDGE-02** — `chia-sdk-test::silent_payments::tweak_data_from_simulator_block` collapses to a ~5-line delegate over BRIDGE-01's helper. All 3 Phase 6 simulator e2e tests (`test_simulator_e2e_unlabeled`, `test_simulator_e2e_labeled`, `test_simulator_e2e_m0_self_change`) and the 2 existing inline simulator-helper tests pass byte-identically pre/post refactor.
+  3. **BRIDGE-03** — `Relation` opaque-handle binding lands in `chia-sdk-bindings::action_system` with 5 methods (`none`, `assert_concurrent`, `is_none`, `is_assert_concurrent`, `equals`). Descriptor entry in `bindings/action_system.json` (not top-level). All three binding targets (napi/pyo3/wasm) build cleanly and expose the new class.
+  4. **BRIDGE-04** — `chia-sdk-bindings::Spends::prepare` signature extends from `prepare(deltas)` to `prepare(deltas, relation: Option<Relation>)`. `None` defaults to `sdk::Relation::None` preserving current behavior. Existing pyo3 single-input E2E `test_unlabeled_e2e` passes without any test source edits. Descriptor entry in `bindings/action_system.json::Spends.methods.prepare` updated.
+  5. **BRIDGE-05** — `SilentPayments.tweakDataFromBlockSpends(coinSpends: CoinSpend[], additions: Coin[]) -> TweakData` static method bound on the `SilentPayments` namespace class. Descriptor entry in `bindings/silent_payments.json`. Drift-script `scripts/sp_descriptor_facade_drift.sh` exits 0.
+  6. **BRIDGE-06** — Three new cross-binding multi-input round-trip tests (`napi/__test__/silent_payments_multi_input.spec.ts`, `pyo3/tests/test_silent_payments.py::test_multi_input_e2e`, `wasm/__test__/silent_payments_multi_input.spec.ts`) each: farm 2 XCH coins → `Action::send(Id::Xch, SendDestination::SilentPayment(addr), amount, None)` → `Spends.prepare(deltas, Relation.assert_concurrent())` → farm bundle → `SilentPayments.tweakDataFromBlockSpends(sim.blockSpends(h), sim.blockOutputs(h))` → scan → exactly one DetectedSpCoin lands. Plus `examples/silent_payment.rs` gains a multi-input section (Stages 6-9). Plus `Simulator.blockSpends(height)` + `Simulator.blockOutputs(height)` binding facade entries added so binding tests can construct helper inputs.
+  7. Workspace gates: `cargo build --release --workspace --all-features` clean; `cargo clippy -p chia-sdk-driver --features chip-0057 --all-targets -- -D warnings` clean; `cargo clippy -p chia-sdk-bindings --all-features --all-targets -- -D warnings` clean; `cargo fmt --all --check` clean; `cargo machete` clean (zero new ignored entries); CLEANUP-01 grep ban still holds on all new files; zero new `#[allow]` attributes anywhere.
+
+**Plans:** 6 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 9 to break down)
+- [ ] 09-01-PLAN.md — BRIDGE-01: tweak_data_from_block_spends helper + iterative Tarjan SCC + 6 inline tests + prelude wiring (Wave 1)
+- [ ] 09-02-PLAN.md — BRIDGE-02: collapse tweak_data_from_simulator_block to thin adapter over BRIDGE-01 (Wave 2)
+- [ ] 09-03-PLAN.md — BRIDGE-03: Relation opaque-handle binding + descriptor in bindings/action_system.json (Wave 1)
+- [ ] 09-04-PLAN.md — BRIDGE-04: extend Spends.prepare signature to accept Option<Relation> + descriptor update (Wave 2)
+- [ ] 09-05-PLAN.md — BRIDGE-05: bind SilentPayments.tweakDataFromBlockSpends as static method on namespace + descriptor (Wave 2)
+- [ ] 09-06-PLAN.md — BRIDGE-06: Simulator block_spends/block_outputs facade + 3 cross-binding multi-input tests + example multi-input section (Wave 2)
