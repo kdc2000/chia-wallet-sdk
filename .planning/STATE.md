@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 09.1-01-PLAN.md
-last_updated: "2026-05-30T14:21:59.966Z"
+status: verifying
+stopped_at: Completed 09.1-02-PLAN.md
+last_updated: "2026-05-30T14:34:27.535Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 12
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 51
-  completed_plans: 57
+  completed_plans: 58
   percent: 88
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 Phase: 09.1 (fix-5-maintainer-flagged-conformance-issues-in-chip-0057-sp-surface) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-30
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
@@ -107,6 +107,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 09 P05 | 5min | 1 tasks | 3 files |
 | Phase 09 P06 | 19min | 3 tasks tasks | 7 files files |
 | Phase 09.1 P01 | 5min | 3 tasks | 7 files |
+| Phase 09.1 P02 | 9min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -192,6 +193,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 09]: Plan 09-05: SilentPayments.tweak_data_from_block_spends static method bound across napi/pyo3/wasm via the SilentPayments namespace class (BRIDGE-05 closed). Pure delegate to chia_sdk_driver::silent_payments::tweak_data_from_block_spends (BRIDGE-01 helper); owned Vec<CoinSpend>/Vec<Coin> facade params per bindy marshaling convention; the From<chia_sdk_driver::TweakData> impl on the binding-side TweakData (landed in Phase 5) handles the return conversion. Zero deviations; zero new #[allow]; drift script reports 23 methods both sides (was 22).
 - [Phase 09]: Plan 09-06: BRIDGE-06 closed via three multi-input cross-binding tests (napi/pyo3/wasm) + Simulator.block_spends/block_outputs facade additions + examples/silent_payment.rs multi-input section (Stages 6-9). Hard regression bar holds — existing pyo3 test_unlabeled_e2e diff shows zero deletions (Relation import lives inside the new test_multi_input_e2e function). Phase 6 e2e oracle still byte-identical. Zero deviations; zero new workspace deps; drift script clean (23 methods both sides).
 - [Phase 09.1]: Plan 09.1-01: ISSUE-2/3/4/5 closed. ISSUE-3 used feature-conditioned cfg_attr(not(chip-0057), allow(missing_copy_implementations)) on SendDestination (NOT unconditional Copy — the chip-0057-on Box variant is not Copy). ISSUE-2 added [[example]] required-features=[chip-0057] so no-features cargo build --examples skips silent_payment.rs. ISSUE-4 derived Clone/PartialEq/Eq on SilentPaymentError + assert_eq! in labeled_address_zero_rejected (SilentPaymentAddress Ok type already PartialEq+Debug). ISSUE-5 scrubbed 9 planning pointers + renamed scalar test to from_bytes_unsigned_max_input_reduces_unsigned_not_identity. Zero new deps; exactly one new #[allow] (the prescribed one).
+- [Phase 09.1]: Plan 09.1-02: ISSUE-1 closed via FACADE-GUARD (option b) — coin_ids.is_empty() guard in chia-sdk-bindings::silent_payments::compute_input_hash returns Err(DriverError::SilentPaymentNoXchInputs) before delegating, so empty FFI input no longer panics across the boundary. Driver fn signature + assert! unchanged (internal invariant); # Panics rustdoc rewritten to document non-empty as an internal-only caller contract. Reused existing SilentPaymentNoXchInputs variant; bindy::Error::Driver(#[from] DriverError) carries .into().
+- [Phase 09.1]: Plan 09.1-02: Bindings SP tests run under default + wasm features, NOT --all-features — napi backend needs Node host-runtime symbols (napi_reference_unref) that cannot link a standalone test binary outside an addon; SP facade is not chip-0057-gated so the same code path is exercised. Whole-phase regression bar green (fmt, all-features workspace clippy, machete, full CI workspace test line: driver suite 2338 passed) with zero new deps + zero new #[allow]. Only 2 pre-existing chia-sdk-daemon clippy warnings remain (out of scope, deferred since Plan 01-05).
 
 ### Roadmap Evolution
 
@@ -217,6 +220,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-30T14:21:51.664Z
-Stopped at: Completed 09.1-01-PLAN.md
+Last session: 2026-05-30T14:34:14.747Z
+Stopped at: Completed 09.1-02-PLAN.md
 Resume file: None

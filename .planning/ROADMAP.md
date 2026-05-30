@@ -279,7 +279,7 @@ Plans:
 
 **Depends on:** Phase 9
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 The 5 issues (with evidence from the review):
 
@@ -295,4 +295,4 @@ The 5 issues (with evidence from the review):
 
 Plans:
 - [x] 09.1-01-PLAN.md — ISSUE-2/3/4/5: [[example]] required-features + SendDestination missing_copy_implementations gate + SilentPaymentError Clone/PartialEq/Eq derives + scrub planning residue & rename misleading scalar test (Wave 1)
-- [ ] 09.1-02-PLAN.md — ISSUE-1: guard the FFI-reachable compute_input_hash facade to return Err on empty input (no panic) + boundary test + global regression bar (Wave 2)
+- [x] 09.1-02-PLAN.md — ISSUE-1: guard the FFI-reachable compute_input_hash facade to return Err on empty input (no panic) + boundary test + global regression bar (Wave 2)
