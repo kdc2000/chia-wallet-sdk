@@ -279,7 +279,7 @@ Plans:
 
 **Depends on:** Phase 9
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 The 5 issues (with evidence from the review):
 
@@ -294,5 +294,5 @@ The 5 issues (with evidence from the review):
 5. **Planning-process residue in shipped source.** Comments referencing "VALIDATION.md grep matchers," "Plan 04.2," and "Pitfall 7," plus a test (`crates/chia-sdk-types/src/silent_payments/scalar.rs:121`) whose comment admits its name contradicts its own assertion. Fix: scrub the planning references; rename/correct the misleading test.
 
 Plans:
-- [ ] 09.1-01-PLAN.md — ISSUE-2/3/4/5: [[example]] required-features + SendDestination missing_copy_implementations gate + SilentPaymentError Clone/PartialEq/Eq derives + scrub planning residue & rename misleading scalar test (Wave 1)
+- [x] 09.1-01-PLAN.md — ISSUE-2/3/4/5: [[example]] required-features + SendDestination missing_copy_implementations gate + SilentPaymentError Clone/PartialEq/Eq derives + scrub planning residue & rename misleading scalar test (Wave 1)
 - [ ] 09.1-02-PLAN.md — ISSUE-1: guard the FFI-reachable compute_input_hash facade to return Err on empty input (no panic) + boundary test + global regression bar (Wave 2)

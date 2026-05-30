@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 09-06-PLAN.md
-last_updated: "2026-05-29T17:48:38.637Z"
-last_activity: 2026-05-29
+status: executing
+stopped_at: Completed 09.1-01-PLAN.md
+last_updated: "2026-05-30T14:21:59.966Z"
+last_activity: 2026-05-30
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 11
-  total_plans: 49
-  completed_plans: 56
+  total_plans: 51
+  completed_plans: 57
   percent: 88
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 09 — real-block-tweakdata-bridge-python-relation-binding
+**Current focus:** Phase 09.1 — fix-5-maintainer-flagged-conformance-issues-in-chip-0057-sp-surface
 
 ## Current Position
 
-Phase: 09
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-29
+Phase: 09.1 (fix-5-maintainer-flagged-conformance-issues-in-chip-0057-sp-surface) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-05-30
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
@@ -106,6 +106,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 09 P04 | 25min | 2 tasks tasks | 6 files files |
 | Phase 09 P05 | 5min | 1 tasks | 3 files |
 | Phase 09 P06 | 19min | 3 tasks tasks | 7 files files |
+| Phase 09.1 P01 | 5min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -190,6 +191,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 09]: Plan 09-04: Spends.prepare binding signature extended to (deltas, relation: Option<Relation>) across all 3 binding targets. Bindy-macro pyo3 codegen patched (Rule 2) to emit #[pyo3(signature = (..., arg=None))] defaults for the trailing run of Option<T> args — pyo3 forbids required positional after optional, so middle-position Options (e.g., Action.issue_cat.hidden_puzzle_hash) stay required. Hard regression bar PASS: existing test_unlabeled_e2e passes with git diff on pyo3/tests/test_silent_payments.py empty. napi (52/52) + wasm (8/8) + pyo3 (2/2) all green; no caller-source patches needed on any target. BRIDGE-04 closed; 09-06 multi-input cross-binding tests unblocked.
 - [Phase 09]: Plan 09-05: SilentPayments.tweak_data_from_block_spends static method bound across napi/pyo3/wasm via the SilentPayments namespace class (BRIDGE-05 closed). Pure delegate to chia_sdk_driver::silent_payments::tweak_data_from_block_spends (BRIDGE-01 helper); owned Vec<CoinSpend>/Vec<Coin> facade params per bindy marshaling convention; the From<chia_sdk_driver::TweakData> impl on the binding-side TweakData (landed in Phase 5) handles the return conversion. Zero deviations; zero new #[allow]; drift script reports 23 methods both sides (was 22).
 - [Phase 09]: Plan 09-06: BRIDGE-06 closed via three multi-input cross-binding tests (napi/pyo3/wasm) + Simulator.block_spends/block_outputs facade additions + examples/silent_payment.rs multi-input section (Stages 6-9). Hard regression bar holds — existing pyo3 test_unlabeled_e2e diff shows zero deletions (Relation import lives inside the new test_multi_input_e2e function). Phase 6 e2e oracle still byte-identical. Zero deviations; zero new workspace deps; drift script clean (23 methods both sides).
+- [Phase 09.1]: Plan 09.1-01: ISSUE-2/3/4/5 closed. ISSUE-3 used feature-conditioned cfg_attr(not(chip-0057), allow(missing_copy_implementations)) on SendDestination (NOT unconditional Copy — the chip-0057-on Box variant is not Copy). ISSUE-2 added [[example]] required-features=[chip-0057] so no-features cargo build --examples skips silent_payment.rs. ISSUE-4 derived Clone/PartialEq/Eq on SilentPaymentError + assert_eq! in labeled_address_zero_rejected (SilentPaymentAddress Ok type already PartialEq+Debug). ISSUE-5 scrubbed 9 planning pointers + renamed scalar test to from_bytes_unsigned_max_input_reduces_unsigned_not_identity. Zero new deps; exactly one new #[allow] (the prescribed one).
 
 ### Roadmap Evolution
 
@@ -198,6 +200,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - 2026-05-20: **Phase 7 added at end of milestone**: Code review cleanup. v1 closed requirement-complete on 2026-05-19; a post-v1 maintainer-style code review (recorded in this session) found 6 expedient choices that ship-but-don't-merge cleanly: 128 planning-artifact references in source comments, `actions/send.rs` ballooned to 1080 lines, `Spends::finish_silent_payments` leaked as public to plug a binding-side gap, `silent_payments/e2e.rs` inlines `tweak_data_from_simulator_block` instead of calling the canonical helper, `scanner.rs` carries a 733-line file with embedded tests, and 7/8 phases' `VALIDATION.md` frontmatter still shows `nyquist_compliant: false` (template drift — verifier never flips it). Phase 7 adds CLEANUP-01..06 to address these before upstream merge. No behavior change — pure polish. Phase 7 depends on Phase 6.
 - 2026-05-20: **Phase 8 added at end of milestone**: Second-pass v1 polish — tighten SP module surface and dispatch ergonomics. Post-Phase-7 quality survey identified 4 residual nits a careful maintainer would still flag: (1) `silent_payments/mod.rs` over-exports — `pub use` on `aggregate`/`input_hash`/`one_time`/`protocol` exposes mid-pipeline primitives that should be `pub(crate)`; only the wire types + scanner entrypoint belong in `pub`. The prelude already curates the narrower surface, so the module's `pub` is wider than the public API. (2) Single-function modules `aggregate.rs` (91 lines) + `input_hash.rs` (157 lines) + parts of `one_time.rs` (193 lines) could fold into `protocol.rs` to reduce navigation overhead — they're each one public function with tests. (3) `SendDestination` Boxing rationale documented twice (enum-level rustdoc at `send_destination.rs:21-23` AND variant-level at `:39-41`); collapse to one canonical place. (4) `actions/send.rs:44-62` uses early-return + `unreachable!("handled above")` to thread the chip-0057 cfg-gated arm through the dispatch — works but reads awkwardly; a single exhaustive match would be cleaner. Phase 8 depends on Phase 7. No behavior change — pure polish; same shape as Phase 7.
 - 2026-05-29: **Phase 9 added at end of milestone**: Real-block TweakData bridge + Python Relation binding. Two gaps surfaced when rewriting the `~/silent-payments` Python prototype to consume this SDK: (1) `Simulator::tweak_data_from_block` only walks simulator state — there's no equivalent for a real full-node block (testnet11 / mainnet). The `chia-sdk-test::silent_payments::tweak_data_from_simulator_block` helper's pure logic (standard-puzzle parse → synthetic-PK extraction → Pass 2a same-puzzle-hash grouping → Pass 2b `Relation::AssertConcurrent` SCC over opcode-64 edges → aggregate + `compute_input_hash` → emit `TweakData { tweak_points, outputs }`) needs to be extracted into a Simulator-free function that takes the natural post-decompress block shape Python callers already have from coinset RPC: a `Vec<CoinSpend>` (removals with puzzle reveals + solutions) plus the additions list. The new helper lives in `chia-sdk-driver` (NOT `chia-sdk-test`, which has a Simulator dep that's wrong for production callers) with a Python binding alongside it. (2) `Spends.prepare` Python binding at `crates/chia-sdk-bindings/src/action_system.rs:185` hardcodes `Relation::None`, blocking multi-input SP sends (≥2 non-ephemeral XCH inputs hit `DriverError::SilentPaymentRequiresInputBinding` at `crates/chia-sdk-driver/src/action_system/spends.rs:604-605`). Add an optional `Relation` parameter (default `Relation::None` preserves the current single-input Python E2E unchanged). Likely needs a thin pyo3 enum binding for `Relation` (not currently exposed in `bindings/action_system.json`). Phase 9 depends on Phase 8. Discussed in `sdk-gaps-prompt.md` — main design call to resolve in discuss-phase: exact block-representation input shape (recommended: `Vec<CoinSpend>` + additions list).
+- 2026-05-30: **Phase 9.1 inserted after Phase 9** (URGENT): Fix 5 maintainer-flagged conformance issues in the chip-0057 SP surface. Surfaced by a 2026-05-29 cross-cutting code-quality review (style/design/architecture conformance audit of the full ~5k-line SP addition across 7 crates + bindings + example + tests). The review found the work architecturally sound and above the first-pass bar, but flagged 5 concrete pre-merge defects, all small/mechanical with no architecture or API changes: (1) **FFI panic** — `compute_input_hash` (`crates/chia-sdk-driver/src/silent_payments/protocol.rs:183`) `assert!`s on empty `coin_ids` and is reachable from all 3 bindings via `crates/chia-sdk-bindings/src/silent_payments.rs:425` inside a `Result` that doesn't guard; violates "no panicking in library code" — return `DriverError` instead. (2) **Example missing `required-features`** — `examples/silent_payment.rs` uses chip-0057-only API but root `Cargo.toml` has no `[[example]]` block, so `cargo build --examples` / `cargo test` without `--all-features` fails (14 errors); CI green only by accident — add `[[example]] name="silent_payment" required-features=["chip-0057"]`. (3) **`SendDestination` trips `missing_copy_implementations` when chip-0057 off** — single-variant enum at `crates/chia-sdk-driver/src/action_system/send_destination.rs:29`; `clippy -p chia-sdk-driver -D warnings` warns, masked by all-features CI — gate the lint or derive `Copy`. (4) **`SilentPaymentError` drops `Clone, PartialEq, Eq`** (`crates/chia-sdk-utils/src/silent_payments/error.rs`) that wrapped `Bech32Error` carries, forcing tests into `matches!`+`panic!` — add the derives. (5) **Planning residue in shipped source** — refs to "VALIDATION.md grep matchers"/"Plan 04.2"/"Pitfall 7" + a misleading test at `crates/chia-sdk-types/src/silent_payments/scalar.rs:121` whose comment admits its name contradicts its assertion — scrub and rename. Distinct from Phase 7/8 polish (different specific issues; concentrated in the edges CI doesn't exercise — non-default feature permutations and the FFI boundary). Phase 9.1 depends on Phase 9. No behavior change beyond converting the panic to an error. Each fix verified under the relevant CI permutation (per-crate build ±`--all-features`, `clippy -D warnings`, `cargo build --examples`/`cargo test` without `--all-features`).
 
 ### Pending Todos
 
@@ -214,6 +217,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-29T17:32:05.930Z
-Stopped at: Completed 09-06-PLAN.md
+Last session: 2026-05-30T14:21:51.664Z
+Stopped at: Completed 09.1-01-PLAN.md
 Resume file: None
