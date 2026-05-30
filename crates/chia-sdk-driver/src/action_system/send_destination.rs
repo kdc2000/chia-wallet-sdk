@@ -25,6 +25,11 @@ use chia_sdk_utils::silent_payments::SilentPaymentAddress;
 /// plaintext and are visible to anyone holding the recipient's scan key. A
 /// 32-byte first memo is rejected at apply time by the relocated
 /// memo-hint guard (`DriverError::SilentPaymentMemoHintForbidden`).
+// With chip-0057 off this collapses to a single `PuzzleHash(Bytes32)` variant
+// whose fields are all Copy, so `missing_copy_implementations` fires. An
+// unconditional `Copy` derive cannot be used because the chip-0057-on
+// `SilentPayment(Box<_>)` variant is not Copy.
+#[cfg_attr(not(feature = "chip-0057"), allow(missing_copy_implementations))]
 #[derive(Debug, Clone)]
 pub enum SendDestination {
     PuzzleHash(Bytes32),
