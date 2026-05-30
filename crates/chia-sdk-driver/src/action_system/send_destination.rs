@@ -1,10 +1,10 @@
 //! `SendDestination` — discriminator for the unified `Action::send` constructor.
 //!
-//! After Phase 04.2, every send-action target — regular puzzle-hash output OR
-//! chip-0057 silent-payment output — flows through `Action::send(id,
-//! destination, amount, memos)`. The discriminator is this enum. Sage's
-//! pre-existing `Action::send(id, puzzle_hash: Bytes32, ...)` call sites
-//! continue to compile unchanged via [`From<Bytes32> for SendDestination`].
+//! Every send-action target — regular puzzle-hash output OR chip-0057
+//! silent-payment output — flows through `Action::send(id, destination,
+//! amount, memos)`. The discriminator is this enum. Existing
+//! `Action::send(id, puzzle_hash: Bytes32, ...)` call sites continue to
+//! compile unchanged via [`From<Bytes32> for SendDestination`].
 
 use chia_protocol::Bytes32;
 
@@ -16,9 +16,9 @@ use chia_sdk_utils::silent_payments::SilentPaymentAddress;
 /// publishes one static address and every payment lands at a fresh,
 /// unlinkable one-time puzzle hash derived via ECDH).
 ///
-/// `impl From<Bytes32>` lets every existing `Action::send(id, ph, amount, memos)`
-/// caller continue to compile unchanged after `Action::send`'s second parameter
-/// becomes `impl Into<SendDestination>` in Plan 04.2-02.
+/// `impl From<Bytes32>` lets every `Action::send(id, ph, amount, memos)`
+/// caller compile unchanged, since `Action::send`'s second parameter is
+/// `impl Into<SendDestination>`.
 ///
 /// Privacy warning: the `SilentPayment` variant carries a [`SilentPaymentAddress`]
 /// — any memos attached to the resulting `Action::send` land on chain in

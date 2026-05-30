@@ -139,14 +139,9 @@ mod silent_payment_tests {
     };
 
     // ====================================================================
-    // 8 RELOCATED TESTS — from actions/silent_payment_send.rs::tests (deleted).
-    // Each test body is rewritten from the OLD API to the NEW API:
-    //   Action::silent_payment_send(recipient, amount, memos)
-    //     -> Action::send(Id::Xch, SendDestination::SilentPayment(Box::new(recipient)), amount, memos)
-    //   spends.finish_with_silent_payment_keys(ctx, deltas, rel, &pk_map, &sk_map)
-    //     -> spends.with_silent_payment_keys(pk_map.clone(), sk_map);
-    //        spends.finish_with_keys(ctx, deltas, rel, &pk_map)
-    // Test names UNCHANGED — VALIDATION.md grep matchers depend on them.
+    // SEND-* acceptance tests for the silent-payment send path. Each drives
+    // `Action::send(Id::Xch, SendDestination::SilentPayment(..), ..)` through
+    // `with_silent_payment_keys` + `finish_with_keys`.
     // ====================================================================
 
     /// SEND-04 (apply-time portion): after `spends.apply(&[Action::send(
@@ -218,8 +213,8 @@ mod silent_payment_tests {
     /// the apply+finish flow produces an XCH output whose `puzzle_hash`
     /// matches what `derive_one_time_puzzle_hash` independently computes for
     /// the same `(scan_pk, spend_pk, aggregated_sender_sk, input_hash, k=0)`
-    /// tuple. Re-validated under the unified `Action::send` +
-    /// `Spends::finish_with_keys` construction shape (Phase 04.2).
+    /// tuple. Exercises the unified `Action::send` +
+    /// `Spends::finish_with_keys` construction shape.
     #[test]
     fn round_trip_matches_derive_one_time_puzzle_hash() -> Result<()> {
         let mut sim = Simulator::new();
@@ -413,8 +408,8 @@ mod silent_payment_tests {
 
     /// SEND-06: the receiver's `compute_input_hash` over the on-chain
     /// `coin_id`s plus the aggregated synthetic PK reconstructs the SAME
-    /// `input_hash` the sender used. Uses `Relation::AssertConcurrent`
-    /// (Phase 04.1 cycle binding) for the 2-input case.
+    /// `input_hash` the sender used. Uses the `Relation::AssertConcurrent`
+    /// cycle binding for the 2-input case.
     #[test]
     fn input_hash_round_trip() -> Result<()> {
         let mut sim = Simulator::new();
@@ -621,7 +616,7 @@ mod silent_payment_tests {
     }
 
     // ====================================================================
-    // 2 NEW WAVE 0 TESTS — per VALIDATION.md
+    // Destination/Id validation acceptance tests.
     // ====================================================================
 
     /// SC9 / ACTION-API-01 acceptance: an SP destination paired with

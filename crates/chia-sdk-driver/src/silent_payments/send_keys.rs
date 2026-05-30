@@ -9,7 +9,7 @@
 //!   `sp_finish_branch` helper in `action_system/spends.rs`.
 //! - The CHIP-0057 Pass 2b multi-input atomic binding via
 //!   [`crate::Relation::AssertConcurrent`] is enforced from the same finish-time
-//!   branch (Phase 04.1 preserve invariant).
+//!   branch.
 
 use chia_bls::PublicKey;
 use chia_protocol::Bytes32;
@@ -53,9 +53,8 @@ mod tests {
     /// a silent single-input aggregation (which would silently corrupt the
     /// puzzle hash). Multi-party flows are out of scope for v1.
     ///
-    /// Reshaped to the new API in Plan 04.2-02: uses `Action::send` with
-    /// `SendDestination::SilentPayment`, registers keys via
-    /// `with_silent_payment_keys`, and finishes via `finish_with_keys`.
+    /// Uses `Action::send` with `SendDestination::SilentPayment`, registers
+    /// keys via `with_silent_payment_keys`, and finishes via `finish_with_keys`.
     #[test]
     fn multi_party_hard_errors() -> Result<()> {
         let mut sim = Simulator::new();
@@ -170,8 +169,8 @@ mod tests {
     /// because non-ephemeral XCH count < 2. Single-input SP sends do not
     /// require input binding.
     ///
-    /// Reshaped in Plan 04.2-02 to use the new API; success path exercises
-    /// `sp_finish_branch` end-to-end (gates pass; derivation pipeline runs).
+    /// The success path exercises `sp_finish_branch` end-to-end (gates pass;
+    /// derivation pipeline runs).
     #[test]
     fn single_input_accepts_relation_none() -> Result<()> {
         let mut sim = Simulator::new();

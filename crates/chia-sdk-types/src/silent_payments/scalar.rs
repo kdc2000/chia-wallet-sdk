@@ -119,14 +119,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn from_bytes_unsigned_max_input_reduces_to_r_minus_one() {
-        // The plan/validation map names this test ".._reduces_to_r_minus_one", but
-        // the mathematics says otherwise: `(2^256 - 1) mod r` is NOT `r - 1` for
-        // BLS12-381's r. Concretely, `floor((2^256 - 1) / r) = 1`, so the reduction
-        // equals `(2^256 - 1) - r`, which is the constant pinned below. The locked
-        // test name is preserved for the validation map; the assertion captures the
-        // actual reduced value plus the spirit of the success criterion: the result
-        // must NOT equal the raw input (i.e., unsigned reduction did fire).
+    fn from_bytes_unsigned_max_input_reduces_unsigned_not_identity() {
+        // The all-ones input `[0xff; 32]` (i.e. `2^256 - 1`) reduces unsigned to
+        // the pinned constant below, which is `(2^256 - 1) - r` for BLS12-381's r
+        // (since `floor((2^256 - 1) / r) = 1`). This is NOT `r - 1`. The point of
+        // the test is that unsigned reduction fired: the reduced value differs from
+        // the raw input.
         let s = ScalarField::from_bytes_unsigned([0xff; 32]);
         let expected: [u8; 32] = [
             0x18, 0x24, 0xb1, 0x59, 0xac, 0xc5, 0x05, 0x6f, 0x99, 0x8c, 0x4f, 0xef, 0xec, 0xbc,
