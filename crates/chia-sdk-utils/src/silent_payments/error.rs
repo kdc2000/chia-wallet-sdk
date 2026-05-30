@@ -8,7 +8,7 @@ use thiserror::Error;
 /// The `Bech32` variant wraps the existing `chia_sdk_utils::Bech32Error` so
 /// callers can pattern-match on the underlying bech32m parse / checksum /
 /// character errors without an extra layer of nesting.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum SilentPaymentError {
     /// Decoded HRP is neither `"spxch"` (mainnet) nor `"tspxch"` (testnet).
     /// Specifically catches `"xch1..."` (the standard Chia address) being

@@ -242,9 +242,6 @@ mod tests {
     fn labeled_address_zero_rejected() {
         let keys = tv1_keys_from_mnemonic();
         let result = keys.labeled_address(SilentPaymentNetwork::Mainnet, 0);
-        assert!(
-            matches!(result, Err(SilentPaymentError::ReservedChangeLabel)),
-            "expected Err(ReservedChangeLabel), got {result:?}",
-        );
+        assert_eq!(result, Err(SilentPaymentError::ReservedChangeLabel));
     }
 }
