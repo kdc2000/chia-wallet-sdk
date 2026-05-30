@@ -461,3 +461,56 @@ impl SilentPayments {
         Ok(driver_td.into())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chia_bls::SecretKey;
+
+    /// ISSUE-1 boundary proof: an empty `coin_ids` list passed to the
+    /// FFI-reachable `compute_input_hash` facade returns `Err` (a typed
+    /// `DriverError::SilentPaymentNoXchInputs`) instead of panicking across the
+    /// FFI boundary. The test process must NOT abort — `is_err()` is the proof
+    /// that the guard intercepts the empty slice before the driver `assert!`.
+    #[test]
+    fn empty_input_returns_err_not_panic() {
+        // `PublicKey::default()` is the identity point; the guard fires before
+        // the aggregated PK is ever read, so any value is fine here.
+        let result = SilentPayments::compute_input_hash(Vec::new(), PublicKey::default());
+
+        // Pin the error to SilentPaymentNoXchInputs, both by variant and by its
+        // display string, so a future refactor cannot silently change the
+        // boundary contract. Matching on `&result` avoids requiring `Debug` on
+        // the `Ok` payload (`ScalarField` does not derive it).
+        let Err(err) = &result else {
+            panic!("empty coin_ids must return Err, not panic across the FFI boundary");
+        };
+        assert!(
+            matches!(
+                err,
+                bindy::Error::Driver(chia_sdk_driver::DriverError::SilentPaymentNoXchInputs)
+            ),
+            "expected DriverError::SilentPaymentNoXchInputs, got a different bindy::Error variant"
+        );
+        assert!(
+            err.to_string()
+                .contains("silent payment requires at least one wallet-controlled XCH input"),
+            "error display must carry the SilentPaymentNoXchInputs message, got {err}"
+        );
+    }
+
+    /// Happy-path regression guard: a single-element `coin_ids` list still
+    /// delegates correctly to the driver fn and returns `Ok`.
+    #[test]
+    fn single_input_returns_ok() {
+        let sender_pk = SecretKey::from_seed(&[7u8; 32]).public_key();
+        let coin_ids = vec![Bytes32::new([0x11; 32])];
+
+        let result = SilentPayments::compute_input_hash(coin_ids, sender_pk);
+
+        assert!(
+            result.is_ok(),
+            "non-empty coin_ids must delegate to the driver fn and return Ok"
+        );
+    }
+}
