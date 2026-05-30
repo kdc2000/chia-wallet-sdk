@@ -169,8 +169,12 @@ pub fn aggregate_sender_sks(sks: &[SecretKey]) -> ScalarField {
 /// (opcode 64 SCC) the SDK emits on multi-input bundles.
 ///
 /// # Panics
-/// Panics if `coin_ids` is empty. The action-system caller guarantees a
-/// non-empty XCH-input set before calling this function.
+/// Panics if `coin_ids` is empty. This is an internal invariant, not a
+/// reachable failure mode: every in-crate caller (`Spends::finish_with_keys`
+/// via the chip-0057 SP finish branch, and `tweak_data_from_block_spends`)
+/// passes a non-empty XCH-input set, and the bindings facade rejects empty
+/// input with `DriverError::SilentPaymentNoXchInputs` before delegating here —
+/// so this panic is never reachable across the FFI boundary.
 ///
 /// Privacy warning: the `input_hash` scalar is a deterministic public function
 /// of the spent coin ids + aggregated sender PK; both are visible on chain

@@ -426,6 +426,9 @@ impl SilentPayments {
         coin_ids: Vec<Bytes32>,
         aggregated_sender_pk: PublicKey,
     ) -> Result<ScalarField> {
+        if coin_ids.is_empty() {
+            return Err(chia_sdk_driver::DriverError::SilentPaymentNoXchInputs.into());
+        }
         Ok(chia_sdk_driver::compute_input_hash(&coin_ids, &aggregated_sender_pk).into())
     }
 
