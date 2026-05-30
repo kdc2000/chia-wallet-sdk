@@ -270,3 +270,29 @@ Plans:
 - [x] 09-04-PLAN.md — BRIDGE-04: extend Spends.prepare signature to accept Option<Relation> + descriptor update (Wave 2)
 - [x] 09-05-PLAN.md — BRIDGE-05: bind SilentPayments.tweakDataFromBlockSpends as static method on namespace + descriptor (Wave 2)
 - [x] 09-06-PLAN.md — BRIDGE-06: Simulator block_spends/block_outputs facade + 3 cross-binding multi-input tests + example multi-input section (Wave 2)
+
+### Phase 09.1: Fix 5 maintainer-flagged conformance issues in chip-0057 SP surface (INSERTED)
+
+**Goal:** Resolve the 5 concrete pre-merge issues surfaced by the 2026-05-29 cross-cutting code-quality review of the silent-payments surface. All are small/mechanical, no architecture changes, no API removals — they harden the edges CI doesn't exercise (non-default feature permutations, the FFI boundary) and strip planning-process residue from shipped source. Closes the last gap before the chip-0057 work is upstream-merge clean.
+
+**Requirements**: The 5 issues below, each fixed and verified under the relevant CI permutation (per-crate build with and without `--all-features`, `clippy -D warnings`, `cargo build --examples`/`cargo test` without `--all-features`).
+
+**Depends on:** Phase 9
+
+**Plans:** 2 plans
+
+The 5 issues (with evidence from the review):
+
+1. **FFI panic on empty input.** `compute_input_hash` (`crates/chia-sdk-driver/src/silent_payments/protocol.rs:183`) `assert!`s when `coin_ids` is empty, and it is reachable from all three bindings via `crates/chia-sdk-bindings/src/silent_payments.rs:425` inside a `Result`-returning method that passes the slice through unguarded. Violates the repo's "no panicking in library code." Fix: return a `DriverError` (or guard in the facade) instead of asserting across the FFI boundary.
+
+2. **Example missing `required-features`.** `examples/silent_payment.rs` uses chip-0057-only API but root `Cargo.toml` has no `[[example]]` block, so `cargo build --examples` / `cargo test` without `--all-features` fails (14 compile errors); CI is green only because its exact lines avoid that combination. Fix: add `[[example]] name = "silent_payment"` / `required-features = ["chip-0057"]`.
+
+3. **`SendDestination` trips `missing_copy_implementations` when chip-0057 is off.** It collapses to a single-variant enum (`crates/chia-sdk-driver/src/action_system/send_destination.rs:29`); `clippy -p chia-sdk-driver -D warnings` (no features) warns, masked only by the all-features CI clippy. Fix: gate the lint or derive `Copy` for the feature-off shape.
+
+4. **`SilentPaymentError` drops `Clone, PartialEq, Eq`** that the wrapped `Bech32Error` carries (`crates/chia-sdk-utils/src/silent_payments/error.rs`), forcing tests into `matches!`+`panic!` instead of `assert_eq!`. Fix: add the derives, matching the in-crate `Bech32Error` precedent; simplify the affected tests.
+
+5. **Planning-process residue in shipped source.** Comments referencing "VALIDATION.md grep matchers," "Plan 04.2," and "Pitfall 7," plus a test (`crates/chia-sdk-types/src/silent_payments/scalar.rs:121`) whose comment admits its name contradicts its own assertion. Fix: scrub the planning references; rename/correct the misleading test.
+
+Plans:
+- [ ] 09.1-01-PLAN.md — ISSUE-2/3/4/5: [[example]] required-features + SendDestination missing_copy_implementations gate + SilentPaymentError Clone/PartialEq/Eq derives + scrub planning residue & rename misleading scalar test (Wave 1)
+- [ ] 09.1-02-PLAN.md — ISSUE-1: guard the FFI-reachable compute_input_hash facade to return Err on empty input (no panic) + boundary test + global regression bar (Wave 2)
