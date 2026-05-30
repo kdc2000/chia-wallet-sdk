@@ -218,6 +218,12 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 - **Phase 5 (pre-flight):** Verify `bindy-macro` `"type": "static_functions"` schema support (Q3) before committing the JSON descriptor; fallback strategy documented in research/ARCHITECTURE.md.
 - **Phase 2 (pre-flight):** Audit downstream consumers of `chia-sdk-utils` for the new optional `chia-sdk-types -> chia-sdk-utils` dep edge (Q8).
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260530-dv1 | Trim 7 internal SP crypto helpers from curated prelude; document load-bearing `chia-sdk-test/chip-0057` dev-dep feature line (not removed) | 2026-05-30 | c8582f38 | [260530-dv1-trim-sp-crypto-helpers-from-prelude-clar](./quick/260530-dv1-trim-sp-crypto-helpers-from-prelude-clar/) |
+
 ## Session Continuity
 
 Last session: 2026-05-30T16:07:21.307Z
