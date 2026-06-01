@@ -351,20 +351,28 @@ pub struct SilentPayments;
 // `Vec<SilentPaymentRegisteredSecretKey>` respectively. The facade converts to
 // `IndexMap<Bytes32, _>` internally before delegating to the driver.
 
-/// One `(p2_puzzle_hash, synthetic_pk)` entry used to register the chip-0057
+/// One `(p2_puzzle_hash, raw public_key)` entry used to register the chip-0057
 /// silent-payment key bundle on `Spends` before `prepare`.
+///
+/// `public_key` is the RAW wallet public key; `Spends::with_silent_payment_keys`
+/// synthesizes the synthetic key internally via the default hidden puzzle (see
+/// that method's docs for the custom-hidden / GUARD-01 fail-loud contract).
 #[derive(Clone)]
 pub struct SilentPaymentRegisteredKey {
     pub p2_puzzle_hash: Bytes32,
     pub public_key: PublicKey,
 }
 
-/// One `(p2_puzzle_hash, synthetic_sk)` entry used to register the chip-0057
+/// One `(p2_puzzle_hash, raw secret_key)` entry used to register the chip-0057
 /// silent-payment key bundle on `Spends` before `prepare`.
 ///
-/// Privacy warning: `secret_key` carries sensitive synthetic-secret-key
-/// material — wallets must treat the wrapping vec like the SKs themselves
-/// (zeroize on drop, do not log).
+/// `secret_key` is the RAW wallet secret key; `Spends::with_silent_payment_keys`
+/// synthesizes the synthetic key internally via the default hidden puzzle (see
+/// that method's docs for the custom-hidden / GUARD-01 fail-loud contract).
+///
+/// Privacy warning: `secret_key` carries sensitive secret-key material —
+/// wallets must treat the wrapping vec like the SKs themselves (zeroize on
+/// drop, do not log).
 #[derive(Clone)]
 pub struct SilentPaymentRegisteredSecretKey {
     pub p2_puzzle_hash: Bytes32,
