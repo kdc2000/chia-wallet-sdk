@@ -121,10 +121,10 @@ mod tests {
     #[test]
     fn from_bytes_unsigned_max_input_reduces_unsigned_not_identity() {
         // The all-ones input `[0xff; 32]` (i.e. `2^256 - 1`) reduces unsigned to
-        // the pinned constant below, which is `(2^256 - 1) - r` for BLS12-381's r
-        // (since `floor((2^256 - 1) / r) = 1`). This is NOT `r - 1`. The point of
-        // the test is that unsigned reduction fired: the reduced value differs from
-        // the raw input.
+        // the pinned constant below. For BLS12-381's r the quotient is
+        // `floor((2^256 - 1) / r) = 2`, so the remainder is `(2^256 - 1) - 2r`.
+        // This is NOT `r - 1`. The point of the test is that unsigned reduction
+        // fired: the reduced value differs from the raw input.
         let s = ScalarField::from_bytes_unsigned([0xff; 32]);
         let expected: [u8; 32] = [
             0x18, 0x24, 0xb1, 0x59, 0xac, 0xc5, 0x05, 0x6f, 0x99, 0x8c, 0x4f, 0xef, 0xec, 0xbc,

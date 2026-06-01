@@ -8,13 +8,6 @@
 //!
 //! Indices `12` (scan) and `13` (spend) are CHIP-0057 reserved values,
 //! distinct from index `2` used by the standard Chia wallet.
-//!
-//! NOTE: All scalar reduction in CHIP-0057 code paths goes through
-//! [`super::ScalarField`]. Do NOT introduce alternate reducers in this
-//! module — in particular, the signed reducer used by the standard-puzzle
-//! synthetic-key offset (in `chia_puzzle_types::derive_synthetic`) takes
-//! a different sign interpretation and silently disagrees with
-//! `from_bytes_unsigned` on inputs whose top bit is set.
 
 /// Unhardened derivation path for the silent-payment scan secret key:
 /// `m/12381/8444/12/0`.

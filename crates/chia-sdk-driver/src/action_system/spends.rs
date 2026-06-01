@@ -104,11 +104,11 @@ impl Spends<Unfinished> {
     /// The maps are keyed by each spent XCH coin's `p2_puzzle_hash` and the
     /// values are [`crate::silent_payments::SyntheticPublicKey`] /
     /// [`crate::silent_payments::SyntheticSecretKey`] — the newtype wrappers
-    /// (GUARD-02) that make passing a raw wallet key a compile error. Construct
-    /// them via `SyntheticSecretKey::from_raw` (synthesizes for you) or
+    /// that make passing a raw wallet key a compile error. Construct them via
+    /// `SyntheticSecretKey::from_raw` (synthesizes for you) or
     /// `from_synthetic_unchecked` when the key is already synthetic. The
     /// `from_synthetic_unchecked` escape hatch is covered at finish time by the
-    /// GUARD-01 runtime check in `sp_finish_branch`
+    /// runtime check in `sp_finish_branch`
     /// (`curry_tree_hash(pk) == coin p2_puzzle_hash` + `sk.public_key() == pk`),
     /// which rejects a mis-wrapped key before any signing.
     ///
@@ -591,17 +591,18 @@ impl Spends<Unfinished> {
     }
 }
 
-/// Chip-0057 finish-time SP branch: absorbs the 9-step derivation pipeline
-/// previously in `Spends::finish_with_silent_payment_keys` (Plan 04-03).
+/// Chip-0057 finish-time SP branch: runs the one-time-puzzle-hash derivation
+/// pipeline for the silent-payment outputs recorded at apply time. Invoked from
+/// [`Spends::finish_with_keys`].
 ///
-/// Gate ordering (Pitfall 7):
-/// 1. [`DriverError::SilentPaymentRequiresInputBinding`] (Phase 04.1 D-06 preserve) —
-///    fires first on `≥2` non-ephemeral XCH inputs with `Relation != AssertConcurrent`.
+/// Gate ordering (cheapest / most fundamental first):
+/// 1. [`DriverError::SilentPaymentRequiresInputBinding`] — fires first on `≥2`
+///    non-ephemeral XCH inputs with `Relation != AssertConcurrent`.
 /// 2. [`DriverError::SilentPaymentKeysNotRegistered`] — fires if
 ///    `with_silent_payment_keys` was not called.
 /// 3. [`DriverError::SilentPaymentMultiPartyUnsupported`] — SK-coverage check.
-/// 4. Per-input GUARD-01 — [`DriverError::SilentPaymentKeyNotSynthetic`] if
-///    `StandardArgs::curry_tree_hash(registered_pk) != ph` or
+/// 4. Per-input synthetic-key check — [`DriverError::SilentPaymentKeyNotSynthetic`]
+///    if `StandardArgs::curry_tree_hash(registered_pk) != ph` or
 ///    `sk.public_key() != registered_pk` (runs for single-input too).
 /// 5. [`DriverError::SilentPaymentNoXchInputs`] — collected SK set empty.
 ///
@@ -622,22 +623,21 @@ fn sp_finish_branch(
         aggregate_sender_sks, compute_input_hash, derive_one_time_puzzle_hash,
     };
 
-    // GATE 1 (Pitfall 7 — Phase 04.1 preserved per D-06):
-    // SilentPaymentRequiresInputBinding fires first; multi-input atomic-binding
-    // is more fundamental than key-registration.
+    // GATE 1: SilentPaymentRequiresInputBinding fires first; multi-input
+    // atomic-binding is more fundamental than key-registration.
     let non_ephemeral_xch_count = spends.xch.items.iter().filter(|i| !i.ephemeral).count();
     if non_ephemeral_xch_count >= 2 && !matches!(relation, Relation::AssertConcurrent) {
         return Err(DriverError::SilentPaymentRequiresInputBinding);
     }
 
-    // GATE 2 (NEW per SC8 — keys must be registered).
+    // GATE 2: keys must be registered.
     let Some(secret_keys) = spends.silent_payment_synthetic_sks.as_ref() else {
         return Err(DriverError::SilentPaymentKeysNotRegistered);
     };
-    // GUARD-01 needs the registered PK map alongside the SK map; bind it once
-    // here (a second immutable borrow of a distinct field) so the per-input
-    // synthetic-ness check below does not re-borrow `spends` while `secret_keys`
-    // is live.
+    // The synthetic-key check needs the registered PK map alongside the SK map;
+    // bind it once here (a second immutable borrow of a distinct field) so the
+    // per-input synthetic-ness check below does not re-borrow `spends` while
+    // `secret_keys` is live.
     let synthetic_pks = spends.silent_payment_synthetic_pks.as_ref();
 
     // Step 2 + 3: collect XCH input coin ids + verify SK coverage.
@@ -651,7 +651,7 @@ fn sp_finish_branch(
         let Some(sk) = secret_keys.get(&ph) else {
             return Err(DriverError::SilentPaymentMultiPartyUnsupported);
         };
-        // GUARD-01: reject raw (un-synthesized) or inconsistent keys BEFORE signing.
+        // Synthetic-key check: reject raw (un-synthesized) or inconsistent keys BEFORE signing.
         // The IndexMap key `ph` is the coin's p2_puzzle_hash; for a correctly-synthetic
         // registered pk, curry_tree_hash(pk) == ph by construction (validates against the
         // ACTUAL coin, so default AND custom-hidden synthetic keys pass, raw keys fail).

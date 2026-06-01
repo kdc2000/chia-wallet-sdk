@@ -142,16 +142,15 @@ mod silent_payment_tests {
     };
 
     // ====================================================================
-    // SEND-* acceptance tests for the silent-payment send path. Each drives
+    // Acceptance tests for the silent-payment send path. Each drives
     // `Action::send(Id::Xch, SendDestination::SilentPayment(..), ..)` through
     // `with_silent_payment_keys` + `finish_with_keys`.
     // ====================================================================
 
-    /// SEND-04 (apply-time portion): after `spends.apply(&[Action::send(
-    /// Id::Xch, SendDestination::SilentPayment(...), ...)])`, the action
-    /// records one entry on `spends.silent_payments_pending` with the
-    /// matching fields. ECDH and `CreateCoin` emission are NOT inspected
-    /// here.
+    /// Apply-time state: after `spends.apply(&[Action::send(Id::Xch,
+    /// SendDestination::SilentPayment(...), ...)])`, the action records one
+    /// entry on `spends.silent_payments_pending` with the matching fields. ECDH
+    /// and `CreateCoin` emission are NOT inspected here.
     #[test]
     fn action_state_machine() -> Result<()> {
         let mut sim = Simulator::new();
@@ -212,12 +211,11 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// SEND-04 (finish-time) + ROADMAP Phase 4 success criterion #1:
-    /// the apply+finish flow produces an XCH output whose `puzzle_hash`
-    /// matches what `derive_one_time_puzzle_hash` independently computes for
-    /// the same `(scan_pk, spend_pk, aggregated_sender_sk, input_hash, k=0)`
-    /// tuple. Exercises the unified `Action::send` +
-    /// `Spends::finish_with_keys` construction shape.
+    /// Finish-time round-trip: the apply+finish flow produces an XCH output
+    /// whose `puzzle_hash` matches what `derive_one_time_puzzle_hash`
+    /// independently computes for the same `(scan_pk, spend_pk,
+    /// aggregated_sender_sk, input_hash, k=0)` tuple. Exercises the unified
+    /// `Action::send` + `Spends::finish_with_keys` construction shape.
     #[test]
     fn round_trip_matches_derive_one_time_puzzle_hash() -> Result<()> {
         let mut sim = Simulator::new();
@@ -225,9 +223,9 @@ mod silent_payment_tests {
 
         let alice = sim.bls(1);
 
-        // Recipient address from arbitrary BLS keys (Pitfall D: in the
-        // BlsPair fixture the "synthetic" SK == raw SK; the math closes
-        // because both sides of the round-trip use the same interpretation).
+        // Recipient address from arbitrary BLS keys. In the BlsPair fixture the
+        // "synthetic" SK == raw SK; the math closes because both sides of the
+        // round-trip use the same interpretation.
         let recipient_scan_sk = SecretKey::from_bytes(&[0x42u8; 32])?;
         let recipient_spend_sk = SecretKey::from_bytes(&[0x43u8; 32])?;
         let recipient = SilentPaymentAddress::new(
@@ -295,9 +293,8 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// SEND-05 + ROADMAP Phase 4 success criterion #3: two `Action::send`
-    /// calls with the same SP recipient in one `Spends` produce outputs at
-    /// k=0 and k=1 respectively. The counter on
+    /// Two `Action::send` calls with the same SP recipient in one `Spends`
+    /// produce outputs at k=0 and k=1 respectively. The counter on
     /// `spends.silent_payment_counters` increments per `scan_pk`.
     #[test]
     fn multi_output_same_scan_pk_increments_k() -> Result<()> {
@@ -360,9 +357,8 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// SEND-05: two `Action::send` calls with DIFFERENT SP recipients in one
-    /// `Spends` produce outputs both at k=0 (per-`scan_pk` counters are
-    /// independent).
+    /// Two `Action::send` calls with DIFFERENT SP recipients in one `Spends`
+    /// produce outputs both at k=0 (per-`scan_pk` counters are independent).
     #[test]
     fn multi_output_distinct_scan_pks_independent_counters() -> Result<()> {
         let mut sim = Simulator::new();
@@ -415,10 +411,10 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// SEND-06: the receiver's `compute_input_hash` over the on-chain
-    /// `coin_id`s plus the aggregated synthetic PK reconstructs the SAME
-    /// `input_hash` the sender used. Uses the `Relation::AssertConcurrent`
-    /// cycle binding for the 2-input case.
+    /// The receiver's `compute_input_hash` over the on-chain `coin_id`s plus the
+    /// aggregated synthetic PK reconstructs the SAME `input_hash` the sender
+    /// used. Uses the `Relation::AssertConcurrent` cycle binding for the 2-input
+    /// case.
     #[test]
     fn input_hash_round_trip() -> Result<()> {
         let mut sim = Simulator::new();
@@ -471,12 +467,11 @@ mod silent_payment_tests {
             spends.finish_with_keys(&mut ctx, &deltas, Relation::AssertConcurrent, &pk_map)?;
 
         // Independent reconstruction of the expected puzzle hash via the
-        // free functions — exactly the path Phase 3's scanner would follow
-        // after the cycle binding (opcode-64 SCC) provides the input set.
+        // free functions — exactly the path the scanner would follow after the
+        // cycle binding (opcode-64 SCC) provides the input set.
         //
         // Vec intermediate (clippy::cloned_ref_to_slice_refs precedent):
-        // keeps the per-SK `.clone()` byte sequence in the source for grep
-        // while satisfying clippy on the slice construction.
+        // satisfies clippy on the slice construction.
         let sender_sks = vec![alice.sk.clone(), bob.sk.clone()];
         let aggregated_sender_sk = aggregate_sender_sks(&sender_sks);
         let agg_pk = SecretKey::from_bytes(aggregated_sender_sk.as_bytes())
@@ -500,12 +495,11 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// SEND-07 + ROADMAP Phase 4 success criterion #5: passing a 32-byte
-    /// first memo to `Action::send` with an SP destination errors at apply
-    /// time with `DriverError::SilentPaymentMemoHintForbidden`. The
-    /// action's side-effects on `Spends` (parent reservation, k-counter
-    /// increment, `SilentPaymentPending` push) DO NOT happen because the
-    /// guard fires before them.
+    /// Passing a 32-byte first memo to `Action::send` with an SP destination
+    /// errors at apply time with `DriverError::SilentPaymentMemoHintForbidden`.
+    /// The action's side-effects on `Spends` (parent reservation, k-counter
+    /// increment, `SilentPaymentPending` push) DO NOT happen because the guard
+    /// fires before them.
     #[test]
     fn memo_hint_guard_rejects_32_byte_first_memo() -> Result<()> {
         let mut sim = Simulator::new();
@@ -553,8 +547,8 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// SEND-07: a 1-byte sentinel followed by a 32-byte payload passes the
-    /// guard — the first memo is 1 byte, not 32. This is the wallet
+    /// A 1-byte sentinel followed by a 32-byte payload passes the guard — the
+    /// first memo is 1 byte, not 32. This is the wallet
     /// author's explicit escape hatch if they legitimately need a 32-byte
     /// payload memo: prefix it with a sentinel byte so the first atom is
     /// no longer 32 bytes.
@@ -598,7 +592,7 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// SEND-07: `Memos::None` passes the guard trivially.
+    /// `Memos::None` passes the guard trivially.
     #[test]
     fn memo_hint_guard_allows_none() -> Result<()> {
         let mut sim = Simulator::new();
@@ -635,9 +629,8 @@ mod silent_payment_tests {
     // Destination/Id validation acceptance tests.
     // ====================================================================
 
-    /// SC9 / ACTION-API-01 acceptance: an SP destination paired with
-    /// `Id::Existing(_)` (i.e. NOT `Id::Xch`) returns
-    /// `Err(DriverError::SilentPaymentRequiresXch)` at apply time. SP
+    /// An SP destination paired with `Id::Existing(_)` (i.e. NOT `Id::Xch`)
+    /// returns `Err(DriverError::SilentPaymentRequiresXch)` at apply time. SP
     /// destinations are XCH-only in v1.
     #[test]
     fn silent_payment_destination_requires_xch_id() -> Result<()> {
@@ -675,9 +668,8 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// SC8 / ACTION-API-01 acceptance: SP destination applied without
-    /// a prior `with_silent_payment_keys` call returns
-    /// `Err(DriverError::SilentPaymentKeysNotRegistered)` at finish time.
+    /// SP destination applied without a prior `with_silent_payment_keys` call
+    /// returns `Err(DriverError::SilentPaymentKeysNotRegistered)` at finish time.
     #[test]
     fn silent_payment_keys_not_registered_errors_at_finish() -> Result<()> {
         let mut sim = Simulator::new();

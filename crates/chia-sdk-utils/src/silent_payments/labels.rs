@@ -11,9 +11,9 @@
 //!
 //! `m = 0` is the change-label sentinel. It is REJECTED at the public boundary
 //! ([`super::SilentPaymentKeys::labeled_address`]) but accepted internally by
-//! [`generate_label`] and [`LabelRegistry::register`] because the scanner (Phase
-//! 6, SIM-03 sub-test) legitimately needs to register the change label to
-//! detect its own change outputs.
+//! [`generate_label`] and [`LabelRegistry::register`] because the scanner
+//! legitimately needs to register the change label to detect its own change
+//! outputs.
 
 use std::collections::HashMap;
 
@@ -23,8 +23,9 @@ use chia_sdk_types::silent_payments::{CHIA_SP_LABEL, ScalarField, tagged_hash};
 /// Compute the label scalar and label public key for label index `m`.
 ///
 /// Returns `(label_scalar, label_pk)` where `label_pk = label_scalar * G`.
-/// The scalar uses UNSIGNED mod-r reduction (the [`ScalarField`] boundary;
-/// see Phase 1's `chia_sdk_types::silent_payments::scalar` doc-comment).
+/// The scalar uses UNSIGNED mod-r reduction via the [`ScalarField`] boundary;
+/// see `ScalarField::from_bytes_unsigned` for why that interpretation is
+/// mandatory.
 ///
 /// `m = 0` is accepted at this layer — the public boundary is in
 /// [`super::SilentPaymentKeys::labeled_address`].
@@ -42,9 +43,8 @@ pub(crate) fn generate_label(scan_sk: &SecretKey, m: u32) -> (ScalarField, Publi
 
 /// A bidirectional registry of `label_index ↔ label_pk` mappings.
 ///
-/// Used by the Phase-3 scanner (RECV-04) to attribute a labeled detection back
-/// to its label index. Phase 2 ships the structure; Phase 3 plugs `lookup`
-/// into the k-iteration loop.
+/// Used by the scanner to attribute a labeled detection back to its label index
+/// (`lookup` is called inside the k-iteration loop).
 ///
 /// Storage: two `HashMap` entries per registered label. For the realistic
 /// upper bound of a few hundred labels per wallet, total memory is well under
@@ -65,8 +65,8 @@ impl LabelRegistry {
     /// Register label `m` against scan secret key `scan_sk`.
     ///
     /// `m = 0` is accepted here — the public-API change-label rejection lives
-    /// in [`super::SilentPaymentKeys::labeled_address`]. Scanner code (Phase 6)
-    /// needs the change label registered internally to detect change outputs.
+    /// in [`super::SilentPaymentKeys::labeled_address`]. Scanner code needs the
+    /// change label registered internally to detect change outputs.
     pub fn register(&mut self, scan_sk: &SecretKey, m: u32) {
         let (_scalar, label_pk) = generate_label(scan_sk, m);
         let bytes = label_pk.to_bytes();
@@ -100,7 +100,7 @@ impl LabelRegistry {
     }
 
     /// Iterate registered `(m, label_pk)` pairs. Useful for the scanner's
-    /// labeled-detection branch (Phase 3, RECV-04).
+    /// labeled-detection branch.
     pub fn iter(&self) -> impl Iterator<Item = (u32, &PublicKey)> {
         self.forward.iter().map(|(&m, pk)| (m, pk))
     }
@@ -164,8 +164,7 @@ mod tests {
         assert_eq!(b_m.to_bytes(), TV3_B_M);
     }
 
-    // ─── labels_preserve_scan_pk ───────────────────────────────────────────
-    // Requires SilentPaymentKeys from keys.rs — runs once Task 2 lands.
+    // Labeled sub-addresses keep the same scan_pk as the unlabeled address.
 
     #[test]
     fn labels_preserve_scan_pk() {

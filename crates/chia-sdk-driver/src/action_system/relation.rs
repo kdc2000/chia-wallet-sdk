@@ -2,12 +2,12 @@
 /// single coin spend can be replayed independently of its sibling spends.
 ///
 /// The binding mechanism is also load-bearing for CHIP-0057 silent-payment
-/// scanner detection (Pass 2b): scanners reconstruct multi-input SP spend
-/// groups by computing strongly connected components over the directed
-/// graph of `ASSERT_CONCURRENT_SPEND` (opcode 64) references in each
-/// removal's solution. See `silent_payments/send_keys.rs::finish_with_silent_payment_keys`
-/// for the SP-side enforcement and the CHIP-0057 spec §"Scanner Grouping
-/// Strategies" for the receiver side.
+/// scanner detection: scanners reconstruct multi-input SP spend groups by
+/// computing strongly connected components over the directed graph of
+/// `ASSERT_CONCURRENT_SPEND` (opcode 64) references in each removal's solution.
+/// The SP-side enforcement lives in the `sp_finish_branch` helper in
+/// `action_system/spends.rs` (reached via `Spends::finish_with_keys`); the
+/// CHIP-0057 spec §"Scanner Grouping Strategies" covers the receiver side.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Relation {
     /// No cross-coin binding emitted. Each coin's spend stands alone (signature
@@ -24,10 +24,10 @@ pub enum Relation {
     /// at a victim's coin (the polluter's coin sits in its own trivial SCC).
     ///
     /// **Load-bearing for CHIP-0057 multi-input silent payment detection.**
-    /// Wallets emitting `SilentPaymentSend` actions across 2+ XCH inputs MUST
-    /// pass this variant to `Spends::finish_with_silent_payment_keys`; the
-    /// method returns `Err(DriverError::SilentPaymentRequiresInputBinding)`
-    /// otherwise. Refactoring this emission shape away from the closed cycle
+    /// Wallets sending to a silent-payment destination across 2+ XCH inputs MUST
+    /// pass this variant to `Spends::finish_with_keys`; the call returns
+    /// `Err(DriverError::SilentPaymentRequiresInputBinding)` otherwise.
+    /// Refactoring this emission shape away from the closed cycle
     /// will silently break SP scanner detection for cross-derivation-index
     /// multi-input sends — the pinning test in `action_system/spends.rs`
     /// guards against accidental drift.

@@ -13,14 +13,13 @@ use super::{
 ///
 /// Stores both the scan and spend BLS secret keys plus their cached public
 /// keys (computed once at construction). The scan key is used for incoming-
-/// payment detection (Phase 3); the spend key is used to sign coin spends
-/// for detected payments (Phase 4).
+/// payment detection; the spend key is used to sign coin spends for detected
+/// payments.
 ///
-/// **Privacy note (Phase 4, SEND-08 — restated here for visibility):**
-/// the scan key bypasses the standard wallet's privacy boundary. Anyone who
-/// holds this scan key can see every silent-payment output addressed to the
-/// associated address. Wallet authors should treat `scan_sk` as the more
-/// sensitive of the two keys for at-rest storage.
+/// **Privacy note:** the scan key bypasses the standard wallet's privacy
+/// boundary. Anyone who holds this scan key can see every silent-payment output
+/// addressed to the associated address. Wallet authors should treat `scan_sk`
+/// as the more sensitive of the two keys for at-rest storage.
 ///
 /// **Lifetime hygiene:** this type does NOT implement `Zeroize`. Matching the
 /// SDK norm (`chia_bls::SecretKey` and `chia_sdk_test::BlsPair` also do not),
@@ -179,7 +178,7 @@ mod tests {
         SilentPaymentKeys::from_secret_keys(scan_sk, spend_sk)
     }
 
-    // ─── ADDR-01: from_mnemonic → TV1 bytes ────────────────────────────────
+    // from_mnemonic derivation against the CHIP-0057 TV1 byte vectors.
 
     #[test]
     fn from_mnemonic_tv1_scan_sk_matches() {
@@ -205,7 +204,7 @@ mod tests {
         assert_eq!(keys.spend_pk().to_bytes(), TV1_B_SPEND_PK);
     }
 
-    // ─── ADDR-05: from_secret_keys parity with from_mnemonic ──────────────
+    // from_secret_keys produces the same address as from_mnemonic.
 
     #[test]
     fn from_secret_keys_matches_from_mnemonic() {
@@ -236,7 +235,7 @@ mod tests {
         assert_eq!(addr, TV1_MAINNET_ADDR);
     }
 
-    // ─── ADDR-06: labeled_address(0) rejected ─────────────────────────────
+    // labeled_address(0) is rejected as the reserved change label.
 
     #[test]
     fn labeled_address_zero_rejected() {

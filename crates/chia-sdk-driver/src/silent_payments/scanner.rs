@@ -14,7 +14,7 @@
 //!   prevents DOS by forged matches. Default `K_MAX_DEFAULT = 2400` per CHIP §446
 //!   (the Chia mempool maximum number of silent-payment outputs per spend bundle).
 //!
-//! The labeled-detection branch (CHIP §RECV-04 labeled k-termination rule) is
+//! The labeled-detection branch (the CHIP-0057 labeled k-termination rule) is
 //! interleaved with the unlabeled branch below: at each `k` the scanner first
 //! checks the unlabeled candidate, then iterates the registered labels; the `k`
 //! loop terminates only when BOTH the unlabeled candidate AND every labeled
@@ -49,7 +49,7 @@ pub const K_MAX_DEFAULT: usize = 2400;
 /// (`scan_sk * tweak_point`, hashed to a 32-byte shared secret) and iterates
 /// `k = 0, 1, 2, ...` up to `k_max`, deriving the candidate one-time puzzle
 /// hash and checking against `data.outputs`. Labeled detection (per `labels`)
-/// is interleaved per CHIP §RECV-04.
+/// is interleaved per the CHIP-0057 labeled k-termination rule.
 ///
 /// **CHIP §459 guard:** identity-element tweak points are skipped silently —
 /// they produce a predictable shared secret that would otherwise enable
@@ -119,7 +119,7 @@ pub fn scan_from_tweaks(
                 found = true;
             }
 
-            // CHIP §RECV-04 labeled-detection branch. Only runs when the
+            // Labeled-detection branch. Only runs when the
             // unlabeled candidate at this k missed; otherwise the unlabeled
             // detection is preferred (matches sp-client's
             // test_scan_block_unlabeled_preferred).
@@ -152,7 +152,7 @@ pub fn scan_from_tweaks(
                 }
             }
 
-            // CHIP §RECV-04 termination rule: break the k loop only when
+            // Termination rule: break the k loop only when
             // NEITHER unlabeled NOR any labeled candidate matched at this k.
             if !found {
                 break;
@@ -264,9 +264,8 @@ mod tests {
 
     // ─── Tests ─────────────────────────────────────────────────────────────
 
-    /// RECV-02 + CRYPTO-03 (TV1): unlabeled detection at k=0 with TV1's
-    /// pinned `shared_secret` → `t_0` → `onetime_pk` → `puzzle_hash` →
-    /// `onetime_sk` chain.
+    /// TV1: unlabeled detection at k=0 with TV1's pinned
+    /// `shared_secret` → `t_0` → `onetime_pk` → `puzzle_hash` → `onetime_sk` chain.
     #[test]
     fn tv1_scan_detects_unlabeled_k0() {
         let data = TweakData {
@@ -302,7 +301,7 @@ mod tests {
         );
     }
 
-    /// RECV-02 + CRYPTO-03 (TV4): multi-input aggregation. From the
+    /// TV4: multi-input aggregation. From the
     /// scanner's perspective the only difference vs TV1 is that the
     /// `A_sum` and `input_hash` are aggregated on the sender/indexer side
     /// — the scanner just gets a `tweak_point`. Tests that the scanner
@@ -353,7 +352,7 @@ mod tests {
     const TV3_LABELED_ONETIME_SK: [u8; 32] =
         hex!("58fc619583ff32e8e6e5cbe8587f4e1a395a04d538b132e5787d634cb64852dc");
 
-    /// RECV-02 (CHIP §459 identity-element guard): a `TweakData` containing
+    /// CHIP §459 identity-element guard: a `TweakData` containing
     /// `PublicKey::default()` (identity element) is skipped silently — no
     /// panic, no detections. Without this guard, the predictable shared
     /// secret derived from the identity element would enable false-positive
@@ -392,7 +391,7 @@ mod tests {
         );
     }
 
-    /// RECV-04 + CRYPTO-03 (TV3): labeled detection at k=0 with m=1.
+    /// TV3: labeled detection at k=0 with m=1.
     ///
     /// TV3 uses the same scan/spend keys as TV1. The labeled detection works
     /// by registering m=1 in the `LabelRegistry`; the scanner derives the
@@ -440,7 +439,7 @@ mod tests {
         );
     }
 
-    /// CRYPTO-03 success criterion 2 + bespoke `k = 1` vector.
+    /// Bespoke `k = 1` vector.
     ///
     /// All CHIP TVs hit `k = 0`, so a naive `ser32(k) = k.to_le_bytes()`
     /// implementation would pass them all. This test pins a `k = 1` detection
@@ -521,7 +520,7 @@ mod tests {
         );
     }
 
-    /// RECV-04 (labeled k-termination rule): the k loop must NOT break after
+    /// Labeled k-termination rule: the k loop must NOT break after
     /// an unlabeled match at k=0 if a labeled candidate matches at k=1.
     /// Without this rule, labeled outputs that follow unlabeled outputs in
     /// the same spend group are silently missed.
@@ -588,8 +587,8 @@ mod tests {
         assert_eq!(sorted[1].label, Some(1), "k=1 is m=1");
     }
 
-    /// RECV-04 (corner): when both an unlabeled candidate AND a labeled
-    /// candidate would match at the same k, the scanner emits the unlabeled
+    /// When both an unlabeled candidate AND a labeled candidate would match at
+    /// the same k, the scanner emits the unlabeled
     /// detection (`label = None`). The labeled branch is `if !found { ... }`-
     /// guarded so it only runs when the unlabeled branch missed. Mirrors
     /// `sp-client/scanner.rs::test_scan_block_unlabeled_preferred`.
@@ -640,7 +639,7 @@ mod tests {
         );
     }
 
-    /// RECV-05 + CHIP §416 DOS guard: a `TweakData` with many forged matches
+    /// CHIP §416 DOS guard: a `TweakData` with many forged matches
     /// (one per k from 0..N) where N >> `k_max` must terminate at `k_max` and
     /// produce at most `k_max` detections.
     ///

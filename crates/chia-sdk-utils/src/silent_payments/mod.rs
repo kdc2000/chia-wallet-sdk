@@ -11,20 +11,13 @@
 //!     ([`SilentPaymentAddress::encode`], [`SilentPaymentAddress::decode`]),
 //!   - generate labeled sub-addresses ([`SilentPaymentKeys::labeled_address`])
 //!     and maintain a `label_pk → label_index` registry ([`LabelRegistry`])
-//!     for the scanner (Phase 3, RECV-04) to attribute labeled detections.
+//!     for the scanner to attribute labeled detections.
 //!
 //! All scalar-field reduction in this module flows through
-//! `chia_sdk_types::silent_payments::ScalarField` (Phase 1) so the choice of
-//! unsigned vs signed byte interpretation is type-system-enforced. Do NOT
-//! introduce alternate reducers here. In particular, the signed mod-r reducer
-//! that the standard-puzzle synthetic-key offset uses (in
-//! `chia_puzzle_types::derive_synthetic`) takes a different sign interpretation
-//! and silently disagrees with `from_bytes_unsigned` on inputs whose high bit
-//! is set — keep the two routes separate.
-//!
-//! Hash routines in this module tree use `chia_sha2::Sha256` exclusively (the
-//! SDK-standard hasher); the workspace defense-in-depth grep ban forbids
-//! `use sha2::` imports under `silent_payments/`.
+//! [`chia_sdk_types::silent_payments::ScalarField`], which enforces the
+//! unsigned-vs-signed byte-interpretation choice at the type level. See
+//! `ScalarField::from_bytes_unsigned` for why unsigned reduction is mandatory
+//! for protocol scalars.
 
 mod address;
 pub use address::*;
@@ -41,14 +34,12 @@ pub use labels::*;
 /// so cross-module consumers in this crate can reach it but external callers
 /// must go through this wrapper).
 ///
-/// Used by `chia-sdk-driver`'s silent-payment scanner (Phase 3, RECV-04) to
-/// compute the labeled `onetime_sk = base_onetime_sk + label_scalar` for
-/// labeled detections. The byte-level semantics are pinned by Phase 2's
-/// `tv3_label_scalar_matches` test.
+/// Used by `chia-sdk-driver`'s silent-payment scanner to compute the labeled
+/// `onetime_sk = base_onetime_sk + label_scalar` for labeled detections.
 ///
 /// `m = 0` is accepted here — the public-API change-label rejection lives in
-/// [`SilentPaymentKeys::labeled_address`]. Phase 6 (SIM-03) will use `m = 0`
-/// internally to register the change label for own-change detection.
+/// [`SilentPaymentKeys::labeled_address`]. The change label (`m = 0`) is used
+/// internally to register own-change detection.
 #[must_use]
 pub fn generate_label(
     scan_sk: &chia_bls::SecretKey,

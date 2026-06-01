@@ -356,7 +356,7 @@ pub struct SilentPayments;
 ///
 /// `public_key` is the RAW wallet public key; `Spends::with_silent_payment_keys`
 /// synthesizes the synthetic key internally via the default hidden puzzle (see
-/// that method's docs for the custom-hidden / GUARD-01 fail-loud contract).
+/// that method's docs for the custom-hidden / synthetic-key fail-loud contract).
 #[derive(Clone)]
 pub struct SilentPaymentRegisteredKey {
     pub p2_puzzle_hash: Bytes32,
@@ -368,7 +368,7 @@ pub struct SilentPaymentRegisteredKey {
 ///
 /// `secret_key` is the RAW wallet secret key; `Spends::with_silent_payment_keys`
 /// synthesizes the synthetic key internally via the default hidden puzzle (see
-/// that method's docs for the custom-hidden / GUARD-01 fail-loud contract).
+/// that method's docs for the custom-hidden / synthetic-key fail-loud contract).
 ///
 /// Privacy warning: `secret_key` carries sensitive secret-key material —
 /// wallets must treat the wrapping vec like the SKs themselves (zeroize on

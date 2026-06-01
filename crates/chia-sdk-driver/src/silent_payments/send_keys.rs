@@ -37,11 +37,11 @@ pub(crate) struct SilentPaymentPending {
 }
 
 /// A `chia_bls::SecretKey` proven (by construction via [`SyntheticSecretKey::from_raw`]
-/// or by the GUARD-01 runtime check) to be the SYNTHETIC secret key — the one
-/// whose public key is curried into `StandardArgs::synthetic_key`. The CHIP-0057
-/// send path aggregates these verbatim; passing a raw wallet SK lands funds at an
-/// undetectable one-time puzzle hash, so the type exists to make that a compile
-/// error.
+/// or by the `sp_finish_branch` runtime check) to be the SYNTHETIC secret key —
+/// the one whose public key is curried into `StandardArgs::synthetic_key`. The
+/// CHIP-0057 send path aggregates these verbatim; passing a raw wallet SK lands
+/// funds at an undetectable one-time puzzle hash, so the type exists to make that
+/// a compile error.
 #[derive(Debug, Clone)]
 pub struct SyntheticSecretKey(SecretKey);
 
@@ -55,7 +55,7 @@ impl SyntheticSecretKey {
     }
 
     /// Escape hatch: wrap a key the caller asserts is already synthetic. NOT
-    /// validated here — the GUARD-01 runtime check in `sp_finish_branch`
+    /// validated here — the runtime check in `sp_finish_branch`
     /// (`curry_tree_hash(pk) == coin p2_puzzle_hash` + `sk.public_key() == pk`)
     /// is the universal backstop that rejects a mis-wrapped key before signing.
     #[must_use]
@@ -83,10 +83,10 @@ impl SyntheticSecretKey {
 }
 
 /// A `chia_bls::PublicKey` proven (by construction via [`SyntheticPublicKey::from_raw`]
-/// or by the GUARD-01 runtime check) to be the SYNTHETIC public key — the one
-/// curried into `StandardArgs::synthetic_key`. The CHIP-0057 send path uses these
-/// verbatim; passing a raw wallet PK lands funds at an undetectable one-time
-/// puzzle hash, so the type exists to make that a compile error.
+/// or by the `sp_finish_branch` runtime check) to be the SYNTHETIC public key —
+/// the one curried into `StandardArgs::synthetic_key`. The CHIP-0057 send path
+/// uses these verbatim; passing a raw wallet PK lands funds at an undetectable
+/// one-time puzzle hash, so the type exists to make that a compile error.
 #[derive(Debug, Clone, Copy)]
 pub struct SyntheticPublicKey(PublicKey);
 
@@ -100,7 +100,7 @@ impl SyntheticPublicKey {
     }
 
     /// Escape hatch: wrap a key the caller asserts is already synthetic. NOT
-    /// validated here — the GUARD-01 runtime check in `sp_finish_branch`
+    /// validated here — the runtime check in `sp_finish_branch`
     /// (`curry_tree_hash(pk) == coin p2_puzzle_hash`) is the universal backstop
     /// that rejects a mis-wrapped key before signing.
     #[must_use]
@@ -133,8 +133,8 @@ mod tests {
     use super::{SyntheticPublicKey, SyntheticSecretKey};
     use crate::{Action, DriverError, Id, Relation, SendDestination, SpendContext, Spends};
 
-    /// GUARD-02 byte-equality contract: the newtype `from_raw` constructors MUST
-    /// route through the exact `chia_puzzle_types::DeriveSynthetic` path
+    /// Byte-equality contract: the newtype `from_raw` constructors MUST route
+    /// through the exact `chia_puzzle_types::DeriveSynthetic` path
     /// `puzzle_hash_for_pk` uses, and `from_synthetic_unchecked` MUST be
     /// bit-preserving — otherwise the one-time puzzle hash drifts from the
     /// detection oracle.
@@ -183,11 +183,11 @@ mod tests {
         Ok(())
     }
 
-    /// SEND-03 (Spends-level hard-error) + ROADMAP Phase 4 success criterion #2:
-    /// a Spends with 2 non-ephemeral XCH inputs but only 1 in the registered SK
-    /// map returns `Err(DriverError::SilentPaymentMultiPartyUnsupported)` — NOT
-    /// a silent single-input aggregation (which would silently corrupt the
-    /// puzzle hash). Multi-party flows are out of scope for v1.
+    /// Spends-level multi-party hard-error: a Spends with 2 non-ephemeral XCH
+    /// inputs but only 1 in the registered SK map returns
+    /// `Err(DriverError::SilentPaymentMultiPartyUnsupported)` — NOT a silent
+    /// single-input aggregation (which would silently corrupt the puzzle hash).
+    /// Multi-party flows are out of scope for v1.
     ///
     /// Uses `Action::send` with `SendDestination::SilentPayment`, registers
     /// keys via `with_silent_payment_keys`, and finishes via `finish_with_keys`.
@@ -245,10 +245,10 @@ mod tests {
         Ok(())
     }
 
-    /// FINGERPRINT-01 + ROADMAP §04.1 SC3: a `Spends` with 2 wallet-controlled
-    /// XCH inputs + 1 SP `Action::send` MUST be passed `Relation::AssertConcurrent`
-    /// to `finish_with_keys`. Anything else (including `Relation::None`)
-    /// returns `Err(DriverError::SilentPaymentRequiresInputBinding)`.
+    /// A `Spends` with 2 wallet-controlled XCH inputs + 1 SP `Action::send` MUST
+    /// be passed `Relation::AssertConcurrent` to `finish_with_keys`. Anything
+    /// else (including `Relation::None`) returns
+    /// `Err(DriverError::SilentPaymentRequiresInputBinding)`.
     ///
     /// The SK-coverage check is NOT triggered: both Alice's and Bob's SKs are
     /// registered, so under `Relation::AssertConcurrent` the call would
@@ -313,10 +313,9 @@ mod tests {
         Ok(())
     }
 
-    /// FINGERPRINT-01 + ROADMAP §04.1 SC3: a `Spends` with 1 XCH input + 1 SP
-    /// `Action::send` accepts `Relation::None` — the gate short-circuits
-    /// because non-ephemeral XCH count < 2. Single-input SP sends do not
-    /// require input binding.
+    /// A `Spends` with 1 XCH input + 1 SP `Action::send` accepts
+    /// `Relation::None` — the gate short-circuits because non-ephemeral XCH
+    /// count < 2. Single-input SP sends do not require input binding.
     ///
     /// The success path exercises `sp_finish_branch` end-to-end (gates pass;
     /// derivation pipeline runs).
@@ -368,9 +367,8 @@ mod tests {
         Ok(())
     }
 
-    /// GUARD-01 (the runtime backstop) — the raw-key footgun from
-    /// `ISSUE-silent-payment-synthetic-key-guard.md`: a wallet that registers a
-    /// key whose `StandardArgs::curry_tree_hash(pk)` does NOT equal the spent
+    /// The runtime backstop against the raw-key footgun: a wallet that registers
+    /// a key whose `StandardArgs::curry_tree_hash(pk)` does NOT equal the spent
     /// coin's `p2_puzzle_hash` MUST fail typed BEFORE signing.
     ///
     /// The `sim.bls()` fixture coin is curried over the RAW `alice.pk`, so
@@ -378,7 +376,7 @@ mod tests {
     /// `curry_tree_hash(derive_synthetic(alice.pk)) != alice.puzzle_hash` — the
     /// exact mismatch a raw-key mistake produces against a real standard-spend
     /// coin. Single input, `Relation::None`: the input-binding gate
-    /// short-circuits, so the next gate to fire is GUARD-01.
+    /// short-circuits, so the next gate to fire is the synthetic-key check.
     #[test]
     fn raw_pk_single_input_fails_not_synthetic() -> Result<()> {
         let mut sim = Simulator::new();
@@ -434,10 +432,10 @@ mod tests {
         Ok(())
     }
 
-    /// GUARD-01 second arm — sk/pk map consistency: a registered pk that DOES
-    /// match the coin (`curry_tree_hash(pk) == ph`) but whose paired sk has a
-    /// different public key (`sk.public_key() != pk`) MUST fail typed before
-    /// signing. Catches a wallet that registers mismatched halves of the
+    /// Synthetic-key check, second arm — sk/pk map consistency: a registered pk
+    /// that DOES match the coin (`curry_tree_hash(pk) == ph`) but whose paired sk
+    /// has a different public key (`sk.public_key() != pk`) MUST fail typed
+    /// before signing. Catches a wallet that registers mismatched halves of the
     /// pk/sk maps.
     #[test]
     fn sk_pk_mismatch_fails_not_synthetic() -> Result<()> {
@@ -492,13 +490,12 @@ mod tests {
         Ok(())
     }
 
-    /// GUARD-01 backstops the `SyntheticSecretKey::from_synthetic_unchecked`
-    /// escape hatch (GUARD-02): a key the caller WRONGLY asserts is synthetic
-    /// (here `derive_synthetic(alice.pk)` against a coin curried over the raw
+    /// The runtime check backstops the `SyntheticSecretKey::from_synthetic_unchecked`
+    /// escape hatch: a key the caller WRONGLY asserts is synthetic (here
+    /// `derive_synthetic(alice.pk)` against a coin curried over the raw
     /// `alice.pk`) is rejected typed before signing. Distinct contract from
     /// `raw_pk_single_input_fails_not_synthetic` — that pins the raw-key
-    /// footgun, this pins the newtype escape-hatch backstop; kept by name per
-    /// the project's "keep both" precedent.
+    /// footgun, this pins the newtype escape-hatch backstop.
     #[test]
     fn unchecked_wrong_key_is_backstopped() -> Result<()> {
         let mut sim = Simulator::new();
@@ -516,7 +513,7 @@ mod tests {
 
         // The caller used `from_synthetic_unchecked` to assert a key is
         // synthetic when it is not (it double-synthesizes a key the coin
-        // curried raw). GUARD-01 catches the mis-assertion.
+        // curried raw). The sp_finish_branch check catches the mis-assertion.
         let pk_map = indexmap! { alice.puzzle_hash => alice.pk };
         let synthetic_public_map = indexmap! {
             alice.puzzle_hash =>
@@ -546,7 +543,7 @@ mod tests {
 
         assert!(
             matches!(result, Err(DriverError::SilentPaymentKeyNotSynthetic)),
-            "from_synthetic_unchecked of a wrong key must be backstopped by GUARD-01, got {result:?}"
+            "from_synthetic_unchecked of a wrong key must be backstopped by sp_finish_branch, got {result:?}"
         );
 
         Ok(())

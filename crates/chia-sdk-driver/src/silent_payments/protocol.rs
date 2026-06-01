@@ -19,8 +19,7 @@
 //!
 //! Every scalar that comes out of `tagged_hash` flows through
 //! [`chia_sdk_types::silent_payments::ScalarField::from_bytes_unsigned`] — the
-//! Phase 1 type-system boundary that prevents the signed-vs-unsigned mixing
-//! hazard.
+//! type-system boundary that prevents the signed-vs-unsigned mixing hazard.
 
 use chia_bls::{PublicKey, SecretKey};
 use chia_protocol::Bytes32;
@@ -95,44 +94,41 @@ pub fn derive_onetime_sk(spend_sk: &SecretKey, tweak: &ScalarField) -> SecretKey
 
 /// Compute the standard p2 puzzle hash for a one-time public key.
 ///
-/// Reuses `chia_puzzle_types::DeriveSynthetic` + `StandardArgs::curry_tree_hash`
-/// — the SDK precedent at `crates/chia-sdk-driver/src/layers/standard_layer.rs:118`.
-/// Hand-rolling this puzzle-hash construction is permanently out of scope per
-/// REQUIREMENTS.md "Out of Scope (permanently)".
+/// Reuses `chia_puzzle_types::DeriveSynthetic` + `StandardArgs::curry_tree_hash`,
+/// matching the standard-layer construction.
 ///
-/// Note: `pk.derive_synthetic()` routes through `chia_puzzle_types::derive_synthetic`'s
-/// SIGNED reducer. That is correct here — the `derive_synthetic` offset is a
-/// Chia-consensus-pinned signed reduction, NOT a silent-payments construction.
-/// The silent-payments `ScalarField` boundary applies only to the silent-payments
-/// output tweak, not the standard-puzzle synthetic offset.
+/// `pk.derive_synthetic()` routes through `chia_puzzle_types::derive_synthetic`'s
+/// SIGNED reducer, which is correct here — that offset is a Chia-consensus-pinned
+/// signed reduction, not a silent-payments construction. The silent-payments
+/// `ScalarField` boundary applies only to the output tweak, never the
+/// standard-puzzle synthetic offset.
 #[must_use]
 pub fn puzzle_hash_for_pk(pk: &PublicKey) -> Bytes32 {
     let synthetic = pk.derive_synthetic();
     StandardArgs::curry_tree_hash(synthetic).into()
 }
 
-// ─── Send-side compositions ──────────────────────────────────────────────
+// Send-side compositions.
 //
-// The 3 functions below COMPOSE the protocol primitives above into the
-// values the send-side action and `Spends::finish_with_keys` need:
+// The 3 functions below compose the protocol primitives above into the values
+// the send-side action and `Spends::finish_with_keys` need:
 //
 //   aggregate_sender_sks  → Σ synthetic_sk_i mod r
 //   compute_input_hash    → tagged_hash binding the spent coin set + aggregated PK
 //   derive_one_time_puzzle_hash  → sender-side analog of the receiver's scan loop
 //
-// Synthetic-vs-raw key boundary: callers MUST pass synthetic SKs (the ones
-// whose PKs are curried into `StandardArgs::synthetic_key`). This requirement
-// is enforced by two layered guards (GUARD-02 + GUARD-01):
+// Callers MUST pass synthetic SKs (the ones whose PKs are curried into
+// `StandardArgs::synthetic_key`). Two layered guards enforce this:
 //   (a) the `SyntheticSecretKey` / `SyntheticPublicKey` newtypes at the
 //       `Spends::with_silent_payment_keys` boundary make passing a raw key a
-//       compile error in Rust (GUARD-02); and
+//       compile error; and
 //   (b) the `sp_finish_branch` runtime guard returns
 //       `DriverError::SilentPaymentKeyNotSynthetic` before signing when a
-//       registered key does not curry to the spent coin's `p2_puzzle_hash`
-//       (GUARD-01) — the universal backstop covering the newtype's
-//       `from_synthetic_unchecked` escape hatch and every FFI caller.
+//       registered key does not curry to the spent coin's `p2_puzzle_hash` —
+//       the universal backstop covering the newtype's `from_synthetic_unchecked`
+//       escape hatch and every FFI caller.
 // The Spends-level multi-party / coverage gates check key PRESENCE only; they
-// do not validate synthetic-ness, so they are NOT the prevention mechanism.
+// do not validate synthetic-ness.
 
 /// Aggregate synthetic sender secret keys via mod-r addition.
 ///
@@ -322,9 +318,8 @@ mod tests {
 
     // ─── Tests for the protocol primitives ───────────────────────────────
 
-    /// RECV-03 + CRYPTO-03: `compute_shared_secret_from_tweak` matches TV1's
-    /// pinned value `d3ac1e8f...0ba2c6` — verifies the ECDH primitive byte
-    /// for byte.
+    /// `compute_shared_secret_from_tweak` matches TV1's pinned value
+    /// `d3ac1e8f...0ba2c6` — verifies the ECDH primitive byte for byte.
     #[test]
     fn tv1_shared_secret_matches() {
         let tweak_point = tv1_tweak_point();
@@ -332,9 +327,9 @@ mod tests {
         assert_eq!(secret, TV1_SHARED_SECRET);
     }
 
-    /// CRYPTO-03 success criterion 3: an adversarial scalar whose first byte
-    /// has the high bit set reduces under UNSIGNED interpretation
-    /// (`BigUint::from_bytes_be(&bytes) % r`), NOT signed interpretation.
+    /// An adversarial scalar whose first byte has the high bit set reduces
+    /// under UNSIGNED interpretation (`BigUint::from_bytes_be(&bytes) % r`), NOT
+    /// signed interpretation.
     ///
     /// Verifies the `ScalarField` boundary fires end-to-end through
     /// `derive_output_tweak`: any future refactor that swapped
@@ -370,8 +365,7 @@ mod tests {
 
     // ─── Tests for the send-side compositions ────────────────────────────
 
-    /// SEND-03 (free-fn portion) + ROADMAP success criterion #1 (round-trip):
-    /// aggregating the two TV4 sender synthetic SKs produces the pinned
+    /// Aggregating the two TV4 sender synthetic SKs produces the pinned
     /// `TV4_AGGREGATED_SK` byte-for-byte. Catches `ScalarField::add` regressions
     /// AND iteration-order bugs (aggregation is commutative; if a future
     /// refactor sorts the slice, the result must still match).
@@ -389,9 +383,9 @@ mod tests {
         );
     }
 
-    /// SEND-02 + ROADMAP success criterion #1: TV1 input-hash byte-pin.
-    /// Verifies the lex-min `coin_id` + `serialize(A_sum)` || `tagged_hash`
-    /// pipeline matches the byte-for-byte CHIP-pinned `38a1c8...cc9411` value.
+    /// TV1 input-hash byte-pin. Verifies the lex-min `coin_id` +
+    /// `serialize(A_sum)` || `tagged_hash` pipeline matches the byte-for-byte
+    /// CHIP-pinned `38a1c8...cc9411` value.
     #[test]
     fn tv1_compute_input_hash_matches() {
         let pk = PublicKey::from_bytes(&TV1_A_SUM).expect("TV1 A_sum is a valid BLS PK");
@@ -406,10 +400,9 @@ mod tests {
         );
     }
 
-    /// SEND-02 lex-min rule: a two-coin input where the smaller id is in
-    /// position [1] returns the SAME scalar as a single-element slice with
-    /// just the smaller id. Verifies the function selects `iter().min()`,
-    /// not `[0]`.
+    /// A two-coin input where the smaller id is in position [1] returns the
+    /// SAME scalar as a single-element slice with just the smaller id. Verifies
+    /// the function selects `iter().min()`, not `[0]`.
     #[test]
     fn input_hash_uses_lex_min_coin_id() {
         let pk = PublicKey::from_bytes(&TV1_A_SUM).expect("TV1 A_sum");
@@ -428,8 +421,7 @@ mod tests {
         );
     }
 
-    /// SEND-02 order-independence: swapping the slice order of two coin ids
-    /// produces the same scalar.
+    /// Swapping the slice order of two coin ids produces the same scalar.
     #[test]
     fn input_hash_order_independent() {
         let pk = PublicKey::from_bytes(&TV1_A_SUM).expect("TV1 A_sum");
@@ -447,9 +439,8 @@ mod tests {
         );
     }
 
-    /// SEND-01 + ROADMAP success criterion #1: TV1 round-trip closure.
-    /// The sender-side puzzle-hash derivation produces the SAME byte-string
-    /// that Phase 3's scanner detected in `tv1_scan_detects_unlabeled_k0`.
+    /// TV1 round-trip closure. The sender-side puzzle-hash derivation produces
+    /// the SAME byte-string the scanner detects in `tv1_scan_detects_unlabeled_k0`.
     #[test]
     fn tv1_derive_one_time_puzzle_hash_matches() {
         let scan_pk = PublicKey::from_bytes(&TV1_SCAN_PK).expect("TV1 scan_pk");
@@ -463,13 +454,13 @@ mod tests {
         assert_eq!(
             *result.as_ref(),
             TV1_PUZZLE_HASH,
-            "SEND-01 TV1 round-trip: sender-side derive_one_time_puzzle_hash \
-             must match Phase 3 scanner's tv1_scan_detects_unlabeled_k0 result"
+            "TV1 round-trip: sender-side derive_one_time_puzzle_hash \
+             must match the scanner's tv1_scan_detects_unlabeled_k0 result"
         );
     }
 
-    /// SEND-01 + ROADMAP success criterion #1 (k=1 leg): at k=1 the derivation
-    /// matches Phase 3's `bespoke_k1_detection` in-test computation.
+    /// At k=1 the derivation matches the `bespoke_k1_detection` in-test
+    /// computation.
     ///
     /// Re-derives the expected puzzle hash via the same protocol-primitive
     /// chain (`compute_shared_secret_from_tweak`, `derive_output_tweak(.., 1)`,
@@ -507,7 +498,7 @@ mod tests {
         assert_eq!(
             *sender_ph.as_ref(),
             *expected_ph.as_ref(),
-            "SEND-01 k=1 round-trip: sender and receiver derivations must agree byte-for-byte"
+            "k=1 round-trip: sender and receiver derivations must agree byte-for-byte"
         );
     }
 }
