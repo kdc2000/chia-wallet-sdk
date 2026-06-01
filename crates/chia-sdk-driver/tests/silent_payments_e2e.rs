@@ -146,6 +146,120 @@ fn test_simulator_e2e_unlabeled() -> Result<()> {
     Ok(())
 }
 
+/// Multi-input unlabeled SP send round-trip: TWO distinct-puzzle-hash XCH
+/// inputs sent to ONE unlabeled SP address with `Relation::AssertConcurrent`.
+///
+/// This drives the real receiver grouping path: the sender aggregates both
+/// inputs' synthetic SKs, the `AssertConcurrent` cycle binds the two coins into
+/// one strongly connected component, and the receiver reconstructs the same
+/// `input_hash` over the same input set.
+///
+/// Asserts:
+/// 1. The `AssertConcurrent` runtime gate is satisfied (2 non-ephemeral XCH
+///    inputs + `Relation::AssertConcurrent`) — `finish_with_keys` does NOT error
+///    with `SilentPaymentRequiresInputBinding`.
+/// 2. Exactly one detection at the expected one-time puzzle hash.
+/// 3. `label: None`, `k == 0`, `amount == 1000`.
+/// 4. The detected coin spends successfully.
+#[test]
+fn test_simulator_e2e_multi_input() -> Result<()> {
+    let mut sim = Simulator::new();
+    let mut ctx = SpendContext::new();
+
+    // Two distinct sender key pairs / puzzle hashes / coins.
+    let a = sim.bls(600);
+    let b = sim.bls(600);
+
+    let mnemonic = Mnemonic::parse(TV1_MNEMONIC)?;
+    let recipient = SilentPaymentKeys::from_mnemonic(&mnemonic);
+    let recipient_address = recipient.unlabeled_address(SilentPaymentNetwork::Testnet);
+    let height_before = sim.height();
+
+    // Both coins as inputs; change returns to `a.puzzle_hash`.
+    let mut spends = Spends::new(a.puzzle_hash);
+    spends.add(a.coin);
+    spends.add(b.coin);
+
+    let deltas = spends.apply(
+        &mut ctx,
+        &[Action::send(
+            Id::Xch,
+            SendDestination::SilentPayment(Box::new(recipient_address)),
+            1000,
+            Memos::None,
+        )],
+    )?;
+
+    // `pk_map` stays raw for `finish_with_keys`; the SP newtype maps wrap each
+    // raw `sim.bls()` fixture key via `from_synthetic_unchecked` (coins curried
+    // over the raw pk, so the registered key IS the raw key). Both puzzle hashes
+    // must be present in every map.
+    let pk_map = indexmap! {
+        a.puzzle_hash => a.pk,
+        b.puzzle_hash => b.pk,
+    };
+    let synthetic_public_map = indexmap! {
+        a.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(a.pk),
+        b.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(b.pk),
+    };
+    let synthetic_secret_map = indexmap! {
+        a.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(a.sk.clone()),
+        b.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(b.sk.clone()),
+    };
+    spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
+
+    // MUST be AssertConcurrent for 2+ non-ephemeral XCH inputs — otherwise the
+    // runtime gate errors with SilentPaymentRequiresInputBinding.
+    spends.finish_with_keys(&mut ctx, &deltas, Relation::AssertConcurrent, &pk_map)?;
+
+    // Farm: sign with BOTH senders' SKs.
+    sim.spend_coins(ctx.take(), &[a.sk.clone(), b.sk.clone()])?;
+
+    // Extract + scan via the canonical helper + free-fn scanner.
+    let tweak_data = tweak_data_from_simulator_block(&sim, height_before);
+    let detections = scan_from_tweaks(
+        recipient.scan_sk(),
+        recipient.spend_sk(),
+        recipient.spend_pk(),
+        &tweak_data,
+        None,
+        K_MAX_DEFAULT,
+    );
+
+    assert_eq!(
+        detections.len(),
+        1,
+        "multi-input send must produce exactly one detection"
+    );
+    let detected = &detections[0];
+    assert!(detected.label.is_none(), "unlabeled -> label must be None");
+    assert_eq!(detected.k, 0, "first output -> k=0");
+    assert_eq!(detected.amount, 1000);
+
+    // Spend the detected coin.
+    let synthetic_secret = detected.onetime_sk.derive_synthetic();
+    let conditions = Conditions::new()
+        .create_coin(a.puzzle_hash, detected.amount - 1, Memos::None)
+        .reserve_fee(1);
+    let coin = Coin::new(
+        detected.parent_coin_id,
+        detected.puzzle_hash,
+        detected.amount,
+    );
+    StandardLayer::new(synthetic_secret.public_key()).spend(&mut ctx, coin, conditions)?;
+    sim.spend_coins(ctx.take(), std::slice::from_ref(&synthetic_secret))?;
+
+    let post_state = sim
+        .coin_state(detected.coin_id)
+        .expect("detected coin in state");
+    assert!(
+        post_state.spent_height.is_some(),
+        "detected coin must be spent after follow-on spend"
+    );
+
+    Ok(())
+}
+
 /// Labeled SP send round-trip: same flow as
 /// [`test_simulator_e2e_unlabeled`] using a labeled recipient address (`m=1`).
 /// Asserts the scanner correctly detects with `label: Some(1)` and the labeled

@@ -16,6 +16,22 @@
 //! constructs `TweakData` from its wire messages without breaking this module's
 //! shape.
 //!
+//! # Multi-input send constraint (v1)
+//!
+//! A multi-input silent-payment bundle must consist of distinct-puzzle-hash,
+//! non-ephemeral XCH inputs only — no CAT, DID, NFT, or intermediate
+//! (ephemeral) coins. The sender binds those inputs into one strongly connected
+//! component with [`crate::Relation::AssertConcurrent`], and the receiver
+//! reconstructs the spend group as the set of same-`AssertConcurrent`-cycle
+//! coins. For the receiver's reconstructed input set to equal the sender's exact
+//! input set — and therefore for the two `input_hash` values to agree — the
+//! `AssertConcurrent` cycle must span precisely the XCH inputs the sender
+//! aggregated. If the cycle includes any other coin, the receiver's `input_hash`
+//! diverges from the sender's and the output coin is undetectable by the
+//! recipient. v1 ships this documented constraint; sending to a silent-payment
+//! destination across mixed asset types or with extra cycle members is out of
+//! scope.
+//!
 //! All scalar reduction in this module flows through
 //! [`chia_sdk_types::silent_payments::ScalarField`], which enforces the
 //! unsigned-vs-signed byte-interpretation choice at the type level. See

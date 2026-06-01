@@ -625,6 +625,9 @@ fn sp_finish_branch(
 
     // GATE 1: SilentPaymentRequiresInputBinding fires first; multi-input
     // atomic-binding is more fundamental than key-registration.
+    // DEFERRED follow-up (see quick-260601-e6z SUMMARY): whether to filter the
+    // AssertConcurrent cycle to exactly the SP XCH-input set vs. document the v1
+    // constraint is an open privacy/design question, out of scope here.
     let non_ephemeral_xch_count = spends.xch.items.iter().filter(|i| !i.ephemeral).count();
     if non_ephemeral_xch_count >= 2 && !matches!(relation, Relation::AssertConcurrent) {
         return Err(DriverError::SilentPaymentRequiresInputBinding);
