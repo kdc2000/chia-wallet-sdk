@@ -1,4 +1,4 @@
-"""BIND-03 pyo3 unlabeled SP send + scan-from-tweaks E2E.
+"""BIND-03 pyo3 raw-key SP send + scan-from-tweaks E2E, plus the GUARD-03 contract.
 
 Closes the Python half of BIND-03. Mirrors napi/__test__/silent_payments_e2e.spec.ts
 in snake_case. This is the first non-trivial pytest in pyo3/tests/; no
@@ -13,7 +13,16 @@ already byte-pinned against the CHIP-0057 test vectors.
 `Simulator.tweak_data_from_block`) and crossed the FFI boundary unchanged.
 This is the first runtime test of `Vec<chia_bls::PublicKey>` marshaling on
 `TweakData.tweak_points` across the pyo3 FFI.
+
+GUARD-03 (Phase 09.2 Plan 03): `with_silent_payment_keys` now accepts RAW
+PublicKey/SecretKey and synthesizes the synthetic key internally via
+`derive_synthetic` (default hidden puzzle). The happy paths build sender coins
+at the SYNTHETIC puzzle hash so a raw-key registration round-trips;
+`test_raw_key_not_synthetic_errors` proves a wrong key surfaces the typed
+`SilentPaymentKeyNotSynthetic` error across the FFI boundary (GUARD-01 backstop).
 """
+
+import pytest
 
 from chia_wallet_sdk import (
     Action,
@@ -29,6 +38,7 @@ from chia_wallet_sdk import (
     SilentPayments,
     Simulator,
     Spends,
+    standard_puzzle_hash,
 )
 
 # BIP-39 TV1 — matches Phase 5 AVA + Rust e2e fixtures so cross-language
@@ -48,14 +58,22 @@ def test_unlabeled_e2e():
     recipient = SilentPaymentKeys.from_mnemonic(Mnemonic(TV1_MNEMONIC))
     recipient_address = recipient.unlabeled_address(SilentPaymentNetwork.Testnet)
 
-    # Sender: fresh BLS pair from simulator.
+    # Sender: fresh BLS pair from simulator (used only for its key pair).
     sender = sim.bls(1_000)
+
+    # GUARD-03: with_silent_payment_keys synthesizes the registered RAW key via
+    # derive_synthetic internally, so the sender coin must live at the SYNTHETIC
+    # puzzle hash for the raw-key registration to round-trip through GUARD-01.
+    sender_synthetic_pk = sender.pk.derive_synthetic()
+    sender_synthetic_sk = sender.sk.derive_synthetic()
+    sender_ph = standard_puzzle_hash(sender_synthetic_pk)
+    sender_coin = sim.new_coin(sender_ph, 1_000)
     height_before = sim.height()
 
     # Build the SP send via the unified Action.send + SendDestination +
     # with_silent_payment_keys path.
-    spends = Spends(clvm, sender.puzzle_hash)
-    spends.add_xch(sender.coin)
+    spends = Spends(clvm, sender_ph)
+    spends.add_xch(sender_coin)
 
     actions = [
         Action.send(
@@ -66,26 +84,30 @@ def test_unlabeled_e2e():
         )
     ]
 
-    # Register SP keys (Phase 5 BIND-02 wrapper-class form — bindy doesn't
-    # marshal Vec<(K,V)> directly).
+    # Register RAW SP keys (Phase 5 BIND-02 wrapper-class form — bindy doesn't
+    # marshal Vec<(K,V)> directly). The facade synthesizes derive_synthetic(...)
+    # internally (GUARD-03).
     spends.with_silent_payment_keys(
-        [SilentPaymentRegisteredKey(sender.puzzle_hash, sender.pk)],
-        [SilentPaymentRegisteredSecretKey(sender.puzzle_hash, sender.sk)],
+        [SilentPaymentRegisteredKey(sender_ph, sender.pk)],
+        [SilentPaymentRegisteredSecretKey(sender_ph, sender.sk)],
     )
 
     deltas = spends.apply(actions)
     finished = spends.prepare(deltas)
 
-    # Standard-puzzle-spend the sender's XCH input.
+    # Standard-puzzle-spend the sender's XCH input. The coin is curried over the
+    # SYNTHETIC key, so spend + sign with the synthetic key pair.
     for pending in finished.pending_spends():
         finished.insert(
             pending.coin().coin_id(),
-            clvm.standard_spend(sender.pk, clvm.delegated_spend(pending.conditions())),
+            clvm.standard_spend(
+                sender_synthetic_pk, clvm.delegated_spend(pending.conditions())
+            ),
         )
     finished.spend()
 
     # Farm the block.
-    sim.spend_coins(clvm.coin_spends(), [sender.sk])
+    sim.spend_coins(clvm.coin_spends(), [sender_synthetic_sk])
 
     # Extract TweakData via the Phase-6 bindings helper.
     # THIS IS THE NEW FFI SURFACE.
@@ -175,13 +197,25 @@ def test_multi_input_e2e():
     # Two non-ephemeral XCH coins with different BLS pairs. The Relation
     # cycle binding ties them together so the receiver scanner can re-group
     # them via Pass 2b SCC over opcode-64 AssertConcurrentSpend edges.
+    #
+    # GUARD-03: with_silent_payment_keys synthesizes the registered RAW key via
+    # derive_synthetic internally, so each coin must live at its SYNTHETIC
+    # puzzle hash for the raw-key registration to round-trip through GUARD-01.
     sender1 = sim.bls(500)
     sender2 = sim.bls(500)
+    sender1_synthetic_pk = sender1.pk.derive_synthetic()
+    sender2_synthetic_pk = sender2.pk.derive_synthetic()
+    sender1_synthetic_sk = sender1.sk.derive_synthetic()
+    sender2_synthetic_sk = sender2.sk.derive_synthetic()
+    sender1_ph = standard_puzzle_hash(sender1_synthetic_pk)
+    sender2_ph = standard_puzzle_hash(sender2_synthetic_pk)
+    sender1_coin = sim.new_coin(sender1_ph, 500)
+    sender2_coin = sim.new_coin(sender2_ph, 500)
     height_before = sim.height()
 
-    spends = Spends(clvm, sender1.puzzle_hash)
-    spends.add_xch(sender1.coin)
-    spends.add_xch(sender2.coin)
+    spends = Spends(clvm, sender1_ph)
+    spends.add_xch(sender1_coin)
+    spends.add_xch(sender2_coin)
 
     actions = [
         Action.send(
@@ -192,14 +226,15 @@ def test_multi_input_e2e():
         )
     ]
 
+    # Register RAW keys — the facade synthesizes derive_synthetic(...) internally.
     spends.with_silent_payment_keys(
         [
-            SilentPaymentRegisteredKey(sender1.puzzle_hash, sender1.pk),
-            SilentPaymentRegisteredKey(sender2.puzzle_hash, sender2.pk),
+            SilentPaymentRegisteredKey(sender1_ph, sender1.pk),
+            SilentPaymentRegisteredKey(sender2_ph, sender2.pk),
         ],
         [
-            SilentPaymentRegisteredSecretKey(sender1.puzzle_hash, sender1.sk),
-            SilentPaymentRegisteredSecretKey(sender2.puzzle_hash, sender2.sk),
+            SilentPaymentRegisteredSecretKey(sender1_ph, sender1.sk),
+            SilentPaymentRegisteredSecretKey(sender2_ph, sender2.sk),
         ],
     )
 
@@ -210,16 +245,20 @@ def test_multi_input_e2e():
     # DriverError::SilentPaymentRequiresInputBinding fires inside prepare().
     finished = spends.prepare(deltas, Relation.assert_concurrent())
 
+    # Each coin is curried over its SYNTHETIC key; spend + sign with the
+    # synthetic key pair.
     for pending in finished.pending_spends():
-        is_s1 = pending.coin().puzzle_hash == sender1.puzzle_hash
-        pk = sender1.pk if is_s1 else sender2.pk
+        is_s1 = pending.coin().puzzle_hash == sender1_ph
+        synthetic_pk = sender1_synthetic_pk if is_s1 else sender2_synthetic_pk
         finished.insert(
             pending.coin().coin_id(),
-            clvm.standard_spend(pk, clvm.delegated_spend(pending.conditions())),
+            clvm.standard_spend(
+                synthetic_pk, clvm.delegated_spend(pending.conditions())
+            ),
         )
     finished.spend()
 
-    sim.spend_coins(clvm.coin_spends(), [sender1.sk, sender2.sk])
+    sim.spend_coins(clvm.coin_spends(), [sender1_synthetic_sk, sender2_synthetic_sk])
 
     # BRIDGE-05 entry point: drive TweakData construction through the new
     # helper, not the older Simulator.tweak_data_from_block path. The
@@ -248,3 +287,49 @@ def test_multi_input_e2e():
     assert detections[0].k == 0, "first output at this scan_pk -> k=0"
     assert detections[0].label is None, "unlabeled detection -> label is None"
     assert detections[0].amount == 700, "multi-input SP output amount round-trips"
+
+
+def test_raw_key_not_synthetic_errors():
+    """GUARD-03 pyo3: a raw key against a non-synthetic coin surfaces the typed error.
+
+    The sim.bls() coin is curried over the RAW pk
+    (StandardArgs::curry_tree_hash(pk)). Registering RAW sender.pk makes the
+    facade synthesize derive_synthetic(sender.pk), whose curry_tree_hash !=
+    sender.puzzle_hash — so GUARD-01 must fire inside prepare() with the typed
+    SilentPaymentKeyNotSynthetic error crossing the FFI boundary, and NO spend
+    bundle is produced.
+    """
+    sim = Simulator()
+    clvm = Clvm()
+
+    recipient = SilentPaymentKeys.from_mnemonic(Mnemonic(TV1_MNEMONIC))
+    recipient_address = recipient.unlabeled_address(SilentPaymentNetwork.Testnet)
+
+    sender = sim.bls(1_000)
+
+    spends = Spends(clvm, sender.puzzle_hash)
+    spends.add_xch(sender.coin)
+
+    actions = [
+        Action.send(
+            Id.xch(),
+            SendDestination.silent_payment(recipient_address),
+            100,
+            None,
+        )
+    ]
+
+    spends.with_silent_payment_keys(
+        [SilentPaymentRegisteredKey(sender.puzzle_hash, sender.pk)],
+        [SilentPaymentRegisteredSecretKey(sender.puzzle_hash, sender.sk)],
+    )
+
+    deltas = spends.apply(actions)
+
+    # GUARD-01 fires inside prepare() — the typed SilentPaymentKeyNotSynthetic
+    # error crosses the FFI boundary as a raised exception.
+    with pytest.raises(BaseException, match="not the synthetic key"):
+        spends.prepare(deltas)
+
+    # No spend bundle was produced on the failed path.
+    assert len(clvm.coin_spends()) == 0, "no coin spends produced on the failed path"

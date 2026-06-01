@@ -1,11 +1,20 @@
 // napi/__test__/silent_payments_e2e.spec.ts
 //
-// BIND-03 napi unlabeled SP send + scan-from-tweaks E2E.
+// BIND-03 napi unlabeled SP send + scan-from-tweaks E2E, plus the GUARD-03
+// raw-key contract (Phase 09.2).
 //
 // Closes BIND-03 with full FFI fidelity: TweakData is constructed on the
 // Rust side and crossed the FFI boundary unchanged. This is the first runtime
 // test of Vec<chia_bls::PublicKey> marshaling on TweakData.tweakPoints across
 // napi.
+//
+// GUARD-03 (Phase 09.2 Plan 03): withSilentPaymentKeys now accepts RAW
+// PublicKey/SecretKey and synthesizes the synthetic key internally via
+// derive_synthetic (default hidden puzzle). The happy path below builds the
+// sender coin at the SYNTHETIC puzzle hash so a raw-key registration
+// round-trips; the negative test proves a wrong (raw-against-a-raw-curried-coin)
+// key surfaces the typed SilentPaymentKeyNotSynthetic error across the FFI
+// boundary (GUARD-01 backstop).
 //
 // Cross-language coverage is scoped to the unlabeled flow; the labeled
 // detection branch is exercised by the Rust-side E2E tests in
@@ -26,13 +35,14 @@ import {
   SilentPayments,
   Simulator,
   Spends,
+  standardPuzzleHash,
 } from "..";
 
 const TV1_MNEMONIC =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 const K_MAX_DEFAULT = 2400;
 
-test("BIND-03 napi: unlabeled SP send + scan-from-tweaks E2E", (t) => {
+test("BIND-03 napi: raw-key SP send + scan-from-tweaks E2E", (t) => {
   const sim = new Simulator();
   const clvm = new Clvm();
 
@@ -43,14 +53,23 @@ test("BIND-03 napi: unlabeled SP send + scan-from-tweaks E2E", (t) => {
     SilentPaymentNetwork.Testnet,
   );
 
-  // Sender: fresh BLS pair from simulator.
+  // Sender: fresh BLS pair from simulator (used only for its key pair).
   const sender = sim.bls(1_000n);
   const heightBefore = sim.height();
 
+  // GUARD-03: withSilentPaymentKeys now synthesizes the registered RAW key via
+  // derive_synthetic internally. For the raw-key registration to round-trip
+  // through GUARD-01, the sender coin must live at the SYNTHETIC puzzle hash
+  // (curry_tree_hash(derive_synthetic(sender.pk))), NOT the raw puzzle hash.
+  const senderSyntheticPk = sender.pk.deriveSynthetic();
+  const senderSyntheticSk = sender.sk.deriveSynthetic();
+  const senderPh = standardPuzzleHash(senderSyntheticPk);
+  const senderCoin = sim.newCoin(senderPh, 1_000n);
+
   // Build the SP send via the unified Action.send + SendDestination +
   // withSilentPaymentKeys path (Phase 4.2 + Phase 5).
-  const spends = new Spends(clvm, sender.puzzleHash);
-  spends.addXch(sender.coin);
+  const spends = new Spends(clvm, senderPh);
+  spends.addXch(senderCoin);
 
   const actions = [
     Action.send(
@@ -61,29 +80,34 @@ test("BIND-03 napi: unlabeled SP send + scan-from-tweaks E2E", (t) => {
     ),
   ];
 
-  // Register SP keys BEFORE apply (with_silent_payment_keys must precede
+  // Register RAW SP keys BEFORE apply (with_silent_payment_keys must precede
   // finish-time SP processing inside prepare()). Wrapper-class form per
-  // Phase 5 BIND-02 — bindy doesn't marshal Vec<(K,V)> directly.
+  // Phase 5 BIND-02 — bindy doesn't marshal Vec<(K,V)> directly. The facade
+  // synthesizes derive_synthetic(sender.pk/sk) internally (GUARD-03).
   spends.withSilentPaymentKeys(
-    [new SilentPaymentRegisteredKey(sender.puzzleHash, sender.pk)],
-    [new SilentPaymentRegisteredSecretKey(sender.puzzleHash, sender.sk)],
+    [new SilentPaymentRegisteredKey(senderPh, sender.pk)],
+    [new SilentPaymentRegisteredSecretKey(senderPh, sender.sk)],
   );
 
   const deltas = spends.apply(actions);
   const finished = spends.prepare(deltas);
 
-  // Standard-puzzle-spend the sender's XCH input (mirrors
-  // napi/__test__/action_system.spec.ts:142-157 Wallet.spend pattern).
+  // Standard-puzzle-spend the sender's XCH input. The coin is curried over the
+  // SYNTHETIC key, so spend with the synthetic key and sign with the synthetic
+  // sk (mirrors the follow-on detected-coin spend below).
   for (const pending of finished.pendingSpends()) {
     finished.insert(
       pending.coin().coinId(),
-      clvm.standardSpend(sender.pk, clvm.delegatedSpend(pending.conditions())),
+      clvm.standardSpend(
+        senderSyntheticPk,
+        clvm.delegatedSpend(pending.conditions()),
+      ),
     );
   }
   finished.spend();
 
   // Farm the block.
-  sim.spendCoins(clvm.coinSpends(), [sender.sk]);
+  sim.spendCoins(clvm.coinSpends(), [senderSyntheticSk]);
 
   // Extract TweakData via the Phase-6 bindings helper.
   // THIS IS THE NEW FFI SURFACE.
@@ -144,7 +168,7 @@ test("BIND-03 napi: unlabeled SP send + scan-from-tweaks E2E", (t) => {
   // 1-mojo fee. Reuse the same Clvm allocator (action_system.spec.ts pattern).
   const followClvm = new Clvm();
   const conditions = [
-    followClvm.createCoin(sender.puzzleHash, detectedAmount - 1n, null),
+    followClvm.createCoin(senderPh, detectedAmount - 1n, null),
     followClvm.reserveFee(1n),
   ];
   const delegatedSpend = followClvm.delegatedSpend(conditions);
@@ -156,4 +180,54 @@ test("BIND-03 napi: unlabeled SP send + scan-from-tweaks E2E", (t) => {
 
   const afterSpend = sim.coinState(detectedCoinId);
   t.not(afterSpend?.spentHeight, null, "detected SP coin successfully spent");
+});
+
+test("GUARD-03 napi: raw key against a non-synthetic coin surfaces SilentPaymentKeyNotSynthetic", (t) => {
+  const sim = new Simulator();
+  const clvm = new Clvm();
+
+  const recipient = SilentPaymentKeys.fromMnemonic(new Mnemonic(TV1_MNEMONIC));
+  const recipientAddress = recipient.unlabeledAddress(
+    SilentPaymentNetwork.Testnet,
+  );
+
+  // Sender coin is curried over the RAW pk (StandardArgs::curry_tree_hash(pk)),
+  // i.e. sim.bls() treats sender.pk AS the curried key. Registering RAW
+  // sender.pk makes the facade synthesize derive_synthetic(sender.pk), whose
+  // curry_tree_hash != sender.puzzleHash — so GUARD-01 must fire inside
+  // prepare() before any spend bundle is produced.
+  const sender = sim.bls(1_000n);
+
+  const spends = new Spends(clvm, sender.puzzleHash);
+  spends.addXch(sender.coin);
+
+  const actions = [
+    Action.send(
+      Id.xch(),
+      SendDestination.silentPayment(recipientAddress),
+      100n,
+      undefined,
+    ),
+  ];
+
+  spends.withSilentPaymentKeys(
+    [new SilentPaymentRegisteredKey(sender.puzzleHash, sender.pk)],
+    [new SilentPaymentRegisteredSecretKey(sender.puzzleHash, sender.sk)],
+  );
+
+  const deltas = spends.apply(actions);
+
+  // GUARD-01 fires inside prepare() — the typed SilentPaymentKeyNotSynthetic
+  // error crosses the FFI boundary as a thrown error, and NO spend bundle is
+  // produced.
+  t.throws(
+    () => {
+      spends.prepare(deltas);
+    },
+    { message: /not the synthetic key|KeyNotSynthetic/i },
+    "raw key against a raw-curried coin must surface the typed error",
+  );
+
+  // No spend bundle was produced.
+  t.is(clvm.coinSpends().length, 0, "no coin spends produced on the failed path");
 });

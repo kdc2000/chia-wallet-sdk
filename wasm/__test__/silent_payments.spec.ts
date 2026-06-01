@@ -1,6 +1,6 @@
 // wasm/__test__/silent_payments.spec.ts
 //
-// BIND-03 wasm unlabeled SP send + scan-from-tweaks E2E.
+// BIND-03 wasm raw-key SP send + scan-from-tweaks E2E, plus the GUARD-03 contract.
 //
 // Closes the WASM half of BIND-03. Mirrors napi/__test__/silent_payments_e2e.spec.ts
 // structurally; the only differences are imports from `../pkg` and the
@@ -11,6 +11,13 @@
 // and crossed the FFI boundary unchanged. This is the first runtime test of
 // `Vec<chia_bls::PublicKey>` marshaling on TweakData.tweakPoints across the
 // wasm-bindgen FFI.
+//
+// GUARD-03 (Phase 09.2 Plan 03): withSilentPaymentKeys now accepts RAW
+// PublicKey/SecretKey and synthesizes the synthetic key internally via
+// deriveSynthetic (default hidden puzzle). The happy path builds the sender
+// coin at the SYNTHETIC puzzle hash so a raw-key registration round-trips; the
+// negative test proves a wrong key surfaces the typed
+// SilentPaymentKeyNotSynthetic error across the wasm FFI (GUARD-01 backstop).
 //
 // Cross-language coverage is scoped to the unlabeled flow; the labeled
 // detection branch is exercised by the Rust-side E2E tests in
@@ -33,6 +40,7 @@ import {
   SilentPayments,
   Simulator,
   Spends,
+  standardPuzzleHash,
 } from "../pkg";
 
 setPanicHook();
@@ -41,7 +49,7 @@ const TV1_MNEMONIC =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 const K_MAX_DEFAULT = 2400;
 
-test("BIND-03 wasm: unlabeled SP send + scan-from-tweaks E2E", (t) => {
+test("BIND-03 wasm: raw-key SP send + scan-from-tweaks E2E", (t) => {
   const sim = new Simulator();
   const clvm = new Clvm();
 
@@ -51,14 +59,22 @@ test("BIND-03 wasm: unlabeled SP send + scan-from-tweaks E2E", (t) => {
     SilentPaymentNetwork.Testnet,
   );
 
-  // Sender: fresh BLS pair from simulator.
+  // Sender: fresh BLS pair from simulator (used only for its key pair).
   const sender = sim.bls(1_000n);
+
+  // GUARD-03: withSilentPaymentKeys synthesizes the registered RAW key via
+  // deriveSynthetic internally, so the sender coin must live at the SYNTHETIC
+  // puzzle hash for the raw-key registration to round-trip through GUARD-01.
+  const senderSyntheticPk = sender.pk.deriveSynthetic();
+  const senderSyntheticSk = sender.sk.deriveSynthetic();
+  const senderPh = standardPuzzleHash(senderSyntheticPk);
+  const senderCoin = sim.newCoin(senderPh, 1_000n);
   const heightBefore = sim.height();
 
   // Build the SP send via the unified Action.send + SendDestination +
   // withSilentPaymentKeys path.
-  const spends = new Spends(clvm, sender.puzzleHash);
-  spends.addXch(sender.coin);
+  const spends = new Spends(clvm, senderPh);
+  spends.addXch(senderCoin);
 
   const actions = [
     Action.send(
@@ -69,27 +85,32 @@ test("BIND-03 wasm: unlabeled SP send + scan-from-tweaks E2E", (t) => {
     ),
   ];
 
-  // Register SP keys (Phase 5 BIND-02 wrapper-class form — bindy doesn't
-  // marshal Vec<(K,V)> directly across wasm-bindgen either).
+  // Register RAW SP keys (Phase 5 BIND-02 wrapper-class form — bindy doesn't
+  // marshal Vec<(K,V)> directly across wasm-bindgen either). The facade
+  // synthesizes deriveSynthetic(sender.pk/sk) internally (GUARD-03).
   spends.withSilentPaymentKeys(
-    [new SilentPaymentRegisteredKey(sender.puzzleHash, sender.pk)],
-    [new SilentPaymentRegisteredSecretKey(sender.puzzleHash, sender.sk)],
+    [new SilentPaymentRegisteredKey(senderPh, sender.pk)],
+    [new SilentPaymentRegisteredSecretKey(senderPh, sender.sk)],
   );
 
   const deltas = spends.apply(actions);
   const finished = spends.prepare(deltas);
 
-  // Standard-puzzle-spend the sender's XCH input.
+  // Standard-puzzle-spend the sender's XCH input. The coin is curried over the
+  // SYNTHETIC key, so spend + sign with the synthetic key pair.
   for (const pending of finished.pendingSpends()) {
     finished.insert(
       pending.coin().coinId(),
-      clvm.standardSpend(sender.pk, clvm.delegatedSpend(pending.conditions())),
+      clvm.standardSpend(
+        senderSyntheticPk,
+        clvm.delegatedSpend(pending.conditions()),
+      ),
     );
   }
   finished.spend();
 
   // Farm the block.
-  sim.spendCoins(clvm.coinSpends(), [sender.sk]);
+  sim.spendCoins(clvm.coinSpends(), [senderSyntheticSk]);
 
   // Extract TweakData via the Phase-6 bindings helper.
   // THIS IS THE NEW FFI SURFACE.
@@ -163,4 +184,54 @@ test("BIND-03 wasm: unlabeled SP send + scan-from-tweaks E2E", (t) => {
     undefined,
     "detected SP coin successfully spent",
   );
+});
+
+test("GUARD-03 wasm: raw key against a non-synthetic coin surfaces SilentPaymentKeyNotSynthetic", (t) => {
+  const sim = new Simulator();
+  const clvm = new Clvm();
+
+  const recipient = SilentPaymentKeys.fromMnemonic(new Mnemonic(TV1_MNEMONIC));
+  const recipientAddress = recipient.unlabeledAddress(
+    SilentPaymentNetwork.Testnet,
+  );
+
+  // Sender coin is curried over the RAW pk (StandardArgs::curry_tree_hash(pk)),
+  // i.e. sim.bls() treats sender.pk AS the curried key. Registering RAW
+  // sender.pk makes the facade synthesize deriveSynthetic(sender.pk), whose
+  // curry_tree_hash != sender.puzzleHash — so GUARD-01 must fire inside
+  // prepare() before any spend bundle is produced.
+  const sender = sim.bls(1_000n);
+
+  const spends = new Spends(clvm, sender.puzzleHash);
+  spends.addXch(sender.coin);
+
+  const actions = [
+    Action.send(
+      Id.xch(),
+      SendDestination.silentPayment(recipientAddress),
+      100n,
+      undefined,
+    ),
+  ];
+
+  spends.withSilentPaymentKeys(
+    [new SilentPaymentRegisteredKey(sender.puzzleHash, sender.pk)],
+    [new SilentPaymentRegisteredSecretKey(sender.puzzleHash, sender.sk)],
+  );
+
+  const deltas = spends.apply(actions);
+
+  // GUARD-01 fires inside prepare() — the typed SilentPaymentKeyNotSynthetic
+  // error crosses the wasm FFI boundary as a thrown error, and NO spend bundle
+  // is produced.
+  t.throws(
+    () => {
+      spends.prepare(deltas);
+    },
+    { message: /not the synthetic key|KeyNotSynthetic/i },
+    "raw key against a raw-curried coin must surface the typed error",
+  );
+
+  // No spend bundle was produced.
+  t.is(clvm.coinSpends().length, 0, "no coin spends produced on the failed path");
 });
