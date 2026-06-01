@@ -271,6 +271,29 @@ Plans:
 - [x] 09-05-PLAN.md — BRIDGE-05: bind SilentPayments.tweakDataFromBlockSpends as static method on namespace + descriptor (Wave 2)
 - [x] 09-06-PLAN.md — BRIDGE-06: Simulator block_spends/block_outputs facade + 3 cross-binding multi-input tests + example multi-input section (Wave 2)
 
+### Phase 09.2: Harden SP sender keys: synthetic-key runtime guard + SyntheticKey newtype + raw-key bindings (INSERTED)
+
+**Goal:** Close the silent-fund-loss footgun reported in `ISSUE-silent-payment-synthetic-key-guard.md` (2026-06-01, hit by a downstream BIP-352 port via the Python bindings): `Spends::with_silent_payment_keys` requires *synthetic* sender keys but enforces it nowhere (neither type nor runtime). Passing raw wallet keys compiles, signs, broadcasts, and confirms — but the recipient's one-time puzzle hash is derived from the raw scalar, so the coin is undetectable and unspendable by any CHIP-0057 scanner. The fix is a layered defense, verified true in the live code (see issue): (1) a **runtime guard** (universal, covers all bindings + the newtype escape hatch), (2) a **`SyntheticSecretKey`/`SyntheticPublicKey` newtype** (compile-time prevention for Rust callers; resolves the long-deferred Q2), and (3) **raw-key-accepting binding methods on all three targets** (napi/pyo3/wasm) that synthesize internally with the runtime guard as backstop.
+
+**Requirements**: GUARD-01 (runtime guard), GUARD-02 (newtype), GUARD-03 (raw-key bindings ×3). No silent failure remains in any language surface.
+
+**Depends on:** Phase 9 (and 9.1 — builds on the post-cleanup SP send path)
+
+**Plans:** 0 plans
+
+Design (locked — see `09.2-CONTEXT.md` for detail):
+
+1. **GUARD-01 — runtime guard (the universal backstop).** In `sp_finish_branch` (and/or at registration), for each registered key validate `StandardArgs::curry_tree_hash(registered_pk) == p2_puzzle_hash` (the `IndexMap` key already *is* the coin's p2 puzzle hash) AND `registered_sk.public_key() == registered_pk`. On mismatch, return a new `DriverError::SilentPaymentKeyNotSynthetic` *before* the bundle is signed. Validates against the actual coin, so it accepts any correct synthetic key (default OR custom hidden puzzle) and rejects raw keys. Catches single-input. This is the only guard that crosses the FFI boundary and the backstop for the newtype's `_unchecked` path — so it stays even though the newtype exists.
+
+2. **GUARD-02 — `SyntheticSecretKey` / `SyntheticPublicKey` newtypes (Rust compile-time).** Wrap `chia_bls::{SecretKey,PublicKey}`. Ergonomic primary constructor `from_raw(&raw)` (does `derive_synthetic()`, default hidden) so Rust callers get the same "pass raw" convenience the bindings get; `from_synthetic_unchecked(k)` as the documented escape hatch (covered by GUARD-01); `.public_key() -> SyntheticPublicKey`. Change `Spends::with_silent_payment_keys` to take `IndexMap<Bytes32, SyntheticPublicKey>` / `IndexMap<Bytes32, SyntheticSecretKey>`. This makes the raw-key mistake a *compile error* in Rust and resolves STATE Q2 (`SyntheticSecretKey` newtype vs documented `&[SecretKey]`). Blast radius: `examples/silent_payment.rs` and `tests/silent_payments_e2e.rs` update to the newtype.
+
+3. **GUARD-03 — raw-key binding methods on napi/pyo3/wasm.** The bindings can't carry the Rust newtype across FFI, so each target's `with_silent_payment_keys` (in `chia-sdk-bindings`) accepts **raw** `PublicKey`/`SecretKey`, calls `derive_synthetic()` internally (default hidden), and relies on GUARD-01 underneath. Doc the default-hidden assumption (custom-hidden coins fail loud via GUARD-01, not silently). Update `bindings/action_system.json` descriptor accordingly.
+
+**Verification bar:** raw keys in Rust → compile error; raw keys via `_unchecked`/bindings → `Err(SilentPaymentKeyNotSynthetic)` before signing (proven by a test per surface, incl. single-input); a correct synthetic key still produces the byte-identical one-time PH as today (no regression to the Phase-3/6 detection oracle); all CI permutations + napi/pyo3/wasm green; zero new workspace deps.
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 09.2 to break down)
+
 ### Phase 09.1: Fix 5 maintainer-flagged conformance issues in chip-0057 SP surface (INSERTED)
 
 **Goal:** Resolve the 5 concrete pre-merge issues surfaced by the 2026-05-29 cross-cutting code-quality review of the silent-payments surface. All are small/mechanical, no architecture changes, no API removals — they harden the edges CI doesn't exercise (non-default feature permutations, the FFI boundary) and strip planning-process residue from shipped source. Closes the last gap before the chip-0057 work is upstream-merge clean.
