@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 Phase: 09.2
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-01
+Last activity: 2026-06-01 - Completed quick task 260601-e6z: CHIP-0057 SP code-review cleanup (editorial + multi-input e2e + CI drift gate)
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
@@ -229,9 +229,10 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260530-dv1 | Trim 7 internal SP crypto helpers from curated prelude; document load-bearing `chia-sdk-test/chip-0057` dev-dep feature line (not removed) | 2026-05-30 | c8582f38 | [260530-dv1-trim-sp-crypto-helpers-from-prelude-clar](./quick/260530-dv1-trim-sp-crypto-helpers-from-prelude-clar/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260530-dv1 | Trim 7 internal SP crypto helpers from curated prelude; document load-bearing `chia-sdk-test/chip-0057` dev-dep feature line (not removed) | 2026-05-30 | c8582f38 |  | [260530-dv1-trim-sp-crypto-helpers-from-prelude-clar](./quick/260530-dv1-trim-sp-crypto-helpers-from-prelude-clar/) |
+| 260601-e6z | CHIP-0057 SP code-review cleanup (strip planning residue from docs, trim DriverError messages, relocate SilentPaymentPending, multi-input e2e, wire drift-check CI gate) | 2026-06-01 | ed718a19 | Verified | [260601-e6z-chip-0057-sp-code-review-cleanup-strip-p](./quick/260601-e6z-chip-0057-sp-code-review-cleanup-strip-p/) |
 
 ## Session Continuity
 
