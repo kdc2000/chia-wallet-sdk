@@ -121,9 +121,18 @@ pub fn puzzle_hash_for_pk(pk: &PublicKey) -> Bytes32 {
 //   derive_one_time_puzzle_hash  → sender-side analog of the receiver's scan loop
 //
 // Synthetic-vs-raw key boundary: callers MUST pass synthetic SKs (the ones
-// whose PKs are curried into `StandardArgs::synthetic_key`). The Spends-level
-// multi-party hard-error check in `Spends::finish_with_keys` is the prevention
-// mechanism.
+// whose PKs are curried into `StandardArgs::synthetic_key`). This requirement
+// is enforced by two layered guards (GUARD-02 + GUARD-01):
+//   (a) the `SyntheticSecretKey` / `SyntheticPublicKey` newtypes at the
+//       `Spends::with_silent_payment_keys` boundary make passing a raw key a
+//       compile error in Rust (GUARD-02); and
+//   (b) the `sp_finish_branch` runtime guard returns
+//       `DriverError::SilentPaymentKeyNotSynthetic` before signing when a
+//       registered key does not curry to the spent coin's `p2_puzzle_hash`
+//       (GUARD-01) — the universal backstop covering the newtype's
+//       `from_synthetic_unchecked` escape hatch and every FFI caller.
+// The Spends-level multi-party / coverage gates check key PRESENCE only; they
+// do not validate synthetic-ness, so they are NOT the prevention mechanism.
 
 /// Aggregate synthetic sender secret keys via mod-r addition.
 ///

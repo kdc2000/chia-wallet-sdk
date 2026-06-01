@@ -65,10 +65,17 @@ fn main() -> Result<()> {
             ),
         ],
     )?;
+    // `pks` stays raw for `finish_with_keys` (used to spend the coin). The SP
+    // key maps wrap synthetic keys via the GUARD-02 newtypes — here the
+    // `sim.bls()` coin is curried over the raw pk, so the registered key IS the
+    // raw key and we wrap via `from_synthetic_unchecked`. Wallets sending from
+    // standard-spend coins synthesize via `SyntheticSecretKey::from_raw`.
     let pks = indexmap! { sender.puzzle_hash => sender.pk };
     spends.with_silent_payment_keys(
-        pks.clone(),
-        indexmap! { sender.puzzle_hash => sender.sk.clone() },
+        indexmap! { sender.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(sender.pk) },
+        indexmap! {
+            sender.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(sender.sk.clone()),
+        },
     );
     spends.finish_with_keys(ctx, &deltas, Relation::None, &pks)?;
     sim.spend_coins(ctx.take(), std::slice::from_ref(&sender.sk))?;
@@ -146,15 +153,21 @@ fn main() -> Result<()> {
         )],
     )?;
 
+    // `multi_pks` stays raw for `finish_with_keys`; the SP key maps wrap the
+    // raw fixture keys via `from_synthetic_unchecked` (coins curried over the
+    // raw pk).
     let multi_pks = indexmap! {
         sender_a.puzzle_hash => sender_a.pk,
         sender_b.puzzle_hash => sender_b.pk,
     };
     spends_multi.with_silent_payment_keys(
-        multi_pks.clone(),
         indexmap! {
-            sender_a.puzzle_hash => sender_a.sk.clone(),
-            sender_b.puzzle_hash => sender_b.sk.clone(),
+            sender_a.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(sender_a.pk),
+            sender_b.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(sender_b.pk),
+        },
+        indexmap! {
+            sender_a.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(sender_a.sk.clone()),
+            sender_b.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(sender_b.sk.clone()),
         },
     );
     // Relation::AssertConcurrent is mandatory for multi-input SP sends —

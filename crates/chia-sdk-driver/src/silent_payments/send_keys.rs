@@ -145,7 +145,9 @@ mod tests {
 
         // 1. from_raw(&raw_sk).into_inner() == derive_synthetic(&raw_sk)
         assert_eq!(
-            SyntheticSecretKey::from_raw(&raw_secret).into_inner().to_bytes(),
+            SyntheticSecretKey::from_raw(&raw_secret)
+                .into_inner()
+                .to_bytes(),
             raw_secret.derive_synthetic().to_bytes(),
             "SyntheticSecretKey::from_raw must mirror DeriveSynthetic::derive_synthetic",
         );
@@ -171,7 +173,9 @@ mod tests {
 
         // 4. SyntheticPublicKey::from_raw(&raw_pk).into_inner() == derive_synthetic(&raw_pk)
         assert_eq!(
-            SyntheticPublicKey::from_raw(&raw_public).into_inner().to_bytes(),
+            SyntheticPublicKey::from_raw(&raw_public)
+                .into_inner()
+                .to_bytes(),
             raw_public.derive_synthetic().to_bytes(),
             "SyntheticPublicKey::from_raw must mirror DeriveSynthetic::derive_synthetic",
         );
@@ -204,8 +208,14 @@ mod tests {
             SilentPaymentNetwork::Mainnet,
         );
 
+        // `pk_map` stays raw for `finish_with_keys` (used to spend the coins).
         let pk_map = indexmap! { alice.puzzle_hash => alice.pk };
-        let sk_map = indexmap! { alice.puzzle_hash => alice.sk.clone() };
+        // The `sim.bls()` fixture coins are curried over the RAW pk, so the
+        // registered SP key IS the raw key — wrap via `from_synthetic_unchecked`.
+        let synthetic_public_map = indexmap! { alice.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(alice.pk) };
+        let synthetic_secret_map = indexmap! {
+            alice.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(alice.sk.clone()),
+        };
 
         let mut spends = Spends::new(alice.puzzle_hash);
         spends.add(alice.coin); // wallet-controlled
@@ -221,8 +231,8 @@ mod tests {
             )],
         )?;
 
-        // sk_map contains ONLY Alice — Bob is missing.
-        spends.with_silent_payment_keys(pk_map.clone(), sk_map);
+        // synthetic_secret_map contains ONLY Alice — Bob is missing.
+        spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
 
         let result =
             spends.finish_with_keys(&mut ctx, &deltas, Relation::AssertConcurrent, &pk_map);
@@ -261,13 +271,20 @@ mod tests {
             SilentPaymentNetwork::Mainnet,
         );
 
+        // `pk_map` stays raw for `finish_with_keys`; the SP newtype maps wrap
+        // the raw fixture keys via `from_synthetic_unchecked` (coins curried
+        // over the raw pk).
         let pk_map = indexmap! {
             alice.puzzle_hash => alice.pk,
             bob.puzzle_hash => bob.pk,
         };
-        let sk_map = indexmap! {
-            alice.puzzle_hash => alice.sk.clone(),
-            bob.puzzle_hash => bob.sk.clone(),
+        let synthetic_public_map = indexmap! {
+            alice.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(alice.pk),
+            bob.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(bob.pk),
+        };
+        let synthetic_secret_map = indexmap! {
+            alice.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(alice.sk.clone()),
+            bob.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(bob.sk.clone()),
         };
 
         let mut spends = Spends::new(alice.puzzle_hash);
@@ -284,7 +301,7 @@ mod tests {
             )],
         )?;
 
-        spends.with_silent_payment_keys(pk_map.clone(), sk_map);
+        spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
 
         let result = spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map);
 
@@ -318,8 +335,13 @@ mod tests {
             SilentPaymentNetwork::Mainnet,
         );
 
+        // `pk_map` stays raw for `finish_with_keys`; the SP newtype maps wrap
+        // the raw fixture key via `from_synthetic_unchecked`.
         let pk_map = indexmap! { alice.puzzle_hash => alice.pk };
-        let sk_map = indexmap! { alice.puzzle_hash => alice.sk.clone() };
+        let synthetic_public_map = indexmap! { alice.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(alice.pk) };
+        let synthetic_secret_map = indexmap! {
+            alice.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(alice.sk.clone()),
+        };
 
         let mut spends = Spends::new(alice.puzzle_hash);
         spends.add(alice.coin);
@@ -334,7 +356,7 @@ mod tests {
             )],
         )?;
 
-        spends.with_silent_payment_keys(pk_map.clone(), sk_map);
+        spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
 
         let result = spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map);
 

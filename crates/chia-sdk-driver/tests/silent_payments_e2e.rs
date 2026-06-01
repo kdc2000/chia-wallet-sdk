@@ -21,7 +21,9 @@ use anyhow::Result;
 use bip39::Mnemonic;
 use chia_protocol::Coin;
 use chia_puzzle_types::{DeriveSynthetic, Memos};
-use chia_sdk_driver::silent_payments::{K_MAX_DEFAULT, scan_from_tweaks};
+use chia_sdk_driver::silent_payments::{
+    K_MAX_DEFAULT, SyntheticPublicKey, SyntheticSecretKey, scan_from_tweaks,
+};
 use chia_sdk_driver::{Action, Id, Relation, SendDestination, SpendContext, Spends, StandardLayer};
 use chia_sdk_test::silent_payments::tweak_data_from_simulator_block;
 use chia_sdk_test::{BlsPairWithCoin, Simulator};
@@ -76,9 +78,17 @@ fn test_simulator_e2e_unlabeled() -> Result<()> {
             Memos::None,
         )],
     )?;
+    // `pk_map` stays raw for `finish_with_keys`; the SP newtype maps wrap the
+    // raw `sim.bls()` fixture key via `from_synthetic_unchecked` (the coin is
+    // curried over the raw pk, so the registered key IS the raw key).
     let pk_map = indexmap! { sender.puzzle_hash => sender.pk };
-    let sk_map = indexmap! { sender.puzzle_hash => sender.sk.clone() };
-    spends.with_silent_payment_keys(pk_map.clone(), sk_map);
+    let synthetic_public_map = indexmap! {
+        sender.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(sender.pk),
+    };
+    let synthetic_secret_map = indexmap! {
+        sender.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(sender.sk.clone()),
+    };
+    spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
     spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map)?;
 
     // Farm: spend_coins farms a block internally.
@@ -157,9 +167,17 @@ fn test_simulator_e2e_labeled() -> Result<()> {
             Memos::None,
         )],
     )?;
+    // `pk_map` stays raw for `finish_with_keys`; the SP newtype maps wrap the
+    // raw `sim.bls()` fixture key via `from_synthetic_unchecked` (the coin is
+    // curried over the raw pk, so the registered key IS the raw key).
     let pk_map = indexmap! { sender.puzzle_hash => sender.pk };
-    let sk_map = indexmap! { sender.puzzle_hash => sender.sk.clone() };
-    spends.with_silent_payment_keys(pk_map.clone(), sk_map);
+    let synthetic_public_map = indexmap! {
+        sender.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(sender.pk),
+    };
+    let synthetic_secret_map = indexmap! {
+        sender.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(sender.sk.clone()),
+    };
+    spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
     spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map)?;
     sim.spend_coins(ctx.take(), std::slice::from_ref(&sender.sk))?;
 
@@ -244,9 +262,17 @@ fn test_simulator_e2e_m0_self_change() -> Result<()> {
             Memos::None,
         )],
     )?;
+    // `pk_map` stays raw for `finish_with_keys`; the SP newtype maps wrap the
+    // raw `sim.bls()` fixture key via `from_synthetic_unchecked` (the coin is
+    // curried over the raw pk, so the registered key IS the raw key).
     let pk_map = indexmap! { sender.puzzle_hash => sender.pk };
-    let sk_map = indexmap! { sender.puzzle_hash => sender.sk.clone() };
-    spends.with_silent_payment_keys(pk_map.clone(), sk_map);
+    let synthetic_public_map = indexmap! {
+        sender.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(sender.pk),
+    };
+    let synthetic_secret_map = indexmap! {
+        sender.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(sender.sk.clone()),
+    };
+    spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
     spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map)?;
     sim.spend_coins(ctx.take(), std::slice::from_ref(&sender.sk))?;
 

@@ -101,6 +101,17 @@ impl Spends<Unfinished> {
     /// [`Spends::finish_with_keys`]'s chip-0057 branch consumes to derive each
     /// pending one-time puzzle hash.
     ///
+    /// The maps are keyed by each spent XCH coin's `p2_puzzle_hash` and the
+    /// values are [`crate::silent_payments::SyntheticPublicKey`] /
+    /// [`crate::silent_payments::SyntheticSecretKey`] — the newtype wrappers
+    /// (GUARD-02) that make passing a raw wallet key a compile error. Construct
+    /// them via `SyntheticSecretKey::from_raw` (synthesizes for you) or
+    /// `from_synthetic_unchecked` when the key is already synthetic. The
+    /// `from_synthetic_unchecked` escape hatch is covered at finish time by the
+    /// GUARD-01 runtime check in `sp_finish_branch`
+    /// (`curry_tree_hash(pk) == coin p2_puzzle_hash` + `sk.public_key() == pk`),
+    /// which rejects a mis-wrapped key before any signing.
+    ///
     /// Chainable; matches the `add_*` builder precedent on `Spends`. The PK and
     /// SK maps are co-dependent (the SK map must cover every key in the PK map
     /// for the SP flow), so they are accepted together — splitting would invite
@@ -112,11 +123,21 @@ impl Spends<Unfinished> {
     #[cfg(feature = "chip-0057")]
     pub fn with_silent_payment_keys(
         &mut self,
-        synthetic_pks: IndexMap<Bytes32, PublicKey>,
-        secret_keys: IndexMap<Bytes32, SecretKey>,
+        synthetic_pks: IndexMap<Bytes32, crate::silent_payments::SyntheticPublicKey>,
+        secret_keys: IndexMap<Bytes32, crate::silent_payments::SyntheticSecretKey>,
     ) -> &mut Self {
-        self.silent_payment_synthetic_pks = Some(synthetic_pks);
-        self.silent_payment_synthetic_sks = Some(secret_keys);
+        self.silent_payment_synthetic_pks = Some(
+            synthetic_pks
+                .into_iter()
+                .map(|(ph, k)| (ph, k.into_inner()))
+                .collect(),
+        );
+        self.silent_payment_synthetic_sks = Some(
+            secret_keys
+                .into_iter()
+                .map(|(ph, k)| (ph, k.into_inner()))
+                .collect(),
+        );
         self
     }
 

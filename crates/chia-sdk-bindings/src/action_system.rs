@@ -4,7 +4,6 @@ use std::{
 };
 
 use bindy::Result;
-use chia_bls::{PublicKey, SecretKey};
 use chia_protocol::{Bytes32, Coin};
 use chia_puzzle_types::{Memos, offer::SettlementPaymentsSolution};
 use chia_sdk_driver::{
@@ -78,13 +77,33 @@ impl Spends {
         synthetic_pks: Vec<crate::SilentPaymentRegisteredKey>,
         secret_keys: Vec<crate::SilentPaymentRegisteredSecretKey>,
     ) -> Result<()> {
-        let pk_map: IndexMap<Bytes32, PublicKey> = synthetic_pks
+        // The FFI surface receives keys the caller asserts are already synthetic
+        // (the GUARD-02 newtype cannot cross the binding boundary), so wrap them
+        // via `from_synthetic_unchecked` — byte-identical to the prior verbatim
+        // behavior. GUARD-01 (the finish-time runtime guard) is the universal
+        // backstop that rejects a mis-wrapped key before signing. (Plan 03 / GUARD-03
+        // adds the raw-key binding entry point that synthesizes internally.)
+        let pk_map: IndexMap<Bytes32, sdk::silent_payments::SyntheticPublicKey> = synthetic_pks
             .into_iter()
-            .map(|entry| (entry.p2_puzzle_hash, entry.public_key))
+            .map(|entry| {
+                (
+                    entry.p2_puzzle_hash,
+                    sdk::silent_payments::SyntheticPublicKey::from_synthetic_unchecked(
+                        entry.public_key,
+                    ),
+                )
+            })
             .collect();
-        let sk_map: IndexMap<Bytes32, SecretKey> = secret_keys
+        let sk_map: IndexMap<Bytes32, sdk::silent_payments::SyntheticSecretKey> = secret_keys
             .into_iter()
-            .map(|entry| (entry.p2_puzzle_hash, entry.secret_key))
+            .map(|entry| {
+                (
+                    entry.p2_puzzle_hash,
+                    sdk::silent_payments::SyntheticSecretKey::from_synthetic_unchecked(
+                        entry.secret_key,
+                    ),
+                )
+            })
             .collect();
         self.spends
             .lock()
