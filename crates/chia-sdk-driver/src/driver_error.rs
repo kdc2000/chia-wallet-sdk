@@ -168,4 +168,13 @@ pub enum DriverError {
         "silent payment destination requires Id::Xch (CAT/NFT/option silent payments are deferred to v2)"
     )]
     SilentPaymentRequiresXch,
+
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "registered silent-payment key is not the synthetic key for its coin: \
+         StandardArgs::curry_tree_hash(registered_pk) must equal the coin's p2_puzzle_hash \
+         and registered_sk.public_key() must equal registered_pk — pass synthetic keys \
+         (derive_synthetic) or use SyntheticSecretKey::from_raw"
+    )]
+    SilentPaymentKeyNotSynthetic,
 }

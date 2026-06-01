@@ -600,7 +600,10 @@ impl Spends<Unfinished> {
 /// 2. [`DriverError::SilentPaymentKeysNotRegistered`] — fires if
 ///    `with_silent_payment_keys` was not called.
 /// 3. [`DriverError::SilentPaymentMultiPartyUnsupported`] — SK-coverage check.
-/// 4. [`DriverError::SilentPaymentNoXchInputs`] — collected SK set empty.
+/// 4. Per-input GUARD-01 — [`DriverError::SilentPaymentKeyNotSynthetic`] if
+///    `StandardArgs::curry_tree_hash(registered_pk) != ph` or
+///    `sk.public_key() != registered_pk` (runs for single-input too).
+/// 5. [`DriverError::SilentPaymentNoXchInputs`] — collected SK set empty.
 ///
 /// After gates pass: aggregate sender SKs, recover aggregated PK, compute
 /// `input_hash`, per-pending derive one-time puzzle hash + push `CreateCoin`
@@ -612,6 +615,7 @@ fn sp_finish_branch(
     spends: &mut Spends,
     relation: Relation,
 ) -> Result<(), DriverError> {
+    use chia_puzzle_types::standard::StandardArgs;
     use chia_sdk_types::conditions::CreateCoin;
 
     use crate::silent_payments::{
@@ -630,6 +634,11 @@ fn sp_finish_branch(
     let Some(secret_keys) = spends.silent_payment_synthetic_sks.as_ref() else {
         return Err(DriverError::SilentPaymentKeysNotRegistered);
     };
+    // GUARD-01 needs the registered PK map alongside the SK map; bind it once
+    // here (a second immutable borrow of a distinct field) so the per-input
+    // synthetic-ness check below does not re-borrow `spends` while `secret_keys`
+    // is live.
+    let synthetic_pks = spends.silent_payment_synthetic_pks.as_ref();
 
     // Step 2 + 3: collect XCH input coin ids + verify SK coverage.
     // Iterating non-ephemeral xch.items only: ephemeral items are intermediate
@@ -642,6 +651,18 @@ fn sp_finish_branch(
         let Some(sk) = secret_keys.get(&ph) else {
             return Err(DriverError::SilentPaymentMultiPartyUnsupported);
         };
+        // GUARD-01: reject raw (un-synthesized) or inconsistent keys BEFORE signing.
+        // The IndexMap key `ph` is the coin's p2_puzzle_hash; for a correctly-synthetic
+        // registered pk, curry_tree_hash(pk) == ph by construction (validates against the
+        // ACTUAL coin, so default AND custom-hidden synthetic keys pass, raw keys fail).
+        // sk.public_key() == pk pins sk/pk map consistency. Runs for every non-ephemeral
+        // XCH input, single-input included.
+        let Some(pk) = synthetic_pks.and_then(|m| m.get(&ph)) else {
+            return Err(DriverError::SilentPaymentKeyNotSynthetic);
+        };
+        if Bytes32::from(StandardArgs::curry_tree_hash(*pk)) != ph || sk.public_key() != *pk {
+            return Err(DriverError::SilentPaymentKeyNotSynthetic);
+        }
         sender_sks.push(sk.clone());
         xch_input_ids.push(item.asset.coin_id());
     }
