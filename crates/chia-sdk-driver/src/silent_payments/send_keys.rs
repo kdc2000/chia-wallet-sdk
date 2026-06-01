@@ -367,4 +367,188 @@ mod tests {
 
         Ok(())
     }
+
+    /// GUARD-01 (the runtime backstop) — the raw-key footgun from
+    /// `ISSUE-silent-payment-synthetic-key-guard.md`: a wallet that registers a
+    /// key whose `StandardArgs::curry_tree_hash(pk)` does NOT equal the spent
+    /// coin's `p2_puzzle_hash` MUST fail typed BEFORE signing.
+    ///
+    /// The `sim.bls()` fixture coin is curried over the RAW `alice.pk`, so
+    /// registering `alice.pk.derive_synthetic()` makes
+    /// `curry_tree_hash(derive_synthetic(alice.pk)) != alice.puzzle_hash` — the
+    /// exact mismatch a raw-key mistake produces against a real standard-spend
+    /// coin. Single input, `Relation::None`: the input-binding gate
+    /// short-circuits, so the next gate to fire is GUARD-01.
+    #[test]
+    fn raw_pk_single_input_fails_not_synthetic() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(5);
+
+        let recipient_scan_sk = SecretKey::from_bytes(&[0x42u8; 32])?;
+        let recipient_spend_sk = SecretKey::from_bytes(&[0x43u8; 32])?;
+        let recipient = SilentPaymentAddress::new(
+            recipient_scan_sk.public_key(),
+            recipient_spend_sk.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        // `pk_map` for `finish_with_keys` must contain a key that lets the
+        // standard-spend lookup proceed; it is irrelevant to the SP branch,
+        // which runs first inside `prepare`. Mismatched SP keys: the registered
+        // pk is `derive_synthetic(alice.pk)`, but the coin is curried over the
+        // raw `alice.pk`, so `curry_tree_hash(registered_pk) != ph`.
+        let pk_map = indexmap! { alice.puzzle_hash => alice.pk };
+        let synthetic_public_map = indexmap! {
+            alice.puzzle_hash =>
+                SyntheticPublicKey::from_synthetic_unchecked(alice.pk.derive_synthetic()),
+        };
+        let synthetic_secret_map = indexmap! {
+            alice.puzzle_hash =>
+                SyntheticSecretKey::from_synthetic_unchecked(alice.sk.derive_synthetic()),
+        };
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let deltas = spends.apply(
+            &mut ctx,
+            &[Action::send(
+                Id::Xch,
+                SendDestination::SilentPayment(Box::new(recipient.clone())),
+                1,
+                Memos::None,
+            )],
+        )?;
+
+        spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
+
+        let result = spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map);
+
+        assert!(
+            matches!(result, Err(DriverError::SilentPaymentKeyNotSynthetic)),
+            "expected SilentPaymentKeyNotSynthetic for a raw-vs-coin mismatch, got {result:?}"
+        );
+
+        Ok(())
+    }
+
+    /// GUARD-01 second arm — sk/pk map consistency: a registered pk that DOES
+    /// match the coin (`curry_tree_hash(pk) == ph`) but whose paired sk has a
+    /// different public key (`sk.public_key() != pk`) MUST fail typed before
+    /// signing. Catches a wallet that registers mismatched halves of the
+    /// pk/sk maps.
+    #[test]
+    fn sk_pk_mismatch_fails_not_synthetic() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(5);
+
+        let recipient_scan_sk = SecretKey::from_bytes(&[0x42u8; 32])?;
+        let recipient_spend_sk = SecretKey::from_bytes(&[0x43u8; 32])?;
+        let recipient = SilentPaymentAddress::new(
+            recipient_scan_sk.public_key(),
+            recipient_spend_sk.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        // pk matches the coin (raw `alice.pk`, curried as `alice.puzzle_hash`),
+        // but the registered sk is an unrelated key, so `sk.public_key() != pk`.
+        // The byte pattern is small (well under the BLS group order) so
+        // `SecretKey::from_bytes` succeeds.
+        let other_sk = SecretKey::from_bytes(&[0x01u8; 32])?;
+        let pk_map = indexmap! { alice.puzzle_hash => alice.pk };
+        let synthetic_public_map = indexmap! {
+            alice.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(alice.pk),
+        };
+        let synthetic_secret_map = indexmap! {
+            alice.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(other_sk),
+        };
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let deltas = spends.apply(
+            &mut ctx,
+            &[Action::send(
+                Id::Xch,
+                SendDestination::SilentPayment(Box::new(recipient.clone())),
+                1,
+                Memos::None,
+            )],
+        )?;
+
+        spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
+
+        let result = spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map);
+
+        assert!(
+            matches!(result, Err(DriverError::SilentPaymentKeyNotSynthetic)),
+            "expected SilentPaymentKeyNotSynthetic for sk.public_key() != pk, got {result:?}"
+        );
+
+        Ok(())
+    }
+
+    /// GUARD-01 backstops the `SyntheticSecretKey::from_synthetic_unchecked`
+    /// escape hatch (GUARD-02): a key the caller WRONGLY asserts is synthetic
+    /// (here `derive_synthetic(alice.pk)` against a coin curried over the raw
+    /// `alice.pk`) is rejected typed before signing. Distinct contract from
+    /// `raw_pk_single_input_fails_not_synthetic` — that pins the raw-key
+    /// footgun, this pins the newtype escape-hatch backstop; kept by name per
+    /// the project's "keep both" precedent.
+    #[test]
+    fn unchecked_wrong_key_is_backstopped() -> Result<()> {
+        let mut sim = Simulator::new();
+        let mut ctx = SpendContext::new();
+
+        let alice = sim.bls(5);
+
+        let recipient_scan_sk = SecretKey::from_bytes(&[0x42u8; 32])?;
+        let recipient_spend_sk = SecretKey::from_bytes(&[0x43u8; 32])?;
+        let recipient = SilentPaymentAddress::new(
+            recipient_scan_sk.public_key(),
+            recipient_spend_sk.public_key(),
+            SilentPaymentNetwork::Mainnet,
+        );
+
+        // The caller used `from_synthetic_unchecked` to assert a key is
+        // synthetic when it is not (it double-synthesizes a key the coin
+        // curried raw). GUARD-01 catches the mis-assertion.
+        let pk_map = indexmap! { alice.puzzle_hash => alice.pk };
+        let synthetic_public_map = indexmap! {
+            alice.puzzle_hash =>
+                SyntheticPublicKey::from_synthetic_unchecked(alice.pk.derive_synthetic()),
+        };
+        let synthetic_secret_map = indexmap! {
+            alice.puzzle_hash =>
+                SyntheticSecretKey::from_synthetic_unchecked(alice.sk.derive_synthetic()),
+        };
+
+        let mut spends = Spends::new(alice.puzzle_hash);
+        spends.add(alice.coin);
+
+        let deltas = spends.apply(
+            &mut ctx,
+            &[Action::send(
+                Id::Xch,
+                SendDestination::SilentPayment(Box::new(recipient.clone())),
+                1,
+                Memos::None,
+            )],
+        )?;
+
+        spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
+
+        let result = spends.finish_with_keys(&mut ctx, &deltas, Relation::None, &pk_map);
+
+        assert!(
+            matches!(result, Err(DriverError::SilentPaymentKeyNotSynthetic)),
+            "from_synthetic_unchecked of a wrong key must be backstopped by GUARD-01, got {result:?}"
+        );
+
+        Ok(())
+    }
 }
