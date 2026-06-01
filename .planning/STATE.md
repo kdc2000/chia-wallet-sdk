@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed quick task 260530-dv1 (trim SP prelude helpers + document chia-sdk-test dev-dep line)
-last_updated: "2026-05-30T16:07:21.315Z"
-last_activity: 2026-05-30
+status: executing
+stopped_at: Completed 09.2-01-PLAN.md
+last_updated: "2026-06-01T14:10:07.933Z"
+last_activity: 2026-06-01
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 12
-  total_plans: 51
-  completed_plans: 58
+  total_plans: 54
+  completed_plans: 59
   percent: 88
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 09.1 — fix-5-maintainer-flagged-conformance-issues-in-chip-0057-sp-surface
+**Current focus:** Phase 09.2 — harden-sp-sender-keys-synthetic-key-runtime-guard-synthetickey-newtype-raw-key-bindings
 
 ## Current Position
 
-Phase: 09.1
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-30
+Phase: 09.2 (harden-sp-sender-keys-synthetic-key-runtime-guard-synthetickey-newtype-raw-key-bindings) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-06-01
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
@@ -108,6 +108,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 09 P06 | 19min | 3 tasks tasks | 7 files files |
 | Phase 09.1 P01 | 5min | 3 tasks | 7 files |
 | Phase 09.1 P02 | 9min | 2 tasks | 2 files |
+| Phase 09.2 P01 | 19min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -195,6 +196,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 09.1]: Plan 09.1-01: ISSUE-2/3/4/5 closed. ISSUE-3 used feature-conditioned cfg_attr(not(chip-0057), allow(missing_copy_implementations)) on SendDestination (NOT unconditional Copy — the chip-0057-on Box variant is not Copy). ISSUE-2 added [[example]] required-features=[chip-0057] so no-features cargo build --examples skips silent_payment.rs. ISSUE-4 derived Clone/PartialEq/Eq on SilentPaymentError + assert_eq! in labeled_address_zero_rejected (SilentPaymentAddress Ok type already PartialEq+Debug). ISSUE-5 scrubbed 9 planning pointers + renamed scalar test to from_bytes_unsigned_max_input_reduces_unsigned_not_identity. Zero new deps; exactly one new #[allow] (the prescribed one).
 - [Phase 09.1]: Plan 09.1-02: ISSUE-1 closed via FACADE-GUARD (option b) — coin_ids.is_empty() guard in chia-sdk-bindings::silent_payments::compute_input_hash returns Err(DriverError::SilentPaymentNoXchInputs) before delegating, so empty FFI input no longer panics across the boundary. Driver fn signature + assert! unchanged (internal invariant); # Panics rustdoc rewritten to document non-empty as an internal-only caller contract. Reused existing SilentPaymentNoXchInputs variant; bindy::Error::Driver(#[from] DriverError) carries .into().
 - [Phase 09.1]: Plan 09.1-02: Bindings SP tests run under default + wasm features, NOT --all-features — napi backend needs Node host-runtime symbols (napi_reference_unref) that cannot link a standalone test binary outside an addon; SP facade is not chip-0057-gated so the same code path is exercised. Whole-phase regression bar green (fmt, all-features workspace clippy, machete, full CI workspace test line: driver suite 2338 passed) with zero new deps + zero new #[allow]. Only 2 pre-existing chia-sdk-daemon clippy warnings remain (out of scope, deferred since Plan 01-05).
+- [Phase 09.2]: Plan 09.2-01: SyntheticSecretKey/SyntheticPublicKey newtypes (GUARD-02) wrap chia_bls keys; with_silent_payment_keys takes IndexMap<Bytes32, Synthetic*Key> so raw keys are a Rust compile error. Storage fields stay plain chia_bls types, unwrapped via into_inner() at the boundary (zero blast radius into sp_finish_branch/finish_with_keys). from_raw mirrors DeriveSynthetic::derive_synthetic byte-for-byte; from_synthetic_unchecked is the escape hatch backed by GUARD-01.
+- [Phase 09.2]: Plan 09.2-01: all 8 in-repo Rust callers wrap via from_synthetic_unchecked (NOT from_raw) — sim.bls() fixtures curry over the raw pk, so the registered key IS the raw key; from_raw would double-synthesize and break byte-equality. chia-sdk-bindings facade wrapped via from_synthetic_unchecked (byte-identical to prior verbatim behavior) to keep the workspace --all-features build green; GUARD-03 raw-key binding entry point deferred to Plan 03. Stale protocol.rs 'prevention mechanism' comment corrected to GUARD-02+GUARD-01 layered defense. STATE Q2 resolved.
 
 ### Roadmap Evolution
 
@@ -227,6 +230,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-05-30T16:07:21.307Z
-Stopped at: Completed quick task 260530-dv1 (trim SP prelude helpers + document chia-sdk-test dev-dep line)
+Last session: 2026-06-01T14:09:55.927Z
+Stopped at: Completed 09.2-01-PLAN.md
 Resume file: None

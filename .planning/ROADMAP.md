@@ -279,7 +279,7 @@ Plans:
 
 **Depends on:** Phase 9 (and 9.1 — builds on the post-cleanup SP send path)
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Design (locked — see `09.2-CONTEXT.md` for detail):
 
@@ -292,7 +292,7 @@ Design (locked — see `09.2-CONTEXT.md` for detail):
 **Verification bar:** raw keys in Rust → compile error; raw keys via `_unchecked`/bindings → `Err(SilentPaymentKeyNotSynthetic)` before signing (proven by a test per surface, incl. single-input); a correct synthetic key still produces the byte-identical one-time PH as today (no regression to the Phase-3/6 detection oracle); all CI permutations + napi/pyo3/wasm green; zero new workspace deps.
 
 Plans:
-- [ ] 09.2-01-PLAN.md — GUARD-02: SyntheticSecretKey/SyntheticPublicKey newtypes + with_silent_payment_keys signature change + update example/e2e/send_keys callers + fix stale protocol.rs comment (Wave 1)
+- [x] 09.2-01-PLAN.md — GUARD-02: SyntheticSecretKey/SyntheticPublicKey newtypes + with_silent_payment_keys signature change + update example/e2e/send_keys callers + fix stale protocol.rs comment (Wave 1)
 - [ ] 09.2-02-PLAN.md — GUARD-01: DriverError::SilentPaymentKeyNotSynthetic + per-input runtime guard in sp_finish_branch (curry_tree_hash==ph & sk.public_key()==pk) before signing, single-input covered (Wave 2)
 - [ ] 09.2-03-PLAN.md — GUARD-03: napi/pyo3/wasm with_silent_payment_keys accept raw keys + synthesize internally via derive_synthetic; descriptor/doc update; binding tests build synthetic-keyed coins + assert typed error crosses FFI (Wave 3)
 
