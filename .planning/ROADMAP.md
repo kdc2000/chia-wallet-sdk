@@ -279,7 +279,7 @@ Plans:
 
 **Depends on:** Phase 9 (and 9.1 — builds on the post-cleanup SP send path)
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Design (locked — see `09.2-CONTEXT.md` for detail):
 
@@ -294,7 +294,7 @@ Design (locked — see `09.2-CONTEXT.md` for detail):
 Plans:
 - [x] 09.2-01-PLAN.md — GUARD-02: SyntheticSecretKey/SyntheticPublicKey newtypes + with_silent_payment_keys signature change + update example/e2e/send_keys callers + fix stale protocol.rs comment (Wave 1)
 - [x] 09.2-02-PLAN.md — GUARD-01: DriverError::SilentPaymentKeyNotSynthetic + per-input runtime guard in sp_finish_branch (curry_tree_hash==ph & sk.public_key()==pk) before signing, single-input covered (Wave 2)
-- [ ] 09.2-03-PLAN.md — GUARD-03: napi/pyo3/wasm with_silent_payment_keys accept raw keys + synthesize internally via derive_synthetic; descriptor/doc update; binding tests build synthetic-keyed coins + assert typed error crosses FFI (Wave 3)
+- [x] 09.2-03-PLAN.md — GUARD-03: napi/pyo3/wasm with_silent_payment_keys accept raw keys + synthesize internally via derive_synthetic; descriptor/doc update; binding tests build synthetic-keyed coins + assert typed error crosses FFI (Wave 3)
 
 ### Phase 09.1: Fix 5 maintainer-flagged conformance issues in chip-0057 SP surface (INSERTED)
 

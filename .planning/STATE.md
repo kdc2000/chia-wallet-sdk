@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 09.2-02-PLAN.md
-last_updated: "2026-06-01T14:25:33.890Z"
+status: verifying
+stopped_at: Completed 09.2-03-PLAN.md
+last_updated: "2026-06-01T14:45:25.032Z"
 last_activity: 2026-06-01
 progress:
   total_phases: 13
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 54
-  completed_plans: 60
+  completed_plans: 61
   percent: 88
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 
 Phase: 09.2 (harden-sp-sender-keys-synthetic-key-runtime-guard-synthetickey-newtype-raw-key-bindings) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-01
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
@@ -110,6 +110,7 @@ Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 
 | Phase 09.1 P02 | 9min | 2 tasks | 2 files |
 | Phase 09.2 P01 | 19min | 2 tasks | 9 files |
 | Phase 09.2 P02 | 11 | 2 tasks | 3 files |
+| Phase 09.2 P03 | 16 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -200,6 +201,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 09.2]: Plan 09.2-01: SyntheticSecretKey/SyntheticPublicKey newtypes (GUARD-02) wrap chia_bls keys; with_silent_payment_keys takes IndexMap<Bytes32, Synthetic*Key> so raw keys are a Rust compile error. Storage fields stay plain chia_bls types, unwrapped via into_inner() at the boundary (zero blast radius into sp_finish_branch/finish_with_keys). from_raw mirrors DeriveSynthetic::derive_synthetic byte-for-byte; from_synthetic_unchecked is the escape hatch backed by GUARD-01.
 - [Phase 09.2]: Plan 09.2-01: all 8 in-repo Rust callers wrap via from_synthetic_unchecked (NOT from_raw) — sim.bls() fixtures curry over the raw pk, so the registered key IS the raw key; from_raw would double-synthesize and break byte-equality. chia-sdk-bindings facade wrapped via from_synthetic_unchecked (byte-identical to prior verbatim behavior) to keep the workspace --all-features build green; GUARD-03 raw-key binding entry point deferred to Plan 03. Stale protocol.rs 'prevention mechanism' comment corrected to GUARD-02+GUARD-01 layered defense. STATE Q2 resolved.
 - [Phase 09.2]: Plan 09.2-02: GUARD-01 runtime guard lands in sp_finish_branch (finish-time, pre-sign): per non-ephemeral XCH input, Bytes32::from(StandardArgs::curry_tree_hash(*pk)) == ph AND sk.public_key() == *pk, else Err(DriverError::SilentPaymentKeyNotSynthetic). Validates against the actual coin (accepts default + custom-hidden synthetic, rejects raw); fires for single-input too. PK map bound once before the loop alongside the live secret_keys borrow (distinct-field second immutable borrow). New chip-0057 error variant. 3 negative tests (raw single-input, sk/pk mismatch, from_synthetic_unchecked-wrong backstop) + positive single_input case unchanged; 3 e2e oracles byte-identical. 2 Rule-1 inline fixes (doc_lazy_continuation rustdoc renumber; [0x77;32] out-of-group-order test seed -> [0x01;32]). Zero new deps, zero #[allow]. GUARD-01 requirement closed; Plan 03 raw-key bindings backstopped by this guard.
+- [Phase 09.2]: Plan 09.2-03: binding facade with_silent_payment_keys now wraps each entry via SyntheticPublicKey/SyntheticSecretKey::from_raw (was from_synthetic_unchecked) — closing GUARD-03. FFI accepts RAW keys, synthesizes internally via derive_synthetic (default hidden); custom-hidden coins fail loud with SilentPaymentKeyNotSynthetic at finish (GUARD-01). Descriptor arg types unchanged (struct/field names stay); drift script zero drift (23 methods both sides).
+- [Phase 09.2]: Plan 09.2-03: binding test happy-paths build the sender coin at the SYNTHETIC puzzle hash (standardPuzzleHash(pk.deriveSynthetic())) and spend/sign with the synthetic key pair, because sim.bls() curries over the raw pk and sign_transaction keys by sk.public_key() with no synthetic derivation. Negative test reuses the raw-curried sim.bls() coin + raw registration so GUARD-01 fires in prepare() and the typed error crosses FFI (napi 54 / wasm 10 / pyo3 4 green). Also repaired BRIDGE-06 multi-input tests broken by the from_raw facade change (Rule 1 deviation).
 
 ### Roadmap Evolution
 
@@ -232,6 +235,6 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 
 ## Session Continuity
 
-Last session: 2026-06-01T14:25:33.880Z
-Stopped at: Completed 09.2-02-PLAN.md
+Last session: 2026-06-01T14:45:12.293Z
+Stopped at: Completed 09.2-03-PLAN.md
 Resume file: None
