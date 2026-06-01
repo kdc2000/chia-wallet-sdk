@@ -40,12 +40,59 @@ pub(crate) struct SilentPaymentPending {
 mod tests {
     use anyhow::Result;
     use chia_bls::SecretKey;
-    use chia_puzzle_types::Memos;
+    use chia_puzzle_types::{DeriveSynthetic, Memos};
     use chia_sdk_test::Simulator;
     use chia_sdk_utils::silent_payments::{SilentPaymentAddress, SilentPaymentNetwork};
     use indexmap::indexmap;
 
+    use super::{SyntheticPublicKey, SyntheticSecretKey};
     use crate::{Action, DriverError, Id, Relation, SendDestination, SpendContext, Spends};
+
+    /// GUARD-02 byte-equality contract: the newtype `from_raw` constructors MUST
+    /// route through the exact `chia_puzzle_types::DeriveSynthetic` path
+    /// `puzzle_hash_for_pk` uses, and `from_synthetic_unchecked` MUST be
+    /// bit-preserving — otherwise the one-time puzzle hash drifts from the
+    /// detection oracle.
+    #[test]
+    fn newtype_from_raw_matches_derive_synthetic() -> Result<()> {
+        let raw_secret = SecretKey::from_bytes(&[0x11u8; 32])?;
+        let raw_public = raw_secret.public_key();
+
+        // 1. from_raw(&raw_sk).into_inner() == derive_synthetic(&raw_sk)
+        assert_eq!(
+            SyntheticSecretKey::from_raw(&raw_secret).into_inner().to_bytes(),
+            raw_secret.derive_synthetic().to_bytes(),
+            "SyntheticSecretKey::from_raw must mirror DeriveSynthetic::derive_synthetic",
+        );
+
+        // 2. from_raw(&raw_sk).public_key().into_inner() == derive_synthetic(&raw_sk).public_key()
+        assert_eq!(
+            SyntheticSecretKey::from_raw(&raw_secret)
+                .public_key()
+                .into_inner()
+                .to_bytes(),
+            raw_secret.derive_synthetic().public_key().to_bytes(),
+            "SyntheticSecretKey::public_key must equal the synthetic SK's public key",
+        );
+
+        // 3. from_synthetic_unchecked(k).into_inner() == k (no synthesis applied)
+        assert_eq!(
+            SyntheticSecretKey::from_synthetic_unchecked(raw_secret.clone())
+                .into_inner()
+                .to_bytes(),
+            raw_secret.to_bytes(),
+            "from_synthetic_unchecked must be bit-preserving (no derive_synthetic)",
+        );
+
+        // 4. SyntheticPublicKey::from_raw(&raw_pk).into_inner() == derive_synthetic(&raw_pk)
+        assert_eq!(
+            SyntheticPublicKey::from_raw(&raw_public).into_inner().to_bytes(),
+            raw_public.derive_synthetic().to_bytes(),
+            "SyntheticPublicKey::from_raw must mirror DeriveSynthetic::derive_synthetic",
+        );
+
+        Ok(())
+    }
 
     /// SEND-03 (Spends-level hard-error) + ROADMAP Phase 4 success criterion #2:
     /// a Spends with 2 non-ephemeral XCH inputs but only 1 in the registered SK
