@@ -135,46 +135,53 @@ pub enum DriverError {
     #[error("silent payment error: {0}")]
     SilentPayment(#[from] chia_sdk_utils::silent_payments::SilentPaymentError),
 
+    /// A silent-payment send needs the synthetic secret key for every spent XCH
+    /// input. Some input's key was missing, so multi-party aggregation would be
+    /// required — multi-party silent-payment flows are unsupported in v1.
     #[cfg(feature = "chip-0057")]
-    #[error(
-        "silent payment requires aggregating synthetic SKs for every input; multi-party flows are unsupported in v1"
-    )]
+    #[error("silent payment multi-party flow unsupported")]
     SilentPaymentMultiPartyUnsupported,
 
+    /// The silent-payment send had no wallet-controlled (non-ephemeral) XCH
+    /// input to bind the output to. At least one is required.
     #[cfg(feature = "chip-0057")]
-    #[error("silent payment requires at least one wallet-controlled XCH input")]
+    #[error("silent payment requires an xch input")]
     SilentPaymentNoXchInputs,
 
+    /// The first memo was exactly 32 bytes, which the standard wallet promotes
+    /// to a `puzzle_hash` hint and indexes — exposing the one-time puzzle hash
+    /// and defeating silent-payment privacy. Prefix the payload with a sentinel
+    /// byte so the first atom is no longer 32 bytes.
     #[cfg(feature = "chip-0057")]
-    #[error(
-        "a 32-byte first memo would be promoted to a puzzle_hash hint by the standard wallet, defeating silent-payment privacy"
-    )]
+    #[error("silent payment memo hint forbidden")]
     SilentPaymentMemoHintForbidden,
 
+    /// A multi-input silent-payment send (2+ non-ephemeral XCH inputs) must pass
+    /// `Relation::AssertConcurrent` to `Spends::finish_with_keys` so the
+    /// receiver can reconstruct the input set; single-input sends accept any
+    /// `Relation`.
     #[cfg(feature = "chip-0057")]
-    #[error(
-        "silent payment multi-input send requires Relation::AssertConcurrent for CHIP-0057 Pass 2b scanner detection; single-input SP sends accept any Relation"
-    )]
+    #[error("silent payment requires input binding")]
     SilentPaymentRequiresInputBinding,
 
+    /// `Spends::with_silent_payment_keys` was not called before finish, so no
+    /// silent-payment secret keys are registered for the spent inputs.
     #[cfg(feature = "chip-0057")]
-    #[error(
-        "silent payment send requires Spends::with_silent_payment_keys to be called before finish (no SP secret keys registered)"
-    )]
+    #[error("silent payment keys not registered")]
     SilentPaymentKeysNotRegistered,
 
+    /// The silent-payment destination was paired with a non-XCH `Id`. CAT, NFT,
+    /// and option silent payments are deferred to a later version.
     #[cfg(feature = "chip-0057")]
-    #[error(
-        "silent payment destination requires Id::Xch (CAT/NFT/option silent payments are deferred to v2)"
-    )]
+    #[error("silent payment requires xch")]
     SilentPaymentRequiresXch,
 
+    /// A registered silent-payment key is not the synthetic key for its coin.
+    /// `StandardArgs::curry_tree_hash(registered_pk)` must equal the coin's
+    /// `p2_puzzle_hash` and `registered_sk.public_key()` must equal
+    /// `registered_pk`. Pass synthetic keys (`derive_synthetic`) or construct
+    /// them via `SyntheticSecretKey::from_raw`.
     #[cfg(feature = "chip-0057")]
-    #[error(
-        "registered silent-payment key is not the synthetic key for its coin: \
-         StandardArgs::curry_tree_hash(registered_pk) must equal the coin's p2_puzzle_hash \
-         and registered_sk.public_key() must equal registered_pk — pass synthetic keys \
-         (derive_synthetic) or use SyntheticSecretKey::from_raw"
-    )]
+    #[error("silent payment key not synthetic")]
     SilentPaymentKeyNotSynthetic,
 }

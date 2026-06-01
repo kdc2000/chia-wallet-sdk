@@ -35,7 +35,7 @@ pub use block_tweak_data::tweak_data_from_block_spends;
 mod scanner;
 pub use scanner::{K_MAX_DEFAULT, SilentPaymentScan, scan_from_tweaks};
 mod send_keys;
-pub(crate) use send_keys::*;
 pub use send_keys::{SyntheticPublicKey, SyntheticSecretKey};
 mod types;
+pub(crate) use types::SilentPaymentPending;
 pub use types::{DetectedSpCoin, OutputMeta, TweakData};

@@ -14,6 +14,8 @@
 
 use chia_bls::{PublicKey, SecretKey};
 use chia_protocol::Bytes32;
+use chia_puzzle_types::Memos;
+use clvmr::NodePtr;
 
 /// Transport-agnostic input to the silent-payment scanner.
 ///
@@ -62,6 +64,26 @@ pub struct DetectedSpCoin {
     pub k: u32,
     /// `None` for unlabeled detections; `Some(m)` for label-index `m`.
     pub label: Option<u32>,
+}
+
+/// Per-output deterministic state recorded at apply time, consumed at finish
+/// time by the chip-0057 SP branch of [`crate::Spends::finish_with_keys`] to
+/// compute the recipient's one-time puzzle hash and emit the on-chain
+/// `CreateCoin`.
+///
+/// The struct is `pub(crate)` — external callers never construct it directly;
+/// they go through `Action::send` with a [`crate::SendDestination::SilentPayment`]
+/// destination.
+#[derive(Debug, Clone)]
+pub(crate) struct SilentPaymentPending {
+    pub scan_pk: PublicKey,
+    pub spend_pk: PublicKey,
+    pub parent_xch_index: usize,
+    pub parent_coin_id: Bytes32,
+    pub parent_puzzle_hash: Bytes32,
+    pub k: u32,
+    pub amount: u64,
+    pub memos: Memos<NodePtr>,
 }
 
 #[cfg(test)]

@@ -1,40 +1,15 @@
-//! Per-output deterministic state recorded at apply time of a silent-payment send.
+//! The `SyntheticSecretKey` / `SyntheticPublicKey` newtypes that the
+//! silent-payment send path uses to prove a key is the synthetic key (the one
+//! curried into `StandardArgs::synthetic_key`).
 //!
-//! - [`SilentPaymentPending`] holds the deterministic per-output data the
-//!   apply-time chip-0057 arm of `SendAction::spend` records (parent
-//!   reservation + k + memos).
-//! - The finish-time derivation pipeline (aggregate SKs, compute `input_hash`,
-//!   derive one-time puzzle hash, emit `CreateCoin`) lives in the chip-0057 SP
-//!   branch of [`crate::Spends::finish_with_keys`] via the private
-//!   `sp_finish_branch` helper in `action_system/spends.rs`.
-//! - The CHIP-0057 Pass 2b multi-input atomic binding via
-//!   [`crate::Relation::AssertConcurrent`] is enforced from the same finish-time
-//!   branch.
+//! The finish-time derivation pipeline (aggregate SKs, compute `input_hash`,
+//! derive one-time puzzle hash, emit `CreateCoin`) lives in the chip-0057 SP
+//! branch of [`crate::Spends::finish_with_keys`] via the private
+//! `sp_finish_branch` helper in `action_system/spends.rs`, which also enforces
+//! the multi-input atomic binding via [`crate::Relation::AssertConcurrent`].
 
 use chia_bls::{PublicKey, SecretKey};
-use chia_protocol::Bytes32;
-use chia_puzzle_types::{DeriveSynthetic, Memos};
-use clvmr::NodePtr;
-
-/// Per-output deterministic state recorded at apply time, consumed at finish
-/// time by the chip-0057 SP branch of [`crate::Spends::finish_with_keys`] to
-/// compute the recipient's one-time puzzle hash and emit the on-chain
-/// `CreateCoin`.
-///
-/// The struct is `pub(crate)` — external callers never construct it directly;
-/// they go through `Action::send` with a [`crate::SendDestination::SilentPayment`]
-/// destination.
-#[derive(Debug, Clone)]
-pub(crate) struct SilentPaymentPending {
-    pub scan_pk: PublicKey,
-    pub spend_pk: PublicKey,
-    pub parent_xch_index: usize,
-    pub parent_coin_id: Bytes32,
-    pub parent_puzzle_hash: Bytes32,
-    pub k: u32,
-    pub amount: u64,
-    pub memos: Memos<NodePtr>,
-}
+use chia_puzzle_types::DeriveSynthetic;
 
 /// A `chia_bls::SecretKey` proven (by construction via [`SyntheticSecretKey::from_raw`]
 /// or by the `sp_finish_branch` runtime check) to be the SYNTHETIC secret key —
