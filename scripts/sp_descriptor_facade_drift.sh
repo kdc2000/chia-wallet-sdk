@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/sp_descriptor_facade_drift.sh
 #
-# Descriptor<->facade drift audit for Phase 5 chip-0057 silent-payments
+# Descriptor<->facade drift audit for the chip-0057 silent-payments
 # bindings. Exits 0 if no drift detected; non-zero with diagnostics if any
 # method declared in bindings/silent_payments.json lacks a matching facade
 # `pub fn` symbol, OR if any facade `pub fn` on the SP types lacks a JSON
