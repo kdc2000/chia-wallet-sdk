@@ -381,10 +381,11 @@ mod tests {
 
     /// A single submitted standard-puzzle spend in the simulator produces the
     /// same `tweak_points` whether the data flows through the existing
-    /// simulator helper or the new block-shape helper. Locks the standalone
-    /// single-spend branch against drift versus the simulator-helper oracle.
+    /// simulator helper or the new block-shape helper. The lone spend yields
+    /// exactly one Pass-1 singleton (no cycle, so no Pass-2 SCC); this locks the
+    /// single-input branch against drift versus the simulator-helper oracle.
     #[test]
-    fn test_pass_2a_round_trip_matches_simulator_helper() {
+    fn single_input_round_trip_matches_simulator_helper() {
         let mut sim = Simulator::new();
         let mut ctx = SpendContext::new();
         let alice = sim.bls(10);
@@ -415,24 +416,45 @@ mod tests {
         }
     }
 
-    /// Two standard-puzzle spends sharing the same `puzzle_hash`.
+    /// Two standard-puzzle spends sharing the same `puzzle_hash`, bound by an
+    /// `a <-> b` `AssertConcurrent` cycle — the exact shape the sender emits for
+    /// any multi-input send (the input-binding gate forces the cycle for two or
+    /// more non-ephemeral inputs, even when they share a puzzle hash).
     ///
-    /// Under the additive model the passes overlap: Pass 1 emits a singleton for
-    /// EACH spend (two distinct `tweak_point`s — same `A_sum = alice_public` but
-    /// different single coin-id sets, hence different `input_hash`), and Pass 2a
-    /// emits the aggregated same-PH pair (`A_sum = 2 * alice_public` over both
-    /// coin ids — a third distinct `tweak_point`). No `AssertConcurrent`
-    /// conditions are present, so Pass 2b contributes nothing. All three points
-    /// are byte-distinct, so dedup keeps all three.
+    /// The two passes overlap: Pass 1 emits a singleton for EACH spend (two
+    /// distinct `tweak_point`s — same `A_sum = alice_public` but different single
+    /// coin-id sets, hence different `input_hash`), and Pass 2 emits the
+    /// `{a, b}` SCC aggregate (`A_sum = 2 * alice_public` over both coin ids — a
+    /// third distinct `tweak_point`). All three points are byte-distinct, so
+    /// dedup keeps all three.
     #[test]
-    fn test_multi_input_round_trip() {
+    fn same_ph_multi_input_round_trip_via_concurrent_spend() {
         let alice = chia_bls::SecretKey::from_seed(&[0x07u8; 32]);
         let alice_public = alice.public_key();
 
         let parent_a: Bytes32 = [0x55u8; 32].into();
         let parent_b: Bytes32 = [0x66u8; 32].into();
-        let spend_a = build_standard_coin_spend(alice_public, parent_a, 100, Conditions::new());
-        let spend_b = build_standard_coin_spend(alice_public, parent_b, 200, Conditions::new());
+
+        // Same synthetic key -> identical puzzle hash. Pre-compute coin ids so
+        // each spend can assert the other (the cyclic opcode-64 binding).
+        let puzzle_hash: Bytes32 = StandardArgs::curry_tree_hash(alice_public).into();
+        let coin_a = Coin::new(parent_a, puzzle_hash, 100);
+        let coin_b = Coin::new(parent_b, puzzle_hash, 200);
+        let id_a = coin_a.coin_id();
+        let id_b = coin_b.coin_id();
+
+        let spend_a = build_standard_coin_spend(
+            alice_public,
+            parent_a,
+            100,
+            Conditions::new().assert_concurrent_spend(id_b),
+        );
+        let spend_b = build_standard_coin_spend(
+            alice_public,
+            parent_b,
+            200,
+            Conditions::new().assert_concurrent_spend(id_a),
+        );
 
         assert_eq!(
             spend_a.coin.puzzle_hash, spend_b.coin.puzzle_hash,
@@ -443,11 +465,11 @@ mod tests {
         assert_eq!(
             td.tweak_points.len(),
             3,
-            "two same-PH spends: 2 Pass-1 singletons + 1 Pass-2a aggregate group",
+            "two same-PH spends bound by a cycle: 2 Pass-1 singletons + 1 Pass-2 SCC aggregate",
         );
     }
 
-    /// Pass 2b "pollution attack" oracle: a legitimate 2-coin SP cycle
+    /// Pass 2 "pollution attack" oracle: a legitimate 2-coin SP cycle
     /// (`a -> b`, `b -> a`) coexists in the same block with a polluter coin
     /// whose solution emits `AssertConcurrentSpend(a)`. SCC grouping must
     /// place `{a, b}` in one group and the polluter alone in its own trivial
@@ -458,7 +480,7 @@ mod tests {
     /// must equal the tweak point emitted when only `{a, b}` are passed to
     /// the helper in isolation.
     #[test]
-    fn test_pass_2b_pollution_resistance() {
+    fn test_concurrent_spend_pollution_resistance() {
         let sk_a = chia_bls::SecretKey::from_seed(&[0x01u8; 32]);
         let sk_b = chia_bls::SecretKey::from_seed(&[0x02u8; 32]);
         let sk_polluter = chia_bls::SecretKey::from_seed(&[0x03u8; 32]);
@@ -522,24 +544,24 @@ mod tests {
                 .expect("polluted block ok");
         let clean = tweak_data_from_block_spends(&[spend_a, spend_b], &[]).expect("clean block ok");
 
-        // Additive model: each coin yields a Pass-1 singleton, all distinct PHs
-        // so no Pass-2a groups, and Pass-2b emits the `{a, b}` SCC (polluter sits
-        // in its own trivial SCC and is excluded).
+        // Pass 1 emits a singleton per coin; Pass 2 emits the {a, b} SCC; the
+        // polluter sits in its own trivial SCC (forward edge into the cycle but
+        // no return edge) and is excluded from the legitimate group.
         assert_eq!(
             polluted.tweak_points.len(),
             4,
-            "polluted block: 3 Pass-1 singletons (a, b, polluter) + 1 Pass-2b SCC {{a, b}}",
+            "polluted block: 3 Pass-1 singletons (a, b, polluter) + 1 Pass-2 SCC {{a, b}}",
         );
         assert_eq!(
             clean.tweak_points.len(),
             3,
-            "clean block: 2 Pass-1 singletons (a, b) + 1 Pass-2b SCC {{a, b}}",
+            "clean block: 2 Pass-1 singletons (a, b) + 1 Pass-2 SCC {{a, b}}",
         );
 
         // The legit SCC's tweak point must be present in BOTH runs and identical
         // — proving the polluter's synthetic key did NOT leak into A_sum.
-        // Assert membership rather than a fixed index, since the additive
-        // emission order places SCC groups after the singletons.
+        // Assert membership rather than a fixed index, since the emission order
+        // places SCC groups after the singletons.
         assert!(
             polluted.tweak_points.iter().any(|p| p.to_bytes() == legit),
             "legit SCC tweak_point must be present in the polluted block",
@@ -557,17 +579,13 @@ mod tests {
     /// third sits at `PH_y`. The cycle is the exact shape the sender emits — each
     /// coin asserts its predecessor, coin 0 closes the cycle to coin N-1.
     ///
-    /// The Pass-2b SCC is built over ALL standard removals, so all three coins
+    /// The Pass-2 SCC is built over ALL standard removals, so all three coins
     /// form one strongly connected component and the aggregate
     /// `A_sum = pk_dup + pk_dup + pk_solo` over all three coin ids is emitted as
     /// a `tweak_point`. We compute that 3-coin-aggregate point by hand and assert
-    /// it is PRESENT in the output.
-    ///
-    /// Pre-fix this FAILED: the `PH_x` pair was captured by the same-PH Pass-2a
-    /// bucket and then excluded from Pass-2b's SCC graph (the
-    /// `surviving`/`!grouped` filter), so the `PH_y` coin's edge into a `PH_x`
-    /// coin had no graph node to point at, no 3-coin SCC formed, and the
-    /// full-cycle `A_sum` was never produced. Post-fix it PASSES.
+    /// it is PRESENT in the output. Building the graph over every removal (rather
+    /// than excluding any same-puzzle-hash subset) is what lets the `PH_y` coin's
+    /// edge into a `PH_x` coin resolve and close the 3-coin cycle.
     #[test]
     fn test_bug1_mixed_ph_multi_input_full_cycle_detected() {
         // Two coins at PH_x share one synthetic key; the third uses a different
@@ -638,7 +656,7 @@ mod tests {
 
         assert!(
             td.tweak_points.iter().any(|p| p.to_bytes() == expected),
-            "the full 3-coin-cycle aggregate tweak_point must be present (Pass-2b SCC over all \
+            "the full 3-coin-cycle aggregate tweak_point must be present (Pass-2 SCC over all \
              removals)",
         );
     }
@@ -651,12 +669,10 @@ mod tests {
     /// other an unrelated standard coin. The SP input must still be detected via
     /// its Pass-1 singleton (`A_sum = K_send` over its single coin id).
     ///
-    /// Pre-fix this FAILED: both coins landed in the size-2 Pass-2a bucket,
-    /// `grouped[i] = true` was set, and singletons were emitted only for
-    /// ungrouped coins — so neither coin's Pass-1 singleton was emitted. Only the
-    /// aggregated same-PH `tweak_point` was produced, which does NOT match a
-    /// single-input send. Post-fix Pass 1 emits a singleton for EVERY spend, so
-    /// the single-input `tweak_point` is present.
+    /// Because Pass 1 emits a singleton for EVERY standard spend unconditionally,
+    /// a single-input send is detected even when it collides on puzzle hash with
+    /// an unrelated coin. With no cycle present, Pass 2 forms no SCC of size >= 2,
+    /// so the only detectable shape is each coin's own singleton.
     #[test]
     fn test_bug2_single_input_sharing_ph_detected_via_singleton() {
         let sk_send = chia_bls::SecretKey::from_seed(&[0x44u8; 32]);
