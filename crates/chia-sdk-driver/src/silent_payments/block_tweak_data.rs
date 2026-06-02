@@ -10,38 +10,67 @@
 //!
 //! ## Grouping algorithm
 //!
+//! The three grouping passes are **additive and overlapping**, not a partition:
+//! every standard-puzzle spend can appear in more than one candidate group, and
+//! the passes run independently over the full set of standard removals (mirroring
+//! the CHIP-0057 `ScanBlock` procedure, which unions the coins detected by each
+//! pass rather than letting an earlier pass consume a coin). A single coin
+//! therefore contributes its own Pass-1 singleton, and may additionally appear in
+//! a Pass-2a same-puzzle-hash group and/or a Pass-2b concurrent-spend SCC.
+//!
 //! - **Stage 1 — defensive standard-puzzle filter.** Each [`CoinSpend`] is
 //!   parsed via [`StandardLayer::parse_puzzle`]; non-standard puzzles (CAT,
 //!   NFT, arbitrary mod hashes) skip silently.
-//! - **Stage 2a — same-puzzle-hash bucketing.** Standard-puzzle spends with
-//!   identical `coin.puzzle_hash` are bucketed into a group (the canonical
-//!   shape for "all inputs at the same wallet derivation index").
-//! - **Stage 2b — `AssertConcurrentSpend` SCC.** For every standard-puzzle
-//!   spend not already in a Stage 2a group, its puzzle+solution is executed
-//!   via [`chia_sdk_types::run_puzzle`] to extract conditions; opcode-64
+//! - **Pass 1 — per-spend singletons.** Every standard-puzzle spend `i` emits a
+//!   singleton candidate group `[i]`. This is the only pass that can detect a
+//!   single-input send (a lone coin never forms a Pass-2b SCC of size >= 2 and is
+//!   alone at its puzzle hash unless an unrelated coin collides), so it runs
+//!   unconditionally for all spends.
+//! - **Pass 2a — same-puzzle-hash bucketing.** Standard-puzzle spends with
+//!   identical `coin.puzzle_hash` are bucketed; each bucket of size >= 2 is
+//!   emitted as an **additional** candidate group (the canonical shape for "all
+//!   inputs at the same wallet derivation index"). These groups overlap the
+//!   Pass-1 singletons — they do not consume or exclude their members from any
+//!   other pass.
+//! - **Pass 2b — `AssertConcurrentSpend` SCC over ALL removals.** Every
+//!   standard-puzzle spend's puzzle+solution is executed via
+//!   [`chia_sdk_types::run_puzzle`] to extract conditions; opcode-64
 //!   `AssertConcurrentSpend` targets become directed edges in a graph over
-//!   the surviving standard-puzzle spends; iterative Tarjan SCC then groups
-//!   spends that form a closed cycle. The cycle pattern is what
-//!   `Spends::prepare` emits for multi-input SP sends via
-//!   `Relation::AssertConcurrent`. Strongly-connected (not weakly-connected)
-//!   grouping is what defends against third-party "pollution" assertions
-//!   pointing at a legitimate-send coin: a polluter has a forward edge into
-//!   the cycle but no return edge, so it stays in its own trivial SCC and
-//!   does not corrupt the legitimate group's `A_sum`.
-//! - **Stage 3 — per-group aggregation + tweak emission.** Each group computes
-//!   `A_sum = Σ synthetic_key`,
+//!   **all** standard-puzzle spends (not just an ungrouped subset); iterative
+//!   Tarjan SCC then groups spends that form a closed cycle, and each SCC of size
+//!   2 or more is emitted as an additional candidate group. The cycle pattern is what
+//!   the sender emits for multi-input SP sends via `Relation::AssertConcurrent`.
+//!   Building the graph over all removals (rather than excluding Pass-2a members)
+//!   is what lets a cross-puzzle-hash cycle — e.g. two coins at one puzzle hash
+//!   plus a third at another, all in one cycle — form a single SCC.
+//!   Strongly-connected (not weakly-connected) grouping is what defends against
+//!   third-party "pollution" assertions pointing at a legitimate-send coin: a
+//!   polluter has a forward edge into the cycle but no return edge, so it stays
+//!   in its own trivial SCC and does not corrupt the legitimate group's `A_sum`.
+//! - **Stage 3 — per-group aggregation + tweak emission.** Each candidate group
+//!   computes `A_sum = Σ synthetic_key`,
 //!   `input_hash = compute_input_hash(coin_ids, A_sum)`,
 //!   `tweak_point = A_sum.scalar_multiply(input_hash)`. BLS12-381
-//!   identity-element results are suppressed (CHIP §459).
+//!   identity-element results are suppressed (CHIP §459). Because the passes
+//!   overlap, distinct candidate groups can produce a byte-identical
+//!   `tweak_point` (e.g. a Pass-2a same-PH pair and a Pass-2b SCC over the exact
+//!   same coin set yield the same `A_sum` and same coin-id list); identical
+//!   results are de-duplicated by the 48-byte compressed point, keeping the first
+//!   occurrence. Groups that share a coin but differ in membership produce
+//!   different points and both survive — dedup is byte-equality only, never by
+//!   coin overlap.
 //! - **Stage 4 — outputs.** Each addition becomes one [`OutputMeta`] (no
 //!   grouping — outputs land flat in `TweakData.outputs`).
 //!
 //! ## Group emission order (load-bearing for byte-equality tests)
 //!
-//! 1. Stage 2a groups in puzzle-hash insertion order (driven by an
-//!    `IndexMap` over `coin_spends` input order).
-//! 2. Stage 2b SCCs of size ≥ 2 in Tarjan finishing order.
-//! 3. Standalone single-spend "groups" in `coin_spends` input order.
+//! Candidate groups are produced in this stable total order, then de-duplicated
+//! by compressed-point bytes keeping the first occurrence:
+//!
+//! 1. Pass 1 singletons in `coin_spends` input order.
+//! 2. Pass 2a same-puzzle-hash groups (size >= 2) in puzzle-hash insertion order
+//!    (driven by an `IndexMap` over `coin_spends` input order).
+//! 3. Pass 2b SCCs (size >= 2) in Tarjan finishing order.
 //!
 //! Cross-call regression tests (including the simulator-helper round-trip
 //! oracle) depend on this ordering being stable across runs.
@@ -108,43 +137,47 @@ pub fn tweak_data_from_block_spends(
         });
     }
 
-    // Stage 2a — same-puzzle-hash bucketing (insertion-ordered for deterministic emission).
+    // Candidate groups accumulate additively across all three passes; a single
+    // coin may appear in several (its Pass-1 singleton, a Pass-2a same-PH group,
+    // and/or a Pass-2b SCC). No pass excludes a coin from any other pass.
+    let mut groups: Vec<Vec<usize>> = Vec::new();
+
+    // Pass 1 — a singleton candidate group for EVERY standard spend (in
+    // `coin_spends` input order). This is the only pass that detects
+    // single-input sends, so it runs unconditionally.
+    for i in 0..standard_spends.len() {
+        groups.push(vec![i]);
+    }
+
+    // Pass 2a — same-puzzle-hash bucketing (insertion-ordered for deterministic
+    // emission). Each bucket of size >= 2 is an ADDITIONAL overlapping candidate
+    // group; membership here does not exclude a coin from Pass 1 or Pass 2b.
     let mut ph_buckets: IndexMap<Bytes32, Vec<usize>> = IndexMap::new();
     for (i, ss) in standard_spends.iter().enumerate() {
         ph_buckets.entry(ss.puzzle_hash).or_default().push(i);
     }
-
-    let mut grouped: Vec<bool> = vec![false; standard_spends.len()];
-    let mut groups: Vec<Vec<usize>> = Vec::new();
     for (_ph, indices) in ph_buckets {
         if indices.len() >= 2 {
-            for &i in &indices {
-                grouped[i] = true;
-            }
             groups.push(indices);
         }
     }
 
-    // Stage 2b — `AssertConcurrentSpend` SCC over ungrouped standard spends.
-    let surviving: Vec<usize> = (0..standard_spends.len())
-        .filter(|i| !grouped[*i])
-        .collect();
-    if !surviving.is_empty() {
-        // Index-to-position map for graph node identity.
-        let coin_id_to_pos: IndexMap<Bytes32, usize> = surviving
+    // Pass 2b — `AssertConcurrentSpend` SCC over ALL standard spends. The graph
+    // and the coin-id->position map cover every spend index, so a cycle spanning
+    // distinct puzzle hashes (including coins that also sit in a Pass-2a bucket)
+    // still forms a single SCC.
+    if !standard_spends.is_empty() {
+        // Coin-id -> graph-node-position map over every standard spend.
+        let coin_id_to_pos: IndexMap<Bytes32, usize> = standard_spends
             .iter()
             .enumerate()
-            .map(|(pos, &i)| (standard_spends[i].coin_id, pos))
+            .map(|(pos, ss)| (ss.coin_id, pos))
             .collect();
 
-        // Adjacency list keyed by graph position (0..surviving.len()).
-        let mut adj: Vec<Vec<usize>> = vec![Vec::new(); surviving.len()];
-        for (pos, &i) in surviving.iter().enumerate() {
-            let Ok(output) = run_puzzle(
-                &mut allocator,
-                standard_spends[i].puzzle,
-                standard_spends[i].solution,
-            ) else {
+        // Adjacency list keyed by spend index (0..standard_spends.len()).
+        let mut adj: Vec<Vec<usize>> = vec![Vec::new(); standard_spends.len()];
+        for (pos, ss) in standard_spends.iter().enumerate() {
+            let Ok(output) = run_puzzle(&mut allocator, ss.puzzle, ss.solution) else {
                 continue;
             };
             let Ok(conditions) = Vec::<Condition>::from_clvm(&allocator, output) else {
@@ -162,24 +195,18 @@ pub fn tweak_data_from_block_spends(
         let sccs = iterative_tarjan_scc(&adj);
         for scc in sccs {
             if scc.len() >= 2 {
-                let group: Vec<usize> = scc.into_iter().map(|pos| surviving[pos]).collect();
-                for &i in &group {
-                    grouped[i] = true;
-                }
-                groups.push(group);
+                groups.push(scc);
             }
         }
     }
 
-    // Standalone single-spend "groups" (single-input SP sends fall here).
-    for (i, &is_grouped) in grouped.iter().enumerate() {
-        if !is_grouped {
-            groups.push(vec![i]);
-        }
-    }
-
-    // Stage 3 — per-group aggregation + tweak_point emission.
+    // Stage 3 — per-group aggregation + tweak_point emission, de-duplicated by
+    // the 48-byte compressed point (keeping the first occurrence to preserve the
+    // documented emission order). Overlapping passes can yield byte-identical
+    // points; only byte-equal duplicates are dropped, never groups that merely
+    // share a coin.
     let mut tweak_points: Vec<PublicKey> = Vec::new();
+    let mut seen: std::collections::HashSet<[u8; 48]> = std::collections::HashSet::new();
     for group in groups {
         let coin_ids: Vec<Bytes32> = group.iter().map(|&i| standard_spends[i].coin_id).collect();
         let mut a_sum = standard_spends[group[0]].synthetic_pk;
@@ -189,7 +216,10 @@ pub fn tweak_data_from_block_spends(
         let input_hash = compute_input_hash(&coin_ids, &a_sum);
         let mut tweak_point = a_sum;
         tweak_point.scalar_multiply(&input_hash.to_bytes());
-        if !tweak_point.is_inf() {
+        if tweak_point.is_inf() {
+            continue;
+        }
+        if seen.insert(tweak_point.to_bytes()) {
             tweak_points.push(tweak_point);
         }
     }
@@ -411,9 +441,15 @@ mod tests {
         }
     }
 
-    /// Two standard-puzzle spends sharing the same `puzzle_hash` fall into a
-    /// single Stage 2a group and emit exactly one aggregated `tweak_point`.
-    /// Verifies the multi-input bucketing path independent of Pass 2b.
+    /// Two standard-puzzle spends sharing the same `puzzle_hash`.
+    ///
+    /// Under the additive model the passes overlap: Pass 1 emits a singleton for
+    /// EACH spend (two distinct `tweak_point`s — same `A_sum = alice_public` but
+    /// different single coin-id sets, hence different `input_hash`), and Pass 2a
+    /// emits the aggregated same-PH pair (`A_sum = 2 * alice_public` over both
+    /// coin ids — a third distinct `tweak_point`). No `AssertConcurrent`
+    /// conditions are present, so Pass 2b contributes nothing. All three points
+    /// are byte-distinct, so dedup keeps all three.
     #[test]
     fn test_multi_input_round_trip() {
         let alice = chia_bls::SecretKey::from_seed(&[0x07u8; 32]);
@@ -432,8 +468,8 @@ mod tests {
         let td = tweak_data_from_block_spends(&[spend_a, spend_b], &[]).expect("multi-input ok");
         assert_eq!(
             td.tweak_points.len(),
-            1,
-            "two spends at the same puzzle_hash form one Stage 2a group",
+            3,
+            "two same-PH spends: 2 Pass-1 singletons + 1 Pass-2a aggregate group",
         );
     }
 
@@ -498,30 +534,192 @@ mod tests {
         assert_eq!(spend_b.coin, coin_b);
         assert_eq!(spend_polluter.coin, coin_polluter);
 
+        // Compute the legit `{a, b}` SCC tweak_point by hand so we can assert it
+        // is PRESENT and byte-invariant across runs regardless of emission index.
+        let mut legit_a_sum = pk_a;
+        legit_a_sum += &pk_b;
+        let legit_input_hash = compute_input_hash(&[id_a, id_b], &legit_a_sum);
+        let mut legit_point = legit_a_sum;
+        legit_point.scalar_multiply(&legit_input_hash.to_bytes());
+        let legit = legit_point.to_bytes();
+
         let polluted =
             tweak_data_from_block_spends(&[spend_a.clone(), spend_b.clone(), spend_polluter], &[])
                 .expect("polluted block ok");
         let clean = tweak_data_from_block_spends(&[spend_a, spend_b], &[]).expect("clean block ok");
 
+        // Additive model: each coin yields a Pass-1 singleton, all distinct PHs
+        // so no Pass-2a groups, and Pass-2b emits the `{a, b}` SCC (polluter sits
+        // in its own trivial SCC and is excluded).
         assert_eq!(
             polluted.tweak_points.len(),
-            2,
-            "polluted block must emit two tweak_points (legit SCC + polluter standalone)",
+            4,
+            "polluted block: 3 Pass-1 singletons (a, b, polluter) + 1 Pass-2b SCC {{a, b}}",
         );
         assert_eq!(
             clean.tweak_points.len(),
-            1,
-            "clean block must emit one tweak_point (the legit SCC)",
+            3,
+            "clean block: 2 Pass-1 singletons (a, b) + 1 Pass-2b SCC {{a, b}}",
         );
 
-        // The legit SCC's tweak point must match between polluted and clean
-        // runs — proving the polluter's synthetic key did NOT leak into
-        // A_sum. The polluted block emits SCC groups before standalone
-        // groups, so the legit pair lands at index 0.
+        // The legit SCC's tweak point must be present in BOTH runs and identical
+        // — proving the polluter's synthetic key did NOT leak into A_sum.
+        // Assert membership rather than a fixed index, since the additive
+        // emission order places SCC groups after the singletons.
+        assert!(
+            polluted.tweak_points.iter().any(|p| p.to_bytes() == legit),
+            "legit SCC tweak_point must be present in the polluted block",
+        );
+        assert!(
+            clean.tweak_points.iter().any(|p| p.to_bytes() == legit),
+            "legit SCC tweak_point must be present in the clean block",
+        );
+    }
+
+    /// Regression for mixed-puzzle-hash multi-input fragmentation.
+    ///
+    /// Three coins bound by ONE `AssertConcurrent` cycle: two coins share `PH_x`
+    /// (both curried over the SAME synthetic key, so identical puzzle hash) and a
+    /// third sits at `PH_y`. The cycle is the exact shape the sender emits — each
+    /// coin asserts its predecessor, coin 0 closes the cycle to coin N-1.
+    ///
+    /// The Pass-2b SCC is built over ALL standard removals, so all three coins
+    /// form one strongly connected component and the aggregate
+    /// `A_sum = pk_dup + pk_dup + pk_solo` over all three coin ids is emitted as
+    /// a `tweak_point`. We compute that 3-coin-aggregate point by hand and assert
+    /// it is PRESENT in the output.
+    ///
+    /// Pre-fix this FAILED: the `PH_x` pair was captured by the same-PH Pass-2a
+    /// bucket and then excluded from Pass-2b's SCC graph (the
+    /// `surviving`/`!grouped` filter), so the `PH_y` coin's edge into a `PH_x`
+    /// coin had no graph node to point at, no 3-coin SCC formed, and the
+    /// full-cycle `A_sum` was never produced. Post-fix it PASSES.
+    #[test]
+    fn test_bug1_mixed_ph_multi_input_full_cycle_detected() {
+        // Two coins at PH_x share one synthetic key; the third uses a different
+        // key (PH_y).
+        let sk_dup = chia_bls::SecretKey::from_seed(&[0x11u8; 32]);
+        let sk_solo = chia_bls::SecretKey::from_seed(&[0x22u8; 32]);
+        let pk_dup = sk_dup.public_key();
+        let pk_solo = sk_solo.public_key();
+
+        let parent_dup1: Bytes32 = [0xD1u8; 32].into();
+        let parent_dup2: Bytes32 = [0xD2u8; 32].into();
+        let parent_solo: Bytes32 = [0xE1u8; 32].into();
+
+        let puzzle_hash_dup: Bytes32 = StandardArgs::curry_tree_hash(pk_dup).into();
+        let puzzle_hash_solo: Bytes32 = StandardArgs::curry_tree_hash(pk_solo).into();
+        let coin_dup1 = Coin::new(parent_dup1, puzzle_hash_dup, 100);
+        let coin_dup2 = Coin::new(parent_dup2, puzzle_hash_dup, 200);
+        let coin_solo = Coin::new(parent_solo, puzzle_hash_solo, 300);
+        let id_dup1 = coin_dup1.coin_id();
+        let id_dup2 = coin_dup2.coin_id();
+        let id_solo = coin_solo.coin_id();
+
+        // Cyclic AssertConcurrent over coins [dup1, dup2, solo] in that order:
+        // coin 0 asserts coin N-1, every other coin asserts its predecessor
+        // (matches the sender's emit_relation cycle).
+        let spend_dup1 = build_standard_coin_spend(
+            pk_dup,
+            parent_dup1,
+            100,
+            Conditions::new().assert_concurrent_spend(id_solo),
+        );
+        let spend_dup2 = build_standard_coin_spend(
+            pk_dup,
+            parent_dup2,
+            200,
+            Conditions::new().assert_concurrent_spend(id_dup1),
+        );
+        let spend_solo = build_standard_coin_spend(
+            pk_solo,
+            parent_solo,
+            300,
+            Conditions::new().assert_concurrent_spend(id_dup2),
+        );
+
+        assert_eq!(spend_dup1.coin, coin_dup1);
+        assert_eq!(spend_dup2.coin, coin_dup2);
+        assert_eq!(spend_solo.coin, coin_solo);
         assert_eq!(
-            polluted.tweak_points[0].to_bytes(),
-            clean.tweak_points[0].to_bytes(),
-            "legit SCC tweak_point must be invariant under polluter presence",
+            spend_dup1.coin.puzzle_hash, spend_dup2.coin.puzzle_hash,
+            "the two dup coins must share one puzzle hash",
+        );
+        assert_ne!(
+            spend_dup1.coin.puzzle_hash, spend_solo.coin.puzzle_hash,
+            "the solo coin must sit at a distinct puzzle hash",
+        );
+
+        // Hand-compute the 3-coin aggregate `tweak_point` the sender would target.
+        let mut a_sum = pk_dup;
+        a_sum += &pk_dup;
+        a_sum += &pk_solo;
+        let input_hash = compute_input_hash(&[id_dup1, id_dup2, id_solo], &a_sum);
+        let mut expected_point = a_sum;
+        expected_point.scalar_multiply(&input_hash.to_bytes());
+        let expected = expected_point.to_bytes();
+
+        let td = tweak_data_from_block_spends(&[spend_dup1, spend_dup2, spend_solo], &[])
+            .expect("mixed-PH cycle ok");
+
+        assert!(
+            td.tweak_points.iter().any(|p| p.to_bytes() == expected),
+            "the full 3-coin-cycle aggregate tweak_point must be present (Pass-2b SCC over all \
+             removals)",
+        );
+    }
+
+    /// Regression for a single-input send sharing a puzzle hash with an
+    /// unrelated coin.
+    ///
+    /// Two coins curried over the SAME synthetic key (identical puzzle hash) with
+    /// NO `AssertConcurrent` binding: one is a single-input SP send's input, the
+    /// other an unrelated standard coin. The SP input must still be detected via
+    /// its Pass-1 singleton (`A_sum = K_send` over its single coin id).
+    ///
+    /// Pre-fix this FAILED: both coins landed in the size-2 Pass-2a bucket,
+    /// `grouped[i] = true` was set, and singletons were emitted only for
+    /// ungrouped coins — so neither coin's Pass-1 singleton was emitted. Only the
+    /// aggregated same-PH `tweak_point` was produced, which does NOT match a
+    /// single-input send. Post-fix Pass 1 emits a singleton for EVERY spend, so
+    /// the single-input `tweak_point` is present.
+    #[test]
+    fn test_bug2_single_input_sharing_ph_detected_via_singleton() {
+        let sk_send = chia_bls::SecretKey::from_seed(&[0x44u8; 32]);
+        let pk_send = sk_send.public_key();
+
+        let parent_send: Bytes32 = [0xF1u8; 32].into();
+        let parent_other: Bytes32 = [0xF2u8; 32].into();
+
+        let ph: Bytes32 = StandardArgs::curry_tree_hash(pk_send).into();
+        let coin_send = Coin::new(parent_send, ph, 100);
+        let id_send = coin_send.coin_id();
+
+        // No AssertConcurrent: these two coins merely collide on puzzle hash.
+        let spend_send = build_standard_coin_spend(pk_send, parent_send, 100, Conditions::new());
+        let spend_other = build_standard_coin_spend(pk_send, parent_other, 200, Conditions::new());
+
+        assert_eq!(
+            spend_send.coin.puzzle_hash, spend_other.coin.puzzle_hash,
+            "both coins must share one puzzle hash (the collision precondition)",
+        );
+
+        // Hand-compute the single-input send's Pass-1 singleton tweak_point.
+        let single_a_sum = pk_send;
+        let single_input_hash = compute_input_hash(&[id_send], &single_a_sum);
+        let mut single_point = single_a_sum;
+        single_point.scalar_multiply(&single_input_hash.to_bytes());
+        let expected_single = single_point.to_bytes();
+
+        let td = tweak_data_from_block_spends(&[spend_send, spend_other], &[])
+            .expect("PH-collision single-input ok");
+
+        assert!(
+            td.tweak_points
+                .iter()
+                .any(|p| p.to_bytes() == expected_single),
+            "the single-input send's Pass-1 singleton tweak_point must be present despite the \
+             puzzle-hash collision",
         );
     }
 }
