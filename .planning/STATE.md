@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 Phase: 09.2
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-01 - Completed quick task 260601-e6z: CHIP-0057 SP code-review cleanup (editorial + multi-input e2e + CI drift gate)
+Last activity: 2026-06-02 - Completed quick task 260602-ejk: fix SP block-scanner grouping to CHIP additive ScanBlock model (fixes mixed-PH + shared-PH-single-input undetectable-coin bugs)
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
@@ -233,6 +233,7 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 |---|-------------|------|--------|--------|-----------|
 | 260530-dv1 | Trim 7 internal SP crypto helpers from curated prelude; document load-bearing `chia-sdk-test/chip-0057` dev-dep feature line (not removed) | 2026-05-30 | c8582f38 |  | [260530-dv1-trim-sp-crypto-helpers-from-prelude-clar](./quick/260530-dv1-trim-sp-crypto-helpers-from-prelude-clar/) |
 | 260601-e6z | CHIP-0057 SP code-review cleanup (strip planning residue from docs, trim DriverError messages, relocate SilentPaymentPending, multi-input e2e, wire drift-check CI gate) | 2026-06-01 | ed718a19 | Verified | [260601-e6z-chip-0057-sp-code-review-cleanup-strip-p](./quick/260601-e6z-chip-0057-sp-code-review-cleanup-strip-p/) |
+| 260602-ejk | Fix SP block-scanner grouping to CHIP additive ScanBlock model (Pass-1 singletons for all spends + Pass-2b SCC over all removals; keep 2a) — fixes mixed-PH + shared-PH-single-input undetectable-coin bugs; + findings doc for SP team | 2026-06-02 | 8e17b1f8 | Verified | [260602-ejk-fix-sp-block-scanner-grouping-to-chip-ad](./quick/260602-ejk-fix-sp-block-scanner-grouping-to-chip-ad/) |
 
 ## Session Continuity
 
