@@ -9,7 +9,7 @@
 //! `tweak_data_from_block_spends`.
 //!
 //! See the driver-side module-level docs for the grouping algorithm
-//! (same-puzzle-hash bucketing + `AssertConcurrentSpend` SCC), the
+//! (per-spend Pass-1 singletons + Pass-2 `AssertConcurrentSpend` SCC), the
 //! BLS12-381 identity-element guard, and the non-standard-puzzle skip
 //! rule. The adapter inherits all of those behaviours.
 

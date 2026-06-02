@@ -10,39 +10,32 @@
 //!
 //! ## Grouping algorithm
 //!
-//! The three grouping passes are **additive and overlapping**, not a partition:
+//! Two grouping passes run independently over the full set of standard
+//! removals, mirroring the CHIP-0057 `ScanBlock` procedure (Pass 1 +
+//! Pass 2). The passes are **additive and overlapping**, not a partition:
 //! every standard-puzzle spend can appear in more than one candidate group, and
-//! the passes run independently over the full set of standard removals (mirroring
-//! the CHIP-0057 `ScanBlock` procedure, which unions the coins detected by each
-//! pass rather than letting an earlier pass consume a coin). A single coin
-//! therefore contributes its own Pass-1 singleton, and may additionally appear in
-//! a Pass-2a same-puzzle-hash group and/or a Pass-2b concurrent-spend SCC.
+//! no pass consumes or excludes a coin from any other pass. A single coin always
+//! contributes its own Pass-1 singleton, and may additionally appear in a Pass-2
+//! concurrent-spend SCC.
 //!
 //! - **Stage 1 — defensive standard-puzzle filter.** Each [`CoinSpend`] is
 //!   parsed via [`StandardLayer::parse_puzzle`]; non-standard puzzles (CAT,
 //!   NFT, arbitrary mod hashes) skip silently.
 //! - **Pass 1 — per-spend singletons.** Every standard-puzzle spend `i` emits a
-//!   singleton candidate group `[i]`. This is the only pass that can detect a
-//!   single-input send (a lone coin never forms a Pass-2b SCC of size >= 2 and is
-//!   alone at its puzzle hash unless an unrelated coin collides), so it runs
+//!   singleton candidate group `[i]`. This is the sole single-input detector (a
+//!   lone coin never forms a Pass-2 SCC of size >= 2), so it runs
 //!   unconditionally for all spends.
-//! - **Pass 2a — same-puzzle-hash bucketing.** Standard-puzzle spends with
-//!   identical `coin.puzzle_hash` are bucketed; each bucket of size >= 2 is
-//!   emitted as an **additional** candidate group (the canonical shape for "all
-//!   inputs at the same wallet derivation index"). These groups overlap the
-//!   Pass-1 singletons — they do not consume or exclude their members from any
-//!   other pass.
-//! - **Pass 2b — `AssertConcurrentSpend` SCC over ALL removals.** Every
+//! - **Pass 2 — `AssertConcurrentSpend` SCC over ALL removals.** Every
 //!   standard-puzzle spend's puzzle+solution is executed via
 //!   [`chia_sdk_types::run_puzzle`] to extract conditions; opcode-64
 //!   `AssertConcurrentSpend` targets become directed edges in a graph over
-//!   **all** standard-puzzle spends (not just an ungrouped subset); iterative
-//!   Tarjan SCC then groups spends that form a closed cycle, and each SCC of size
-//!   2 or more is emitted as an additional candidate group. The cycle pattern is what
-//!   the sender emits for multi-input SP sends via `Relation::AssertConcurrent`.
-//!   Building the graph over all removals (rather than excluding Pass-2a members)
-//!   is what lets a cross-puzzle-hash cycle — e.g. two coins at one puzzle hash
-//!   plus a third at another, all in one cycle — form a single SCC.
+//!   **all** standard-puzzle spends; iterative Tarjan SCC then groups spends that
+//!   form a closed cycle, and each SCC of size 2 or more is emitted as an
+//!   additional candidate group. The cycle pattern is exactly what the sender
+//!   emits for any multi-input send via `Relation::AssertConcurrent` — including
+//!   multiple inputs that happen to share a puzzle hash, since the sender binds
+//!   every set of two or more non-ephemeral inputs into one cycle. A multi-input
+//!   set that does not carry such a cycle is, by design, not a detectable shape.
 //!   Strongly-connected (not weakly-connected) grouping is what defends against
 //!   third-party "pollution" assertions pointing at a legitimate-send coin: a
 //!   polluter has a forward edge into the cycle but no return edge, so it stays
@@ -53,12 +46,10 @@
 //!   `tweak_point = A_sum.scalar_multiply(input_hash)`. BLS12-381
 //!   identity-element results are suppressed (CHIP §459). Because the passes
 //!   overlap, distinct candidate groups can produce a byte-identical
-//!   `tweak_point` (e.g. a Pass-2a same-PH pair and a Pass-2b SCC over the exact
-//!   same coin set yield the same `A_sum` and same coin-id list); identical
-//!   results are de-duplicated by the 48-byte compressed point, keeping the first
-//!   occurrence. Groups that share a coin but differ in membership produce
-//!   different points and both survive — dedup is byte-equality only, never by
-//!   coin overlap.
+//!   `tweak_point`; identical results are de-duplicated by the 48-byte compressed
+//!   point, keeping the first occurrence. Groups that share a coin but differ in
+//!   membership produce different points and both survive — dedup is byte-equality
+//!   only, never by coin overlap.
 //! - **Stage 4 — outputs.** Each addition becomes one [`OutputMeta`] (no
 //!   grouping — outputs land flat in `TweakData.outputs`).
 //!
@@ -68,9 +59,7 @@
 //! by compressed-point bytes keeping the first occurrence:
 //!
 //! 1. Pass 1 singletons in `coin_spends` input order.
-//! 2. Pass 2a same-puzzle-hash groups (size >= 2) in puzzle-hash insertion order
-//!    (driven by an `IndexMap` over `coin_spends` input order).
-//! 3. Pass 2b SCCs (size >= 2) in Tarjan finishing order.
+//! 2. Pass 2 SCCs (size >= 2) in Tarjan finishing order.
 //!
 //! Cross-call regression tests (including the simulator-helper round-trip
 //! oracle) depend on this ordering being stable across runs.
@@ -89,7 +78,6 @@ use crate::{DriverError, Layer, Puzzle, StandardLayer};
 struct StandardSpend {
     coin_id: Bytes32,
     synthetic_pk: PublicKey,
-    puzzle_hash: Bytes32,
     puzzle: NodePtr,
     solution: NodePtr,
 }
@@ -131,15 +119,14 @@ pub fn tweak_data_from_block_spends(
         standard_spends.push(StandardSpend {
             coin_id: spend.coin.coin_id(),
             synthetic_pk: layer.synthetic_key,
-            puzzle_hash: spend.coin.puzzle_hash,
             puzzle: puzzle_ptr,
             solution: solution_ptr,
         });
     }
 
-    // Candidate groups accumulate additively across all three passes; a single
-    // coin may appear in several (its Pass-1 singleton, a Pass-2a same-PH group,
-    // and/or a Pass-2b SCC). No pass excludes a coin from any other pass.
+    // Candidate groups accumulate additively across both passes; a single coin
+    // may appear in several (its Pass-1 singleton and/or a Pass-2 SCC). No pass
+    // excludes a coin from any other pass.
     let mut groups: Vec<Vec<usize>> = Vec::new();
 
     // Pass 1 — a singleton candidate group for EVERY standard spend (in
@@ -149,22 +136,9 @@ pub fn tweak_data_from_block_spends(
         groups.push(vec![i]);
     }
 
-    // Pass 2a — same-puzzle-hash bucketing (insertion-ordered for deterministic
-    // emission). Each bucket of size >= 2 is an ADDITIONAL overlapping candidate
-    // group; membership here does not exclude a coin from Pass 1 or Pass 2b.
-    let mut ph_buckets: IndexMap<Bytes32, Vec<usize>> = IndexMap::new();
-    for (i, ss) in standard_spends.iter().enumerate() {
-        ph_buckets.entry(ss.puzzle_hash).or_default().push(i);
-    }
-    for (_ph, indices) in ph_buckets {
-        if indices.len() >= 2 {
-            groups.push(indices);
-        }
-    }
-
-    // Pass 2b — `AssertConcurrentSpend` SCC over ALL standard spends. The graph
+    // Pass 2 — `AssertConcurrentSpend` SCC over ALL standard spends. The graph
     // and the coin-id->position map cover every spend index, so a cycle spanning
-    // distinct puzzle hashes (including coins that also sit in a Pass-2a bucket)
+    // distinct puzzle hashes (including multiple inputs that share a puzzle hash)
     // still forms a single SCC.
     if !standard_spends.is_empty() {
         // Coin-id -> graph-node-position map over every standard spend.
@@ -202,9 +176,9 @@ pub fn tweak_data_from_block_spends(
 
     // Stage 3 — per-group aggregation + tweak_point emission, de-duplicated by
     // the 48-byte compressed point (keeping the first occurrence to preserve the
-    // documented emission order). Overlapping passes can yield byte-identical
-    // points; only byte-equal duplicates are dropped, never groups that merely
-    // share a coin.
+    // documented emission order). Overlapping passes (a coin's singleton plus its
+    // SCC membership) can yield byte-identical points; only byte-equal duplicates
+    // are dropped, never groups that merely share a coin.
     let mut tweak_points: Vec<PublicKey> = Vec::new();
     let mut seen: std::collections::HashSet<[u8; 48]> = std::collections::HashSet::new();
     for group in groups {
