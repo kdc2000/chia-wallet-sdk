@@ -212,7 +212,7 @@ test("GUARD-03 napi: raw key against a non-synthetic coin surfaces SilentPayment
     () => {
       spends.prepare(deltas);
     },
-    { message: /not the synthetic key|KeyNotSynthetic/i },
+    { message: /key not synthetic/i },
     "raw key against a raw-curried coin must surface the typed error",
   );
 

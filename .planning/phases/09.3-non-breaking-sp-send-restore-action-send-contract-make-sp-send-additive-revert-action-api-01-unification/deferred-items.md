@@ -1,5 +1,16 @@
 # Deferred Items — Phase 09.3
 
+> **RESOLVED 2026-06-03 (quick task 260603-ilc).** Both items below were
+> test-expectation bugs (no production code change). Fixes: (#1) GUARD-03
+> matchers → `/key not synthetic/i` to match the actual `DriverError` text;
+> (#2) multi-input `tweak_points` assertion 1 → 3, matching the additive
+> `tweak_data_from_block_spends` model (the Rust inline test
+> `block_tweak_data.rs::same_ph_multi_input_round_trip_via_concurrent_spend`
+> already asserts 3; `detections == 1` stays as the correctness invariant).
+> Verified green: napi (53), wasm (10), pyo3 (4) — all suites pass.
+> The suspected "helper grouping bug" in #2 was incorrect: 3 candidate
+> tweak_points is the documented additive behavior, not a coalescing failure.
+
 Pre-existing failures discovered during plan 09.3-02 execution. Confirmed
 present at the pre-09.3 baseline commit `cfaaf275` (built + ran in a throwaway
 worktree), so they are NOT caused by the 09.3 SP-send migration. Out of scope

@@ -125,8 +125,14 @@ test("BRIDGE-06 napi: multi-input SP send -> tweak_data_from_block_spends -> sca
   );
   t.is(
     tweakData.tweakPoints.length,
-    1,
-    "one SP transaction group -> one tweak_point",
+    3,
+    // Additive ScanBlock model (tweak_data_from_block_spends): a 2-input
+    // concurrent SP send emits 2 Pass-1 singletons + 1 Pass-2 SCC aggregate
+    // = 3 candidate tweak_points. Only the SCC-aggregate point matches the
+    // sender-derived input_hash, so the scanner still detects exactly one
+    // output (asserted below). Mirrors the Rust inline test
+    // block_tweak_data.rs::same_ph_multi_input_round_trip_via_concurrent_spend.
+    "additive model: 2 Pass-1 singletons + 1 Pass-2 SCC aggregate",
   );
 
   const labels = new LabelRegistry();

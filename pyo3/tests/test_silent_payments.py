@@ -257,9 +257,15 @@ def test_multi_input_e2e():
     tweak_data = SilentPayments.tweak_data_from_block_spends(
         block_spends, block_outputs
     )
+    # Additive ScanBlock model (tweak_data_from_block_spends): a 2-input
+    # concurrent SP send emits 2 Pass-1 singletons + 1 Pass-2 SCC aggregate
+    # = 3 candidate tweak_points. Only the SCC-aggregate point matches the
+    # sender-derived input_hash, so the scanner still detects exactly one
+    # output (asserted below). Mirrors the Rust inline test
+    # block_tweak_data.rs::same_ph_multi_input_round_trip_via_concurrent_spend.
     assert (
-        len(tweak_data.tweak_points) == 1
-    ), "one SP transaction group -> one tweak_point"
+        len(tweak_data.tweak_points) == 3
+    ), "additive model: 2 Pass-1 singletons + 1 Pass-2 SCC aggregate"
 
     labels = LabelRegistry()
     detections = SilentPayments.scan_from_tweaks(
@@ -311,7 +317,7 @@ def test_raw_key_not_synthetic_errors():
 
     # GUARD-01 fires inside prepare() — the typed SilentPaymentKeyNotSynthetic
     # error crosses the FFI boundary as a raised exception.
-    with pytest.raises(BaseException, match="not the synthetic key"):
+    with pytest.raises(BaseException, match="key not synthetic"):
         spends.prepare(deltas)
 
     # No spend bundle was produced on the failed path.
