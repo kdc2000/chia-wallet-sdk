@@ -16,7 +16,7 @@ pub use chia_sdk_driver::{
     NftAssetInfo, NftInfo, NftMint, Offer, OfferAmounts, OfferCoins, OptionAssetInfo,
     OptionContract, OptionInfo, OptionLauncher, OptionLauncherInfo, OptionMetadata, OptionType,
     OptionUnderlying, Outputs, Puzzle, RawPuzzle, Relation, RequestedPayments, RoyaltyInfo,
-    SettlementLayer, Singleton, SingletonInfo, Spend, SpendAction, SpendContext,
+    SendDestination, SettlementLayer, Singleton, SingletonInfo, Spend, SpendAction, SpendContext,
     SpendWithConditions, Spends, StandardLayer, Vault, VaultInfo,
 };
 pub use chia_sdk_signer::{
@@ -30,3 +30,15 @@ pub use chia_sdk_types::{
     TESTNET11_CONSTANTS, compile_chialisp, compile_rue, conditions::*, run_puzzle,
 };
 pub use chia_sdk_utils::{Address, Bech32, parse_hex, select_coins};
+
+#[cfg(feature = "chip-0057")]
+pub use chia_sdk_utils::silent_payments::{
+    LabelRegistry, SilentPaymentAddress, SilentPaymentError, SilentPaymentKeys,
+    SilentPaymentNetwork,
+};
+
+#[cfg(feature = "chip-0057")]
+pub use chia_sdk_driver::silent_payments::{
+    DetectedSpCoin, K_MAX_DEFAULT, OutputMeta, SilentPaymentScan, SyntheticPublicKey,
+    SyntheticSecretKey, TweakData, scan_from_tweaks, tweak_data_from_block_spends,
+};
