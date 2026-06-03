@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 Phase: 09.2
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-02 - Completed quick task 260602-mhw: drop Pass 2a from SP block scanner to match simplified CHIP (Pass 1 + Pass 2 SCC only)
+Last activity: 2026-06-03 - Completed quick task 260603-c93: reword CHIP-0058 → future-protocol + drop v1 framing in SP code/docs (prose only)
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
@@ -236,6 +236,7 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 | 260602-ejk | Fix SP block-scanner grouping to CHIP additive ScanBlock model (Pass-1 singletons for all spends + Pass-2b SCC over all removals; keep 2a) — fixes mixed-PH + shared-PH-single-input undetectable-coin bugs; + findings doc for SP team | 2026-06-02 | 8e17b1f8 | Verified | [260602-ejk-fix-sp-block-scanner-grouping-to-chip-ad](./quick/260602-ejk-fix-sp-block-scanner-grouping-to-chip-ad/) |
 | 260602-mhw | Drop Pass 2a (same-PH bucketing) from SP block scanner to match simplified CHIP (Pass 1 + Pass 2 SCC only, after SP team adopted the proposal in chip commit 590d7e3) — receiver-only, recomputed oracle counts downward | 2026-06-02 | 4d384715 | Verified | [260602-mhw-drop-pass-2a-same-ph-bucketing-from-sp-b](./quick/260602-mhw-drop-pass-2a-same-ph-bucketing-from-sp-b/) |
 | fast | Reframe SP scanner grouping findings doc (ISSUE-sp-block-scanner-grouping-conformance.md) to record drop-2a as adopted (CHIP 590d7e3) + SDK aligned (260602-mhw) — doc-only, no longer an open ask | 2026-06-03 | 024d042c | Done | — |
+| 260603-c93 | Reword review findings: CHIP-0058 → future-protocol wording + drop v1 SDK-version framing across SP code/docs (prose only, 8 files) | 2026-06-03 | 69de07e3 | Done | [260603-c93-reword-review-findings-chip-0058-future-](./quick/260603-c93-reword-review-findings-chip-0058-future-/) |
 
 ## Session Continuity
 
