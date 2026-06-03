@@ -6,8 +6,8 @@ conftest.py is introduced until a second consumer needs shared fixtures.
 
 Cross-language coverage is scoped to the unlabeled flow; labeled detection is
 exercised by the Rust-side E2E tests in
-crates/chia-sdk-driver/src/silent_payments/e2e.rs, where the labeled path is
-already byte-pinned against the CHIP-0057 test vectors.
+crates/chia-sdk-driver/tests/silent_payments_e2e.rs (test_simulator_e2e_labeled),
+where the labeled path is already byte-pinned against the CHIP-0057 test vectors.
 
 `TweakData` is constructed on the Rust side (via
 `Simulator.tweak_data_from_block`) and crossed the FFI boundary unchanged.

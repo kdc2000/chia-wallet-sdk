@@ -18,7 +18,7 @@
 //
 // Cross-language coverage is scoped to the unlabeled flow; the labeled
 // detection branch is exercised by the Rust-side E2E tests in
-// crates/chia-sdk-driver/src/silent_payments/e2e.rs.
+// crates/chia-sdk-driver/tests/silent_payments_e2e.rs (test_simulator_e2e_labeled).
 
 import test from "ava";
 import {
