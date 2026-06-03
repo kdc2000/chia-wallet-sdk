@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: Completed 09.2-03-PLAN.md
-last_updated: "2026-06-01T14:55:34.253Z"
-last_activity: 2026-06-01
+last_updated: "2026-06-03T17:47:53.893Z"
+last_activity: 2026-06-03 -- Phase 09.3 execution started
 progress:
-  total_phases: 13
+  total_phases: 14
   completed_phases: 13
-  total_plans: 54
+  total_plans: 57
   completed_plans: 61
   percent: 88
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-15)
 
 **Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
-**Current focus:** Phase 09.2 — harden-sp-sender-keys-synthetic-key-runtime-guard-synthetickey-newtype-raw-key-bindings
+**Current focus:** Phase 09.3 — non-breaking-sp-send
 
 ## Current Position
 
-Phase: 09.2
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-06-03 - Completed quick task 260603-c93: reword CHIP-0058 → future-protocol + drop v1 framing in SP code/docs (prose only)
+Phase: 09.3 (non-breaking-sp-send) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 09.3
+Last activity: 2026-06-03 -- Phase 09.3 execution started
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
