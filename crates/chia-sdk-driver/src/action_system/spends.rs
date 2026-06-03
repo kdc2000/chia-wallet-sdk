@@ -504,8 +504,7 @@ impl Spends<Unfinished> {
         // chip-0057 silent-payment derivation branch — runs FIRST so the
         // emitted `CreateCoin` conditions land on the parents'
         // `payment_assertions` before `emit_conditions` fires below. No-op
-        // when no `Action::send` with a `SendDestination::SilentPayment`
-        // destination has been applied.
+        // when no `Action::silent_payment_send` has been applied.
         #[cfg(feature = "chip-0057")]
         if !self.silent_payments_pending.is_empty() {
             sp_finish_branch(ctx, &mut self, relation)?;
@@ -541,8 +540,8 @@ impl Spends<Unfinished> {
     /// [`Outputs`].
     ///
     /// Privacy warning: under chip-0057, when `silent_payments_pending` is non-empty
-    /// (i.e. at least one `Action::send` with a `SendDestination::SilentPayment`
-    /// destination has been applied), the chip-0057 SP branch runs inside
+    /// (i.e. at least one `Action::silent_payment_send` has been applied), the
+    /// chip-0057 SP branch runs inside
     /// [`Spends::prepare`] (called below) so the derived `CreateCoin`
     /// conditions feed into the parents' `payment_assertions` before
     /// `emit_conditions`. The branch consumes

@@ -147,7 +147,7 @@ mod silent_payment_tests {
     use indexmap::indexmap;
 
     use crate::{
-        Action, DriverError, Id, Relation, SendDestination, SpendContext, Spends,
+        Action, DriverError, Relation, SpendContext, Spends,
         silent_payments::{
             SyntheticPublicKey, SyntheticSecretKey, aggregate_sender_sks, compute_input_hash,
             derive_one_time_puzzle_hash,
@@ -156,14 +156,13 @@ mod silent_payment_tests {
 
     // ====================================================================
     // Acceptance tests for the silent-payment send path. Each drives
-    // `Action::send(Id::Xch, SendDestination::SilentPayment(..), ..)` through
-    // `with_silent_payment_keys` + `finish_with_keys`.
+    // `Action::silent_payment_send(..)` through `with_silent_payment_keys` +
+    // `finish_with_keys`.
     // ====================================================================
 
-    /// Apply-time state: after `spends.apply(&[Action::send(Id::Xch,
-    /// SendDestination::SilentPayment(...), ...)])`, the action records one
-    /// entry on `spends.silent_payments_pending` with the matching fields. ECDH
-    /// and `CreateCoin` emission are NOT inspected here.
+    /// Apply-time state: after `spends.apply(&[Action::silent_payment_send(...)])`,
+    /// the action records one entry on `spends.silent_payments_pending` with the
+    /// matching fields. ECDH and `CreateCoin` emission are NOT inspected here.
     #[test]
     fn action_state_machine() -> Result<()> {
         let mut sim = Simulator::new();
@@ -189,18 +188,13 @@ mod silent_payment_tests {
 
         let _deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient)),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
         )?;
 
         assert_eq!(
             spends.silent_payments_pending.len(),
             1,
-            "exactly one pending entry after one Action::send(SilentPayment, ...)"
+            "exactly one pending entry after one Action::silent_payment_send(...)"
         );
 
         let pending = &spends.silent_payments_pending[0];
@@ -227,8 +221,9 @@ mod silent_payment_tests {
     /// Finish-time round-trip: the apply+finish flow produces an XCH output
     /// whose `puzzle_hash` matches what `derive_one_time_puzzle_hash`
     /// independently computes for the same `(scan_pk, spend_pk,
-    /// aggregated_sender_sk, input_hash, k=0)` tuple. Exercises the unified
-    /// `Action::send` + `Spends::finish_with_keys` construction shape.
+    /// aggregated_sender_sk, input_hash, k=0)` tuple. Exercises the
+    /// `Action::silent_payment_send` + `Spends::finish_with_keys` construction
+    /// shape.
     #[test]
     fn round_trip_matches_derive_one_time_puzzle_hash() -> Result<()> {
         let mut sim = Simulator::new();
@@ -257,12 +252,7 @@ mod silent_payment_tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient)),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
         )?;
 
         // `pk_map` stays raw for `finish_with_keys`; the SP newtype maps wrap
@@ -306,8 +296,8 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// Two `Action::send` calls with the same SP recipient in one `Spends`
-    /// produce outputs at k=0 and k=1 respectively. The counter on
+    /// Two `Action::silent_payment_send` calls with the same SP recipient in one
+    /// `Spends` produce outputs at k=0 and k=1 respectively. The counter on
     /// `spends.silent_payment_counters` increments per `scan_pk`.
     #[test]
     fn multi_output_same_scan_pk_increments_k() -> Result<()> {
@@ -333,18 +323,8 @@ mod silent_payment_tests {
         let _deltas = spends.apply(
             &mut ctx,
             &[
-                Action::send(
-                    Id::Xch,
-                    SendDestination::SilentPayment(Box::new(recipient.clone())),
-                    1,
-                    Memos::None,
-                ),
-                Action::send(
-                    Id::Xch,
-                    SendDestination::SilentPayment(Box::new(recipient)),
-                    2,
-                    Memos::None,
-                ),
+                Action::silent_payment_send(recipient.clone(), 1, Memos::None),
+                Action::silent_payment_send(recipient, 2, Memos::None),
             ],
         )?;
 
@@ -370,8 +350,9 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// Two `Action::send` calls with DIFFERENT SP recipients in one `Spends`
-    /// produce outputs both at k=0 (per-`scan_pk` counters are independent).
+    /// Two `Action::silent_payment_send` calls with DIFFERENT SP recipients in
+    /// one `Spends` produce outputs both at k=0 (per-`scan_pk` counters are
+    /// independent).
     #[test]
     fn multi_output_distinct_scan_pks_independent_counters() -> Result<()> {
         let mut sim = Simulator::new();
@@ -396,18 +377,8 @@ mod silent_payment_tests {
         let _deltas = spends.apply(
             &mut ctx,
             &[
-                Action::send(
-                    Id::Xch,
-                    SendDestination::SilentPayment(Box::new(recipient_a)),
-                    1,
-                    Memos::None,
-                ),
-                Action::send(
-                    Id::Xch,
-                    SendDestination::SilentPayment(Box::new(recipient_b)),
-                    2,
-                    Memos::None,
-                ),
+                Action::silent_payment_send(recipient_a, 1, Memos::None),
+                Action::silent_payment_send(recipient_b, 2, Memos::None),
             ],
         )?;
 
@@ -451,12 +422,7 @@ mod silent_payment_tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient)),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
         )?;
 
         // `pk_map` stays raw for `finish_with_keys`; the SP newtype maps wrap
@@ -508,7 +474,7 @@ mod silent_payment_tests {
         Ok(())
     }
 
-    /// Passing a 32-byte first memo to `Action::send` with an SP destination
+    /// Passing a 32-byte first memo to `Action::silent_payment_send`
     /// errors at apply time with `DriverError::SilentPaymentMemoHintForbidden`.
     /// The action's side-effects on `Spends` (parent reservation, k-counter
     /// increment, `SilentPaymentPending` push) DO NOT happen because the guard
@@ -537,12 +503,7 @@ mod silent_payment_tests {
 
         let result = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient)),
-                1,
-                bad_memos,
-            )],
+            &[Action::silent_payment_send(recipient, 1, bad_memos)],
         );
 
         assert!(
@@ -588,12 +549,7 @@ mod silent_payment_tests {
 
         let result = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient)),
-                1,
-                safe_memos,
-            )],
+            &[Action::silent_payment_send(recipient, 1, safe_memos)],
         );
 
         assert!(
@@ -624,12 +580,7 @@ mod silent_payment_tests {
 
         let result = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient)),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
         );
 
         assert!(result.is_ok(), "Memos::None must pass: {result:?}");
@@ -639,49 +590,10 @@ mod silent_payment_tests {
     }
 
     // ====================================================================
-    // Destination/Id validation acceptance tests.
+    // Finish-time key-registration acceptance test.
     // ====================================================================
 
-    /// An SP destination paired with `Id::Existing(_)` (i.e. NOT `Id::Xch`)
-    /// returns `Err(DriverError::SilentPaymentRequiresXch)` at apply time. SP
-    /// destinations are currently XCH-only.
-    #[test]
-    fn silent_payment_destination_requires_xch_id() -> Result<()> {
-        let mut sim = Simulator::new();
-        let mut ctx = SpendContext::new();
-        let alice = sim.bls(1);
-
-        let recipient = SilentPaymentAddress::new(
-            SecretKey::from_bytes(&[0x42u8; 32])?.public_key(),
-            SecretKey::from_bytes(&[0x43u8; 32])?.public_key(),
-            SilentPaymentNetwork::Mainnet,
-        );
-
-        let mut spends = Spends::new(alice.puzzle_hash);
-        spends.add(alice.coin);
-
-        // Use Id::Existing(arbitrary 32-byte asset id) — NOT Id::Xch.
-        let bogus_asset_id = chia_protocol::Bytes32::from([0x77u8; 32]);
-        let id = Id::Existing(bogus_asset_id);
-
-        let result = spends.apply(
-            &mut ctx,
-            &[Action::send(
-                id,
-                SendDestination::SilentPayment(Box::new(recipient)),
-                1,
-                Memos::None,
-            )],
-        );
-
-        assert!(
-            matches!(result, Err(DriverError::SilentPaymentRequiresXch)),
-            "expected SilentPaymentRequiresXch on Id::Existing + SP destination, got: {result:?}"
-        );
-        Ok(())
-    }
-
-    /// SP destination applied without a prior `with_silent_payment_keys` call
+    /// An SP send applied without a prior `with_silent_payment_keys` call
     /// returns `Err(DriverError::SilentPaymentKeysNotRegistered)` at finish time.
     #[test]
     fn silent_payment_keys_not_registered_errors_at_finish() -> Result<()> {
@@ -700,12 +612,7 @@ mod silent_payment_tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient)),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient, 1, Memos::None)],
         )?;
 
         // DELIBERATELY DO NOT CALL with_silent_payment_keys.

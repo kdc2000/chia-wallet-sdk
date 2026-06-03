@@ -106,7 +106,7 @@ mod tests {
     use indexmap::indexmap;
 
     use super::{SyntheticPublicKey, SyntheticSecretKey};
-    use crate::{Action, DriverError, Id, Relation, SendDestination, SpendContext, Spends};
+    use crate::{Action, DriverError, Relation, SpendContext, Spends};
 
     /// Byte-equality contract: the newtype `from_raw` constructors MUST route
     /// through the exact `chia_puzzle_types::DeriveSynthetic` path
@@ -164,8 +164,8 @@ mod tests {
     /// single-input aggregation (which would silently corrupt the puzzle hash).
     /// Multi-party flows are not currently supported.
     ///
-    /// Uses `Action::send` with `SendDestination::SilentPayment`, registers
-    /// keys via `with_silent_payment_keys`, and finishes via `finish_with_keys`.
+    /// Uses `Action::silent_payment_send`, registers keys via
+    /// `with_silent_payment_keys`, and finishes via `finish_with_keys`.
     #[test]
     fn multi_party_hard_errors() -> Result<()> {
         let mut sim = Simulator::new();
@@ -198,12 +198,7 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient.clone())),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
         )?;
 
         // synthetic_secret_map contains ONLY Alice — Bob is missing.
@@ -220,7 +215,7 @@ mod tests {
         Ok(())
     }
 
-    /// A `Spends` with 2 wallet-controlled XCH inputs + 1 SP `Action::send` MUST
+    /// A `Spends` with 2 wallet-controlled XCH inputs + 1 SP send MUST
     /// be passed `Relation::AssertConcurrent` to `finish_with_keys`. Anything
     /// else (including `Relation::None`) returns
     /// `Err(DriverError::SilentPaymentRequiresInputBinding)`.
@@ -268,12 +263,7 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient.clone())),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
@@ -288,7 +278,7 @@ mod tests {
         Ok(())
     }
 
-    /// A `Spends` with 1 XCH input + 1 SP `Action::send` accepts
+    /// A `Spends` with 1 XCH input + 1 SP send accepts
     /// `Relation::None` — the gate short-circuits because non-ephemeral XCH
     /// count < 2. Single-input SP sends do not require input binding.
     ///
@@ -322,12 +312,7 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient.clone())),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
@@ -387,12 +372,7 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient.clone())),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
@@ -445,12 +425,7 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient.clone())),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
@@ -504,12 +479,7 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(recipient.clone())),
-                1,
-                Memos::None,
-            )],
+            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);

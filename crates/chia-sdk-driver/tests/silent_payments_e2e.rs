@@ -24,7 +24,7 @@ use chia_puzzle_types::{DeriveSynthetic, Memos};
 use chia_sdk_driver::silent_payments::{
     K_MAX_DEFAULT, SyntheticPublicKey, SyntheticSecretKey, scan_from_tweaks,
 };
-use chia_sdk_driver::{Action, Id, Relation, SendDestination, SpendContext, Spends, StandardLayer};
+use chia_sdk_driver::{Action, Relation, SpendContext, Spends, StandardLayer};
 use chia_sdk_test::silent_payments::tweak_data_from_simulator_block;
 use chia_sdk_test::{BlsPairWithCoin, Simulator};
 use chia_sdk_types::Conditions;
@@ -66,14 +66,13 @@ fn test_simulator_e2e_unlabeled() -> Result<()> {
     let recipient_address = recipient.unlabeled_address(SilentPaymentNetwork::Testnet);
     let height_before = sim.height();
 
-    // Build the SP send via the unified Action::send + SendDestination path.
+    // Build the SP send via Action::silent_payment_send.
     let mut spends = Spends::new(sender.puzzle_hash);
     spends.add(sender.coin);
     let deltas = spends.apply(
         &mut ctx,
-        &[Action::send(
-            Id::Xch,
-            SendDestination::SilentPayment(Box::new(recipient_address)),
+        &[Action::silent_payment_send(
+            recipient_address,
             100,
             Memos::None,
         )],
@@ -182,9 +181,8 @@ fn test_simulator_e2e_multi_input() -> Result<()> {
 
     let deltas = spends.apply(
         &mut ctx,
-        &[Action::send(
-            Id::Xch,
-            SendDestination::SilentPayment(Box::new(recipient_address)),
+        &[Action::silent_payment_send(
+            recipient_address,
             1000,
             Memos::None,
         )],
@@ -274,9 +272,8 @@ fn test_simulator_e2e_labeled() -> Result<()> {
     spends.add(sender.coin);
     let deltas = spends.apply(
         &mut ctx,
-        &[Action::send(
-            Id::Xch,
-            SendDestination::SilentPayment(Box::new(recipient_address)),
+        &[Action::silent_payment_send(
+            recipient_address,
             200,
             Memos::None,
         )],
@@ -369,9 +366,8 @@ fn test_simulator_e2e_m0_self_change() -> Result<()> {
     spends.add(sender.coin);
     let deltas = spends.apply(
         &mut ctx,
-        &[Action::send(
-            Id::Xch,
-            SendDestination::SilentPayment(Box::new(recipient_address)),
+        &[Action::silent_payment_send(
+            recipient_address,
             300,
             Memos::None,
         )],

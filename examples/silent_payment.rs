@@ -44,25 +44,15 @@ fn main() -> Result<()> {
     println!("  labeled(1): {}", labeled_addr.encode()?);
 
     // 2. Send 100 mojos to the unlabeled address and 200 mojos to labeled(m=1)
-    //    in one tx via the unified Action::send + SendDestination surface.
+    //    in one tx via Action::silent_payment_send.
     let height_before = sim.height();
     let mut spends = Spends::new(sender.puzzle_hash);
     spends.add(sender.coin);
     let deltas = spends.apply(
         ctx,
         &[
-            Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(unlabeled_addr)),
-                100,
-                Memos::None,
-            ),
-            Action::send(
-                Id::Xch,
-                SendDestination::SilentPayment(Box::new(labeled_addr)),
-                200,
-                Memos::None,
-            ),
+            Action::silent_payment_send(unlabeled_addr, 100, Memos::None),
+            Action::silent_payment_send(labeled_addr, 200, Memos::None),
         ],
     )?;
     // `pks` stays raw for `finish_with_keys` (used to spend the coin). The SP
@@ -145,12 +135,7 @@ fn main() -> Result<()> {
     let multi_addr = recipient.unlabeled_address(SilentPaymentNetwork::Mainnet);
     let deltas_multi = spends_multi.apply(
         ctx,
-        &[Action::send(
-            Id::Xch,
-            SendDestination::SilentPayment(Box::new(multi_addr)),
-            700,
-            Memos::None,
-        )],
+        &[Action::silent_payment_send(multi_addr, 700, Memos::None)],
     )?;
 
     // `multi_pks` stays raw for `finish_with_keys`; the SP key maps wrap the

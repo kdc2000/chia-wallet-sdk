@@ -72,8 +72,7 @@ pub struct DetectedSpCoin {
 /// `CreateCoin`.
 ///
 /// The struct is `pub(crate)` — external callers never construct it directly;
-/// they go through `Action::send` with a [`crate::SendDestination::SilentPayment`]
-/// destination.
+/// they go through [`crate::Action::silent_payment_send`].
 #[derive(Debug, Clone)]
 pub(crate) struct SilentPaymentPending {
     pub scan_pk: PublicKey,
