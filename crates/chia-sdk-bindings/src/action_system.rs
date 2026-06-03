@@ -363,13 +363,26 @@ pub struct Action(sdk::Action);
 impl Action {
     pub fn send(
         id: Id,
-        destination: SendDestination,
+        puzzle_hash: Bytes32,
         amount: u64,
         memos: Option<Program>,
     ) -> Result<Self> {
         Ok(Self(sdk::Action::send(
             id.0,
-            destination.0,
+            puzzle_hash,
+            amount,
+            memos.map_or(Memos::None, |memos| Memos::Some(memos.1)),
+        )))
+    }
+
+    pub fn silent_payment_send(
+        recipient: crate::SilentPaymentAddress,
+        amount: u64,
+        memos: Option<Program>,
+    ) -> Result<Self> {
+        let driver_addr: chia_sdk_utils::silent_payments::SilentPaymentAddress = recipient.into();
+        Ok(Self(sdk::Action::silent_payment_send(
+            driver_addr,
             amount,
             memos.map_or(Memos::None, |memos| Memos::Some(memos.1)),
         )))
@@ -520,74 +533,19 @@ impl Id {
     }
 }
 
-/// Opaque-handle facade for `chia_sdk_driver::SendDestination`. After
-/// Phase 04.2, every `Action::send` call routes through one of these — the
-/// `puzzle_hash` factory wraps a standard puzzle hash; the `silent_payment`
-/// factory wraps a chip-0057 silent-payment address.
-///
-/// Mirrors the `Id` opaque-handle pattern in this file (factory constructors +
-/// `is_*`/`as_*` introspectors) and slots into `bindings/action_system.json`
-/// the same way `Id` does. chip-0057 is unconditional on chia-sdk-bindings
-/// deps (D-01), so the `silent_payment` arm is always available — no `#[cfg]`
-/// gates required.
-///
-/// Privacy warning: the `silent_payment` arm participates in CHIP-0057's
-/// privacy guarantees. Memos attached to the resulting `Action::send` land on
-/// chain in plaintext and are visible to anyone with the recipient's scan
-/// key; a 32-byte first memo is rejected at apply time by the SP arm's
-/// `DriverError::SilentPaymentMemoHintForbidden` guard.
-#[derive(Clone, Debug)]
-pub struct SendDestination(pub(crate) sdk::SendDestination);
-
-impl SendDestination {
-    pub fn puzzle_hash(puzzle_hash: Bytes32) -> Result<Self> {
-        Ok(Self(sdk::SendDestination::PuzzleHash(puzzle_hash)))
-    }
-
-    pub fn silent_payment(address: crate::SilentPaymentAddress) -> Result<Self> {
-        let driver_addr: chia_sdk_utils::silent_payments::SilentPaymentAddress = address.into();
-        Ok(Self(sdk::SendDestination::SilentPayment(Box::new(
-            driver_addr,
-        ))))
-    }
-
-    pub fn is_puzzle_hash(&self) -> Result<bool> {
-        Ok(matches!(self.0, sdk::SendDestination::PuzzleHash(_)))
-    }
-
-    pub fn as_puzzle_hash(&self) -> Result<Option<Bytes32>> {
-        Ok(match self.0 {
-            sdk::SendDestination::PuzzleHash(ph) => Some(ph),
-            sdk::SendDestination::SilentPayment(_) => None,
-        })
-    }
-
-    pub fn is_silent_payment(&self) -> Result<bool> {
-        Ok(matches!(self.0, sdk::SendDestination::SilentPayment(_)))
-    }
-
-    pub fn as_silent_payment(&self) -> Result<Option<crate::SilentPaymentAddress>> {
-        Ok(match &self.0 {
-            sdk::SendDestination::SilentPayment(addr) => Some((**addr).clone().into()),
-            sdk::SendDestination::PuzzleHash(_) => None,
-        })
-    }
-}
-
 /// Cross-binding handle for `chia_sdk_driver::Relation`.
 ///
 /// Multi-input silent-payment sends require `Relation::AssertConcurrent` so
 /// the scanner's Pass 2b SCC detection can group the bundle's coins. Without
 /// it, `Spends::prepare` returns `DriverError::SilentPaymentRequiresInputBinding`
 /// when a bundle carries two or more non-ephemeral XCH inputs alongside any
-/// `SendDestination::SilentPayment` send. Pass `Relation.assert_concurrent()`
+/// `Action::silent_payment_send` send. Pass `Relation.assert_concurrent()`
 /// as the second arg to `Spends.prepare` for any such bundle; single-input
 /// sends accept `Relation.none()` (or omit the arg entirely).
 ///
-/// The opaque-handle shape mirrors `Id` and `SendDestination` in this file:
-/// factory constructors per variant + `is_*` introspectors + `equals` for
-/// value comparison. Cross-target binding dispatch is descriptor-driven via
-/// `bindings/action_system.json`.
+/// The opaque-handle shape mirrors `Id` in this file: factory constructors per
+/// variant + `is_*` introspectors + `equals` for value comparison. Cross-target
+/// binding dispatch is descriptor-driven via `bindings/action_system.json`.
 #[derive(Clone, Debug)]
 pub struct Relation(pub(crate) sdk::Relation);
 

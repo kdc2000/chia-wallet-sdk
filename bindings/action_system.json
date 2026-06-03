@@ -127,7 +127,15 @@
         "type": "factory",
         "args": {
           "id": "Id",
-          "destination": "SendDestination",
+          "puzzle_hash": "Bytes32",
+          "amount": "u64",
+          "memos": "Option<Program>"
+        }
+      },
+      "silent_payment_send": {
+        "type": "factory",
+        "args": {
+          "recipient": "SilentPaymentAddress",
           "amount": "u64",
           "memos": "Option<Program>"
         }
@@ -258,35 +266,6 @@
           "id": "Id"
         },
         "return": "bool"
-      }
-    }
-  },
-  "SendDestination": {
-    "type": "class",
-    "methods": {
-      "puzzle_hash": {
-        "type": "factory",
-        "args": {
-          "puzzle_hash": "Bytes32"
-        }
-      },
-      "silent_payment": {
-        "type": "factory",
-        "args": {
-          "address": "SilentPaymentAddress"
-        }
-      },
-      "is_puzzle_hash": {
-        "return": "bool"
-      },
-      "as_puzzle_hash": {
-        "return": "Option<Bytes32>"
-      },
-      "is_silent_payment": {
-        "return": "bool"
-      },
-      "as_silent_payment": {
-        "return": "Option<SilentPaymentAddress>"
       }
     }
   },
