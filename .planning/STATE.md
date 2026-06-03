@@ -235,6 +235,7 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 | 260601-e6z | CHIP-0057 SP code-review cleanup (strip planning residue from docs, trim DriverError messages, relocate SilentPaymentPending, multi-input e2e, wire drift-check CI gate) | 2026-06-01 | ed718a19 | Verified | [260601-e6z-chip-0057-sp-code-review-cleanup-strip-p](./quick/260601-e6z-chip-0057-sp-code-review-cleanup-strip-p/) |
 | 260602-ejk | Fix SP block-scanner grouping to CHIP additive ScanBlock model (Pass-1 singletons for all spends + Pass-2b SCC over all removals; keep 2a) — fixes mixed-PH + shared-PH-single-input undetectable-coin bugs; + findings doc for SP team | 2026-06-02 | 8e17b1f8 | Verified | [260602-ejk-fix-sp-block-scanner-grouping-to-chip-ad](./quick/260602-ejk-fix-sp-block-scanner-grouping-to-chip-ad/) |
 | 260602-mhw | Drop Pass 2a (same-PH bucketing) from SP block scanner to match simplified CHIP (Pass 1 + Pass 2 SCC only, after SP team adopted the proposal in chip commit 590d7e3) — receiver-only, recomputed oracle counts downward | 2026-06-02 | 4d384715 | Verified | [260602-mhw-drop-pass-2a-same-ph-bucketing-from-sp-b](./quick/260602-mhw-drop-pass-2a-same-ph-bucketing-from-sp-b/) |
+| fast | Reframe SP scanner grouping findings doc (ISSUE-sp-block-scanner-grouping-conformance.md) to record drop-2a as adopted (CHIP 590d7e3) + SDK aligned (260602-mhw) — doc-only, no longer an open ask | 2026-06-03 | 024d042c | Done | — |
 
 ## Session Continuity
 
