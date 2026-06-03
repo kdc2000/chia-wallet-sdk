@@ -271,6 +271,16 @@ Plans:
 - [x] 09-05-PLAN.md — BRIDGE-05: bind SilentPayments.tweakDataFromBlockSpends as static method on namespace + descriptor (Wave 2)
 - [x] 09-06-PLAN.md — BRIDGE-06: Simulator block_spends/block_outputs facade + 3 cross-binding multi-input tests + example multi-input section (Wave 2)
 
+### Phase 09.3: non-breaking SP send: restore Action::send contract, make SP send additive (revert ACTION-API-01 unification) (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 9
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 09.3 to break down)
+
 ### Phase 09.2: Harden SP sender keys: synthetic-key runtime guard + SyntheticKey newtype + raw-key bindings (INSERTED)
 
 **Goal:** Close the silent-fund-loss footgun reported in `ISSUE-silent-payment-synthetic-key-guard.md` (2026-06-01, hit by a downstream BIP-352 port via the Python bindings): `Spends::with_silent_payment_keys` requires *synthetic* sender keys but enforces it nowhere (neither type nor runtime). Passing raw wallet keys compiles, signs, broadcasts, and confirms — but the recipient's one-time puzzle hash is derived from the raw scalar, so the coin is undetectable and unspendable by any CHIP-0057 scanner. The fix is a layered defense, verified true in the live code (see issue): (1) a **runtime guard** (universal, covers all bindings + the newtype escape hatch), (2) a **`SyntheticSecretKey`/`SyntheticPublicKey` newtype** (compile-time prevention for Rust callers; resolves the long-deferred Q2), and (3) **raw-key-accepting binding methods on all three targets** (napi/pyo3/wasm) that synthesize internally with the runtime guard as backstop.
