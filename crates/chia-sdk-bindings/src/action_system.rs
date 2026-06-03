@@ -361,12 +361,7 @@ impl PendingSpend {
 pub struct Action(sdk::Action);
 
 impl Action {
-    pub fn send(
-        id: Id,
-        puzzle_hash: Bytes32,
-        amount: u64,
-        memos: Option<Program>,
-    ) -> Result<Self> {
+    pub fn send(id: Id, puzzle_hash: Bytes32, amount: u64, memos: Option<Program>) -> Result<Self> {
         Ok(Self(sdk::Action::send(
             id.0,
             puzzle_hash,

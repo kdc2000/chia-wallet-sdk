@@ -5,14 +5,14 @@ use chia_puzzle_types::{
 };
 use hex_literal::hex;
 
+#[cfg(feature = "chip-0057")]
+use crate::SilentPaymentSendAction;
 use crate::{
     CreateDidAction, Delta, Deltas, DriverError, FeeAction, HashedPtr, Id, IssueCatAction,
     MeltSingletonAction, MintNftAction, MintOptionAction, OptionType, RunTailAction, SendAction,
     SettleAction, Spend, SpendContext, Spends, TailIssuance, TransferNftById, UpdateDidAction,
     UpdateNftAction,
 };
-#[cfg(feature = "chip-0057")]
-use crate::SilentPaymentSendAction;
 
 pub const BURN_PUZZLE_HASH: Bytes32 = Bytes32::new(hex!(
     "000000000000000000000000000000000000000000000000000000000000dead"

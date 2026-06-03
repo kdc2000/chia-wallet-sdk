@@ -198,7 +198,11 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
+            &[Action::silent_payment_send(
+                recipient.clone(),
+                1,
+                Memos::None,
+            )],
         )?;
 
         // synthetic_secret_map contains ONLY Alice — Bob is missing.
@@ -263,7 +267,11 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
+            &[Action::silent_payment_send(
+                recipient.clone(),
+                1,
+                Memos::None,
+            )],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
@@ -312,7 +320,11 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
+            &[Action::silent_payment_send(
+                recipient.clone(),
+                1,
+                Memos::None,
+            )],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
@@ -372,7 +384,11 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
+            &[Action::silent_payment_send(
+                recipient.clone(),
+                1,
+                Memos::None,
+            )],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
@@ -425,7 +441,11 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
+            &[Action::silent_payment_send(
+                recipient.clone(),
+                1,
+                Memos::None,
+            )],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
@@ -479,7 +499,11 @@ mod tests {
 
         let deltas = spends.apply(
             &mut ctx,
-            &[Action::silent_payment_send(recipient.clone(), 1, Memos::None)],
+            &[Action::silent_payment_send(
+                recipient.clone(),
+                1,
+                Memos::None,
+            )],
         )?;
 
         spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
