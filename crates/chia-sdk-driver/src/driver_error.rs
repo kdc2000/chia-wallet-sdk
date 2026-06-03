@@ -170,12 +170,6 @@ pub enum DriverError {
     #[error("silent payment keys not registered")]
     SilentPaymentKeysNotRegistered,
 
-    /// The silent-payment destination was paired with a non-XCH `Id`. CAT, NFT,
-    /// and option silent payments are deferred to a later version.
-    #[cfg(feature = "chip-0057")]
-    #[error("silent payment requires xch")]
-    SilentPaymentRequiresXch,
-
     /// A registered silent-payment key is not the synthetic key for its coin.
     /// `StandardArgs::curry_tree_hash(registered_pk)` must equal the coin's
     /// `p2_puzzle_hash` and `registered_sk.public_key()` must equal

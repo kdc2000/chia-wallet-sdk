@@ -1,25 +1,24 @@
-use chia_protocol::Coin;
+use chia_protocol::{Bytes32, Coin};
 use chia_puzzle_types::Memos;
 use chia_sdk_types::conditions::CreateCoin;
 
 use crate::{
-    Asset, Deltas, DriverError, Id, Output, SendDestination, SingletonDestination, SpendAction,
-    SpendContext, Spends,
+    Asset, Deltas, DriverError, Id, Output, SingletonDestination, SpendAction, SpendContext, Spends,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct SendAction {
     pub id: Id,
-    pub destination: SendDestination,
+    pub puzzle_hash: Bytes32,
     pub amount: u64,
     pub memos: Memos,
 }
 
 impl SendAction {
-    pub fn new(id: Id, destination: SendDestination, amount: u64, memos: Memos) -> Self {
+    pub fn new(id: Id, puzzle_hash: Bytes32, amount: u64, memos: Memos) -> Self {
         Self {
             id,
-            destination,
+            puzzle_hash,
             amount,
             memos,
         }
@@ -38,20 +37,7 @@ impl SpendAction for SendAction {
         spends: &mut Spends,
         _index: usize,
     ) -> Result<(), DriverError> {
-        let puzzle_hash = match &self.destination {
-            SendDestination::PuzzleHash(ph) => *ph,
-            #[cfg(feature = "chip-0057")]
-            SendDestination::SilentPayment(addr) => {
-                return crate::actions::silent_payment_send::handle_silent_payment_send(
-                    ctx,
-                    spends,
-                    &self.id,
-                    addr,
-                    self.amount,
-                    self.memos,
-                );
-            }
-        };
+        let puzzle_hash = self.puzzle_hash;
 
         let output = Output::new(puzzle_hash, self.amount);
         let create_coin = CreateCoin::new(puzzle_hash, self.amount, self.memos);

@@ -8,9 +8,11 @@ use hex_literal::hex;
 use crate::{
     CreateDidAction, Delta, Deltas, DriverError, FeeAction, HashedPtr, Id, IssueCatAction,
     MeltSingletonAction, MintNftAction, MintOptionAction, OptionType, RunTailAction, SendAction,
-    SendDestination, SettleAction, Spend, SpendContext, Spends, TailIssuance, TransferNftById,
-    UpdateDidAction, UpdateNftAction,
+    SettleAction, Spend, SpendContext, Spends, TailIssuance, TransferNftById, UpdateDidAction,
+    UpdateNftAction,
 };
+#[cfg(feature = "chip-0057")]
+use crate::SilentPaymentSendAction;
 
 pub const BURN_PUZZLE_HASH: Bytes32 = Bytes32::new(hex!(
     "000000000000000000000000000000000000000000000000000000000000dead"
@@ -29,28 +31,14 @@ pub enum Action {
     MintOption(MintOptionAction),
     MeltSingleton(MeltSingletonAction),
     Fee(FeeAction),
+    #[cfg(feature = "chip-0057")]
+    SilentPaymentSend(SilentPaymentSendAction),
 }
 
 impl Action {
-    /// Construct a unified send action targeting either a literal puzzle hash
-    /// ([`SendDestination::PuzzleHash`]) or a silent-payment address
-    /// ([`SendDestination::SilentPayment`], chip-0057-gated).
-    ///
-    /// `destination: impl Into<SendDestination>` accepts `Bytes32` literals via
-    /// the always-on `From<Bytes32> for SendDestination` impl, so existing
-    /// `Action::send(id, ph, amount, memos)` call sites compile unchanged.
-    ///
-    /// Privacy warning: `memos` is on-chain plaintext, visible to anyone holding
-    /// the recipient's scan key in the silent-payment case. A 32-byte first
-    /// memo is rejected at apply time by the chip-0057 SP arm of
-    /// `SendAction::spend` (`DriverError::SilentPaymentMemoHintForbidden`).
-    pub fn send(
-        id: Id,
-        destination: impl Into<SendDestination>,
-        amount: u64,
-        memos: Memos,
-    ) -> Self {
-        Self::Send(SendAction::new(id, destination.into(), amount, memos))
+    /// Construct a send action targeting a literal puzzle hash.
+    pub fn send(id: Id, puzzle_hash: Bytes32, amount: u64, memos: Memos) -> Self {
+        Self::Send(SendAction::new(id, puzzle_hash, amount, memos))
     }
 
     pub fn settle(id: Id, notarized_payment: NotarizedPayment) -> Self {
@@ -76,12 +64,7 @@ impl Action {
     }
 
     pub fn burn(id: Id, amount: u64, memos: Memos) -> Self {
-        Self::Send(SendAction::new(
-            id,
-            SendDestination::PuzzleHash(BURN_PUZZLE_HASH),
-            amount,
-            memos,
-        ))
+        Self::Send(SendAction::new(id, BURN_PUZZLE_HASH, amount, memos))
     }
 
     pub fn create_did(
@@ -244,6 +227,15 @@ impl Action {
     pub fn fee(amount: u64) -> Self {
         Self::Fee(FeeAction::new(amount))
     }
+
+    #[cfg(feature = "chip-0057")]
+    pub fn silent_payment_send(
+        recipient: chia_sdk_utils::silent_payments::SilentPaymentAddress,
+        amount: u64,
+        memos: Memos,
+    ) -> Self {
+        Self::SilentPaymentSend(SilentPaymentSendAction::new(recipient, amount, memos))
+    }
 }
 
 pub trait SpendAction {
@@ -271,6 +263,8 @@ impl SpendAction for Action {
             Action::MintOption(action) => action.calculate_delta(deltas, index),
             Action::MeltSingleton(action) => action.calculate_delta(deltas, index),
             Action::Fee(action) => action.calculate_delta(deltas, index),
+            #[cfg(feature = "chip-0057")]
+            Action::SilentPaymentSend(action) => action.calculate_delta(deltas, index),
         }
     }
 
@@ -292,6 +286,8 @@ impl SpendAction for Action {
             Action::MintOption(action) => action.spend(ctx, spends, index),
             Action::MeltSingleton(action) => action.spend(ctx, spends, index),
             Action::Fee(action) => action.spend(ctx, spends, index),
+            #[cfg(feature = "chip-0057")]
+            Action::SilentPaymentSend(action) => action.spend(ctx, spends, index),
         }
     }
 }

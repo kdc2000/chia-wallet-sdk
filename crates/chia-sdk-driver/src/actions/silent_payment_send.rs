@@ -2,35 +2,48 @@ use chia_puzzle_types::Memos;
 use chia_sdk_utils::silent_payments::SilentPaymentAddress;
 
 use crate::{
-    Asset, BURN_PUZZLE_HASH, DriverError, Id, Output, SpendContext, Spends,
+    Asset, BURN_PUZZLE_HASH, Deltas, DriverError, Id, Output, SpendAction, SpendContext, Spends,
     silent_payments::SilentPaymentPending,
 };
 
-/// Apply-time chip-0057 silent-payment send. Fires guards in cheapest-first
-/// order (`DriverError::SilentPaymentRequiresXch` before memo-hint guard
-/// before parent reservation), then reserves an XCH parent, increments the
-/// per-`scan_pk` k counter on `Spends`, and pushes a `SilentPaymentPending`
-/// entry. ECDH math is deferred to the chip-0057 SP branch of
-/// [`Spends::finish_with_keys`].
+/// CHIP-0057 silent-payment send action (chip-0057-gated). Structurally
+/// XCH-only: there is no `Id` field, so there is no non-XCH footgun.
 ///
-/// Privacy warning: the `memos` argument is published on-chain and visible
-/// to anyone holding the recipient's scan key. Do not place sensitive data
-/// in memos; the memo-hint guard inside this function rejects 32-byte
-/// first memos that would also leak the one-time puzzle hash to all
-/// indexers.
-pub(crate) fn handle_silent_payment_send(
-    ctx: &mut SpendContext,
-    spends: &mut Spends,
-    id: &Id,
-    recipient: &SilentPaymentAddress,
-    amount: u64,
-    memos: Memos,
-) -> Result<(), DriverError> {
-    if !matches!(id, Id::Xch) {
-        return Err(DriverError::SilentPaymentRequiresXch);
+/// Privacy warning: `memos` is published on-chain in plaintext and visible
+/// to anyone holding the recipient's scan key. A 32-byte first memo is
+/// rejected at apply time (`DriverError::SilentPaymentMemoHintForbidden`).
+#[derive(Debug, Clone)]
+pub struct SilentPaymentSendAction {
+    pub recipient: SilentPaymentAddress,
+    pub amount: u64,
+    pub memos: Memos,
+}
+
+impl SilentPaymentSendAction {
+    pub fn new(recipient: SilentPaymentAddress, amount: u64, memos: Memos) -> Self {
+        Self {
+            recipient,
+            amount,
+            memos,
+        }
     }
-    memo_hint_guard(ctx, memos)?;
-    spend_silent_payment(ctx, spends, recipient, amount, memos)
+}
+
+impl SpendAction for SilentPaymentSendAction {
+    fn calculate_delta(&self, deltas: &mut Deltas, _index: usize) {
+        deltas.update(Id::Xch).output += self.amount;
+        deltas.set_needed(Id::Xch);
+    }
+
+    fn spend(
+        &self,
+        ctx: &mut SpendContext,
+        spends: &mut Spends,
+        _index: usize,
+    ) -> Result<(), DriverError> {
+        memo_hint_guard(ctx, self.memos)?;
+        spend_silent_payment(ctx, spends, &self.recipient, self.amount, self.memos)
+    }
 }
 
 /// Apply-time half of a chip-0057 silent-payment send: reserves an XCH parent,
