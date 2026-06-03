@@ -24,10 +24,8 @@ import test from "ava";
 import {
   Action,
   Clvm,
-  Id,
   LabelRegistry,
   Mnemonic,
-  SendDestination,
   SilentPaymentKeys,
   SilentPaymentNetwork,
   SilentPaymentRegisteredKey,
@@ -66,18 +64,13 @@ test("BIND-03 napi: raw-key SP send + scan-from-tweaks E2E", (t) => {
   const senderPh = standardPuzzleHash(senderSyntheticPk);
   const senderCoin = sim.newCoin(senderPh, 1_000n);
 
-  // Build the SP send via the unified Action.send + SendDestination +
-  // withSilentPaymentKeys path (Phase 4.2 + Phase 5).
+  // Build the SP send via the dedicated Action.silentPaymentSend +
+  // withSilentPaymentKeys path (Phase 09.3).
   const spends = new Spends(clvm, senderPh);
   spends.addXch(senderCoin);
 
   const actions = [
-    Action.send(
-      Id.xch(),
-      SendDestination.silentPayment(recipientAddress),
-      100n,
-      undefined,
-    ),
+    Action.silentPaymentSend(recipientAddress, 100n, undefined),
   ];
 
   // Register RAW SP keys BEFORE apply (with_silent_payment_keys must precede
@@ -202,12 +195,7 @@ test("GUARD-03 napi: raw key against a non-synthetic coin surfaces SilentPayment
   spends.addXch(sender.coin);
 
   const actions = [
-    Action.send(
-      Id.xch(),
-      SendDestination.silentPayment(recipientAddress),
-      100n,
-      undefined,
-    ),
+    Action.silentPaymentSend(recipientAddress, 100n, undefined),
   ];
 
   spends.withSilentPaymentKeys(

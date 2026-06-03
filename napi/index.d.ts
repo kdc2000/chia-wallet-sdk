@@ -2,7 +2,8 @@
 /* eslint-disable */
 export declare class Action {
   clone(): Action
-  static send(id: Id, destination: SendDestination, amount: bigint, memos?: Program | undefined | null): Action
+  static send(id: Id, puzzleHash: Uint8Array, amount: bigint, memos?: Program | undefined | null): Action
+  static silentPaymentSend(recipient: SilentPaymentAddress, amount: bigint, memos?: Program | undefined | null): Action
   static settle(id: Id, notarizedPayment: NotarizedPayment): Action
   static issueCat(tailSpend: Spend, hiddenPuzzleHash: Uint8Array | undefined | null, amount: bigint): Action
   static singleIssueCat(hiddenPuzzleHash: Uint8Array | undefined | null, amount: bigint): Action
@@ -2727,16 +2728,6 @@ export declare class SecretKey {
   deriveHardenedPath(path: Array<number>): SecretKey
   deriveSynthetic(): SecretKey
   deriveSyntheticHidden(hiddenPuzzleHash: Uint8Array): SecretKey
-}
-
-export declare class SendDestination {
-  clone(): SendDestination
-  static puzzleHash(puzzleHash: Uint8Array): SendDestination
-  static silentPayment(address: SilentPaymentAddress): SendDestination
-  isPuzzleHash(): boolean
-  asPuzzleHash(): Buffer | null
-  isSilentPayment(): boolean
-  asSilentPayment(): SilentPaymentAddress | null
 }
 
 export declare class SendMessage {

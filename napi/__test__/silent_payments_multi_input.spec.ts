@@ -13,11 +13,9 @@ import test from "ava";
 import {
   Action,
   Clvm,
-  Id,
   LabelRegistry,
   Mnemonic,
   Relation,
-  SendDestination,
   SilentPaymentKeys,
   SilentPaymentNetwork,
   SilentPaymentRegisteredKey,
@@ -75,12 +73,7 @@ test("BRIDGE-06 napi: multi-input SP send -> tweak_data_from_block_spends -> sca
   spends.addXch(sender2Coin);
 
   const actions = [
-    Action.send(
-      Id.xch(),
-      SendDestination.silentPayment(recipientAddress),
-      700n,
-      undefined,
-    ),
+    Action.silentPaymentSend(recipientAddress, 700n, undefined),
   ];
 
   // Register RAW keys — the facade synthesizes derive_synthetic(...) internally.

@@ -28,10 +28,8 @@ import test from "ava";
 import {
   Action,
   Clvm,
-  Id,
   LabelRegistry,
   Mnemonic,
-  SendDestination,
   setPanicHook,
   SilentPaymentKeys,
   SilentPaymentNetwork,
@@ -71,18 +69,13 @@ test("BIND-03 wasm: raw-key SP send + scan-from-tweaks E2E", (t) => {
   const senderCoin = sim.newCoin(senderPh, 1_000n);
   const heightBefore = sim.height();
 
-  // Build the SP send via the unified Action.send + SendDestination +
+  // Build the SP send via the dedicated Action.silentPaymentSend +
   // withSilentPaymentKeys path.
   const spends = new Spends(clvm, senderPh);
   spends.addXch(senderCoin);
 
   const actions = [
-    Action.send(
-      Id.xch(),
-      SendDestination.silentPayment(recipientAddress),
-      100n,
-      undefined,
-    ),
+    Action.silentPaymentSend(recipientAddress, 100n, undefined),
   ];
 
   // Register RAW SP keys (Phase 5 BIND-02 wrapper-class form — bindy doesn't
@@ -206,12 +199,7 @@ test("GUARD-03 wasm: raw key against a non-synthetic coin surfaces SilentPayment
   spends.addXch(sender.coin);
 
   const actions = [
-    Action.send(
-      Id.xch(),
-      SendDestination.silentPayment(recipientAddress),
-      100n,
-      undefined,
-    ),
+    Action.silentPaymentSend(recipientAddress, 100n, undefined),
   ];
 
   spends.withSilentPaymentKeys(

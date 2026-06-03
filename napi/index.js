@@ -574,7 +574,6 @@ module.exports.RpcClient = nativeBinding.RpcClient
 module.exports.RunCatTail = nativeBinding.RunCatTail
 module.exports.ScalarField = nativeBinding.ScalarField
 module.exports.SecretKey = nativeBinding.SecretKey
-module.exports.SendDestination = nativeBinding.SendDestination
 module.exports.SendMessage = nativeBinding.SendMessage
 module.exports.SettlementNftSpendResult = nativeBinding.SettlementNftSpendResult
 module.exports.Signature = nativeBinding.Signature

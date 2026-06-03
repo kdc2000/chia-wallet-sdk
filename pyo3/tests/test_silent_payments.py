@@ -27,10 +27,8 @@ import pytest
 from chia_wallet_sdk import (
     Action,
     Clvm,
-    Id,
     LabelRegistry,
     Mnemonic,
-    SendDestination,
     SilentPaymentKeys,
     SilentPaymentNetwork,
     SilentPaymentRegisteredKey,
@@ -70,18 +68,13 @@ def test_unlabeled_e2e():
     sender_coin = sim.new_coin(sender_ph, 1_000)
     height_before = sim.height()
 
-    # Build the SP send via the unified Action.send + SendDestination +
+    # Build the SP send via the dedicated Action.silent_payment_send +
     # with_silent_payment_keys path.
     spends = Spends(clvm, sender_ph)
     spends.add_xch(sender_coin)
 
     actions = [
-        Action.send(
-            Id.xch(),
-            SendDestination.silent_payment(recipient_address),
-            100,
-            None,
-        )
+        Action.silent_payment_send(recipient_address, 100, None)
     ]
 
     # Register RAW SP keys (Phase 5 BIND-02 wrapper-class form — bindy doesn't
@@ -218,12 +211,7 @@ def test_multi_input_e2e():
     spends.add_xch(sender2_coin)
 
     actions = [
-        Action.send(
-            Id.xch(),
-            SendDestination.silent_payment(recipient_address),
-            700,
-            None,
-        )
+        Action.silent_payment_send(recipient_address, 700, None)
     ]
 
     # Register RAW keys — the facade synthesizes derive_synthetic(...) internally.
@@ -311,12 +299,7 @@ def test_raw_key_not_synthetic_errors():
     spends.add_xch(sender.coin)
 
     actions = [
-        Action.send(
-            Id.xch(),
-            SendDestination.silent_payment(recipient_address),
-            100,
-            None,
-        )
+        Action.silent_payment_send(recipient_address, 100, None)
     ]
 
     spends.with_silent_payment_keys(

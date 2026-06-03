@@ -13,7 +13,6 @@ import {
   NftMetadata,
   Outputs,
   selectCoins,
-  SendDestination,
   Simulator,
   Spend,
   Spends,
@@ -171,30 +170,30 @@ test("send xch", (t) => {
 
   // Send 250 mojos to Bob
   alice.spend(sim, clvm, [
-    Action.send(Id.xch(), SendDestination.puzzleHash(bob.puzzleHash), 250n),
+    Action.send(Id.xch(), bob.puzzleHash, 250n),
   ]);
 
   // Make sure that Bob can spend his new coin
   bob.spend(sim, clvm, [
-    Action.send(Id.xch(), SendDestination.puzzleHash(alice.puzzleHash), 250n),
+    Action.send(Id.xch(), alice.puzzleHash, 250n),
   ]);
 
   // And Alice got her change back automatically
   for (let i = 0; i < 10; i++) {
     alice.spend(sim, clvm, [
-      Action.send(Id.xch(), SendDestination.puzzleHash(alice.puzzleHash), 750n),
+      Action.send(Id.xch(), alice.puzzleHash, 750n),
     ]);
   }
 
   // Alice has a total of 1000 mojos since Bob sent the 250 mojos back
   alice.spend(sim, clvm, [
-    Action.send(Id.xch(), SendDestination.puzzleHash(alice.puzzleHash), 1000n),
+    Action.send(Id.xch(), alice.puzzleHash, 1000n),
   ]);
 
   // However, Alice cannot spend money she doesn't have
   t.throws(() => {
     alice.spend(sim, clvm, [
-      Action.send(Id.xch(), SendDestination.puzzleHash(alice.puzzleHash), 1001n),
+      Action.send(Id.xch(), alice.puzzleHash, 1001n),
     ]);
   });
 });
@@ -214,30 +213,30 @@ test("issue and send a cat", (t) => {
 
   // Send 250 mojos to Bob
   alice.spend(sim, clvm, [
-    Action.send(id, SendDestination.puzzleHash(bob.puzzleHash), 250n),
+    Action.send(id, bob.puzzleHash, 250n),
   ]);
 
   // Make sure that Bob can spend his new coin
   bob.spend(sim, clvm, [
-    Action.send(id, SendDestination.puzzleHash(alice.puzzleHash), 250n),
+    Action.send(id, alice.puzzleHash, 250n),
   ]);
 
   // And Alice got her change back automatically
   for (let i = 0; i < 10; i++) {
     alice.spend(sim, clvm, [
-      Action.send(id, SendDestination.puzzleHash(alice.puzzleHash), 750n),
+      Action.send(id, alice.puzzleHash, 750n),
     ]);
   }
 
   // Alice has a total of 1000 mojos since Bob sent the 250 mojos back
   alice.spend(sim, clvm, [
-    Action.send(id, SendDestination.puzzleHash(alice.puzzleHash), 1000n),
+    Action.send(id, alice.puzzleHash, 1000n),
   ]);
 
   // However, Alice cannot spend money she doesn't have
   t.throws(() => {
     alice.spend(sim, clvm, [
-      Action.send(id, SendDestination.puzzleHash(alice.puzzleHash), 1001n),
+      Action.send(id, alice.puzzleHash, 1001n),
     ]);
   });
 });
