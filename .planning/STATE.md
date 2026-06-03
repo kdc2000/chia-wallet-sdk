@@ -237,6 +237,7 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 | 260602-mhw | Drop Pass 2a (same-PH bucketing) from SP block scanner to match simplified CHIP (Pass 1 + Pass 2 SCC only, after SP team adopted the proposal in chip commit 590d7e3) — receiver-only, recomputed oracle counts downward | 2026-06-02 | 4d384715 | Verified | [260602-mhw-drop-pass-2a-same-ph-bucketing-from-sp-b](./quick/260602-mhw-drop-pass-2a-same-ph-bucketing-from-sp-b/) |
 | fast | Reframe SP scanner grouping findings doc (ISSUE-sp-block-scanner-grouping-conformance.md) to record drop-2a as adopted (CHIP 590d7e3) + SDK aligned (260602-mhw) — doc-only, no longer an open ask | 2026-06-03 | 024d042c | Done | — |
 | 260603-c93 | Reword review findings: CHIP-0058 → future-protocol wording + drop v1 SDK-version framing across SP code/docs (prose only, 8 files) | 2026-06-03 | 69de07e3 | Done | [260603-c93-reword-review-findings-chip-0058-future-](./quick/260603-c93-reword-review-findings-chip-0058-future-/) |
+| fast | Fix DOC-STALE: SP binding test headers (napi/pyo3/wasm) cited removed src/silent_payments/e2e.rs; repoint to tests/silent_payments_e2e.rs (test_simulator_e2e_labeled). Doc-only | 2026-06-03 | 8c597fab | Done | — |
 
 ## Session Continuity
 
