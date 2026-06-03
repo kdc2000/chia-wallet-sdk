@@ -27,6 +27,7 @@ mod program;
 mod puzzle;
 mod rpc;
 mod secp;
+mod silent_payments;
 mod simulator;
 mod utils;
 
@@ -48,6 +49,7 @@ pub use program::*;
 pub use puzzle::*;
 pub use rpc::*;
 pub use secp::*;
+pub use silent_payments::*;
 pub use simulator::*;
 pub use utils::*;
 
@@ -82,6 +84,12 @@ pub use chia_sdk_driver::{
     RoundTimeInfo, StreamedAsset, StreamingPuzzleInfo, TransferType, UriKind, VaultInfo,
     VaultTransaction,
 };
+// The underlying chip-0057 `SendDestination` enum is wrapped by the bindy
+// facade `SendDestination` in `action_system.rs` (re-exported via
+// `pub use action_system::*;`). Re-exporting it here under an alias keeps the
+// raw enum reachable for Rust consumers of `chia-sdk-bindings` while avoiding
+// a glob-collision with the facade type.
+pub use chia_sdk_driver::SendDestination as DriverSendDestination;
 pub use chia_sdk_types::{
     conditions::TradePrice,
     puzzles::{

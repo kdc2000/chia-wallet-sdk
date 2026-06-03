@@ -1,24 +1,25 @@
-use chia_protocol::{Bytes32, Coin};
+use chia_protocol::Coin;
 use chia_puzzle_types::Memos;
 use chia_sdk_types::conditions::CreateCoin;
 
 use crate::{
-    Asset, Deltas, DriverError, Id, Output, SingletonDestination, SpendAction, SpendContext, Spends,
+    Asset, Deltas, DriverError, Id, Output, SendDestination, SingletonDestination, SpendAction,
+    SpendContext, Spends,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct SendAction {
     pub id: Id,
-    pub puzzle_hash: Bytes32,
+    pub destination: SendDestination,
     pub amount: u64,
     pub memos: Memos,
 }
 
 impl SendAction {
-    pub fn new(id: Id, puzzle_hash: Bytes32, amount: u64, memos: Memos) -> Self {
+    pub fn new(id: Id, destination: SendDestination, amount: u64, memos: Memos) -> Self {
         Self {
             id,
-            puzzle_hash,
+            destination,
             amount,
             memos,
         }
@@ -37,8 +38,23 @@ impl SpendAction for SendAction {
         spends: &mut Spends,
         _index: usize,
     ) -> Result<(), DriverError> {
-        let output = Output::new(self.puzzle_hash, self.amount);
-        let create_coin = CreateCoin::new(self.puzzle_hash, self.amount, self.memos);
+        let puzzle_hash = match &self.destination {
+            SendDestination::PuzzleHash(ph) => *ph,
+            #[cfg(feature = "chip-0057")]
+            SendDestination::SilentPayment(addr) => {
+                return crate::actions::silent_payment_send::handle_silent_payment_send(
+                    ctx,
+                    spends,
+                    &self.id,
+                    addr,
+                    self.amount,
+                    self.memos,
+                );
+            }
+        };
+
+        let output = Output::new(puzzle_hash, self.amount);
+        let create_coin = CreateCoin::new(puzzle_hash, self.amount, self.memos);
 
         if matches!(self.id, Id::Xch) {
             let source = spends.xch.output_source(ctx, &output)?;
@@ -96,7 +112,7 @@ impl SpendAction for SendAction {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use chia_protocol::Coin;
+    use chia_protocol::{Bytes32, Coin};
     use chia_puzzle_types::standard::StandardArgs;
     use chia_sdk_test::{BlsPair, Simulator};
     use indexmap::indexmap;
