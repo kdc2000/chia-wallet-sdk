@@ -273,13 +273,15 @@ Plans:
 
 ### Phase 09.3: non-breaking SP send: restore Action::send contract, make SP send additive (revert ACTION-API-01 unification) (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 9
-**Plans:** 0 plans
+**Goal:** Restore the pre-Phase-4.2 `Action::send(id, Bytes32, amount, memos)` / `SendAction { puzzle_hash } + Copy` public contract byte-for-byte and make CHIP-0057 silent-payment send a separate, `chip-0057`-gated `Action::SilentPaymentSend` variant + `Action::silent_payment_send` constructor — reverting the 4.2 `SendDestination` unification that source-broke downstream consumers (Sage E0283/E0560). Additive-behind-flag, zero blast radius on the non-gated `send`; the detection oracle (one-time puzzle hash derivation) and GUARD-01/02/03 are preserved exactly.
+**Requirements**: ACTION-API-01 (reframed), SEND-04 (reframed) — no new REQ-IDs; acceptance is CONTEXT.md AC1-AC5.
+**Depends on:** Phase 9 (and 9.2 — builds on the GUARD-hardened SP send path)
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 09.3 to break down)
+- [ ] 09.3-01-PLAN.md — Rust core: restore SendAction/Action::send contract + Copy; relocate SP into a gated SilentPaymentSendAction (variant + 2 dispatch arms + ctor); delete SendDestination + SilentPaymentRequiresXch; migrate driver tests/e2e/example/prelude (Wave 1)
+- [ ] 09.3-02-PLAN.md — Bindings: revert Action.send to puzzle hash + add Action.silentPaymentSend facade/descriptor; delete SendDestination class; rebuild napi/pyo3/wasm; migrate 7 binding test files incl. the non-SP action_system.spec.ts revert (Wave 2)
+- [ ] 09.3-03-PLAN.md — Reframe ACTION-API-01 + SEND-04 in REQUIREMENTS.md; full CI lint matrix (chip-0057 on/off); Sage zero-edit recompile harness (AC3 checkpoint) (Wave 3)
 
 ### Phase 09.2: Harden SP sender keys: synthetic-key runtime guard + SyntheticKey newtype + raw-key bindings (INSERTED)
 
