@@ -4,7 +4,7 @@
 //!
 //! - [`TweakData`] is the scanner's input — pre-computed per-spend-group tweak
 //!   points + candidate output metadata. Constructed by an indexer adapter (a
-//!   CHIP-0058 transport client, the Phase-6 simulator helper, etc.) but
+//!   a future transport protocol, the Phase-6 simulator helper, etc.) but
 //!   carries no transport fields.
 //! - [`OutputMeta`] is the metadata for one candidate coin — the puzzle hash
 //!   the scanner matches against, plus the bookkeeping fields the wallet needs
@@ -27,7 +27,7 @@ use clvmr::NodePtr;
 /// boundaries.
 ///
 /// No transport fields: no `height`, no `block_hash`, no JSON envelope. A
-/// future CHIP-0058 transport client constructs `TweakData` from its wire
+/// future transport client constructs `TweakData` from its wire
 /// messages without breaking this struct's shape.
 #[derive(Clone, Debug)]
 pub struct TweakData {

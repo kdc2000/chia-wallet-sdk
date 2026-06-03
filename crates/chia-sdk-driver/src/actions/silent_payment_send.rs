@@ -631,7 +631,7 @@ mod silent_payment_tests {
 
     /// An SP destination paired with `Id::Existing(_)` (i.e. NOT `Id::Xch`)
     /// returns `Err(DriverError::SilentPaymentRequiresXch)` at apply time. SP
-    /// destinations are XCH-only in v1.
+    /// destinations are currently XCH-only.
     #[test]
     fn silent_payment_destination_requires_xch_id() -> Result<()> {
         let mut sim = Simulator::new();

@@ -118,7 +118,7 @@ Wallet-facing support for [CHIP-0057 silent payments](https://github.com/Chia-Ne
 
 Adapted from [BIP-352](https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki). Reference implementation lives at `~/silent-payments` (Python prototype + an `sp-common` / `sp-service` / `sp-client` Rust workspace) — only `sp-common`'s wallet-side primitives map into the SDK; `sp-service` and `sp-client` are external infrastructure that consume the SDK, not part of it.
 
-**Core Value:** A wallet developer can derive a silent-payment address from a mnemonic, display it, send XCH to a silent-payment address, and (once a CHIP-0058 tweak-data source exists) detect incoming silent payments — without re-implementing any cryptography and through the same idiomatic Layer/Primitive/Spends/bindings surface the SDK already uses for everything else.
+**Core Value:** A wallet developer can derive a silent-payment address from a mnemonic, display it, send XCH to a silent-payment address, and (once a future tweak-data protocol exists) detect incoming silent payments — without re-implementing any cryptography and through the same idiomatic Layer/Primitive/Spends/bindings surface the SDK already uses for everything else.
 
 ### Constraints
 
@@ -127,7 +127,7 @@ Adapted from [BIP-352](https://github.com/bitcoin/bips/blob/master/bip-0352.medi
 - **CI gates**: Workspace-level clippy (`deny clippy::all`, `warn pedantic`, `warn cargo`), `cargo machete` (unused-deps), `cargo fmt --check`, and per-crate builds with and without `--all-features`. New `chip-0057`-gated code must compile in every CI permutation.
 - **Bindings format**: Wire-protocol surfaces (`TweakData`, `DetectedSpCoin`) must be expressible in `bindings/silent_payments.json` so napi/pyo3/wasm get them. Bytes32 + lists of (PublicKey, OutputMeta) is the granularity to design around.
 - **Feature flag**: The `chip-0057` workspace feature is the only umbrella for this work. No feature within a feature, no name-aliases.
-- **Forward compatibility with CHIP-0058**: The receive-side primitive accepts a transport-agnostic `TweakData` input. Any CHIP-0058 transport client built later must be able to construct `TweakData` from its wire messages without breaking the existing SDK API.
+- **Forward compatibility with a future transport protocol**: The receive-side primitive accepts a transport-agnostic `TweakData` input. Any future transport client built later must be able to construct `TweakData` from its wire messages without breaking the existing SDK API.
 <!-- GSD:project-end -->
 
 <!-- GSD:stack-start source:codebase/STACK.md -->

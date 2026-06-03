@@ -1,8 +1,8 @@
 //! Silent payments (CHIP-0057) — wallet-side receive primitive and protocol helpers.
 //!
 //! This module implements the transport-agnostic scanner described in CHIP-0057.
-//! A wallet that receives [`TweakData`] from any source (a CHIP-0058 transport
-//! client, the `chia_sdk_test` simulator helper, or a handcrafted fixture) can
+//! A wallet that receives [`TweakData`] from any source (a future transport
+//! protocol, the `chia_sdk_test` simulator helper, or a handcrafted fixture) can
 //! detect payments addressed to its scan/spend key pair via [`scan_from_tweaks`].
 //!
 //! The protocol primitives — [`compute_shared_secret_from_tweak`],
@@ -11,12 +11,12 @@
 //! caller that needs to compute shared secrets manually can reuse them without
 //! round-tripping through the scanner.
 //!
-//! Forward compatibility with CHIP-0058: [`TweakData`] has no transport fields
+//! Forward compatibility with a future transport protocol: [`TweakData`] has no transport fields
 //! (no `height`, no `block_hash`, no JSON envelope). A future transport client
 //! constructs `TweakData` from its wire messages without breaking this module's
 //! shape.
 //!
-//! # Multi-input send constraint (v1)
+//! # Multi-input send constraint
 //!
 //! A multi-input silent-payment bundle must consist of distinct-puzzle-hash,
 //! non-ephemeral XCH inputs only — no CAT, DID, NFT, or intermediate
@@ -28,7 +28,7 @@
 //! `AssertConcurrent` cycle must span precisely the XCH inputs the sender
 //! aggregated. If the cycle includes any other coin, the receiver's `input_hash`
 //! diverges from the sender's and the output coin is undetectable by the
-//! recipient. v1 ships this documented constraint; sending to a silent-payment
+//! recipient. this implementation enforces this documented constraint; sending to a silent-payment
 //! destination across mixed asset types or with extra cycle members is out of
 //! scope.
 //!

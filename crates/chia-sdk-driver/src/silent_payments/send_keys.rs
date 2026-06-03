@@ -162,7 +162,7 @@ mod tests {
     /// inputs but only 1 in the registered SK map returns
     /// `Err(DriverError::SilentPaymentMultiPartyUnsupported)` — NOT a silent
     /// single-input aggregation (which would silently corrupt the puzzle hash).
-    /// Multi-party flows are out of scope for v1.
+    /// Multi-party flows are not currently supported.
     ///
     /// Uses `Action::send` with `SendDestination::SilentPayment`, registers
     /// keys via `with_silent_payment_keys`, and finishes via `finish_with_keys`.

@@ -2,7 +2,7 @@
 //!
 //! These helpers are NOT production code — they exist so that the simulator
 //! and binding test suites can construct `TweakData` from on-chain state
-//! without going through a CHIP-0058 transport client (out of scope for v1).
+//! without going through a future transport protocol (not currently supported).
 //!
 //! Convenience re-exports of the wallet-side address/key types from
 //! `chia-sdk-utils::silent_payments` so that downstream simulator round-trip

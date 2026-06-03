@@ -137,7 +137,7 @@ pub enum DriverError {
 
     /// A silent-payment send needs the synthetic secret key for every spent XCH
     /// input. Some input's key was missing, so multi-party aggregation would be
-    /// required — multi-party silent-payment flows are unsupported in v1.
+    /// required — multi-party silent-payment flows are not currently supported.
     #[cfg(feature = "chip-0057")]
     #[error("silent payment multi-party flow unsupported")]
     SilentPaymentMultiPartyUnsupported,
