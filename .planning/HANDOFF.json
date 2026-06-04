@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-04T21:22:08.657Z",
+  "phase": "09.3",
+  "phase_name": "non-breaking-sp-send (milestone v1.0 complete; now in PR-prep)",
+  "phase_dir": ".planning/phases/09.3-non-breaking-sp-send-restore-action-send-contract-make-sp-send-additive-revert-action-api-01-unification",
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
+  "status": "paused",
+  "work_type": "post-milestone PR preparation (not a GSD phase task)",
+  "completed_tasks": [
+    {"id": 1, "name": "Milestone v1.0 (CHIP-0057 silent payments) — all 13 phases complete + audited", "status": "done"},
+    {"id": 2, "name": "Phase 09.3: reverted ACTION-API-01 unification; SP send is now a chip-0057-gated Action::silent_payment_send; Action::send concrete (non-breaking). Verified Sage compiles zero-edit", "status": "done"},
+    {"id": 3, "name": "Quick task 260603-ilc: cleared 2 deferred binding-test failures (GUARD-03 matcher; multi-input tweak_points 1->3 additive model)", "status": "done", "commit": "133cc80b"},
+    {"id": 4, "name": "Created clean code-only branch chip-0057-silent-payments (dropped 167 .planning + CLAUDE.md + ISSUE-* residue)", "status": "done"},
+    {"id": 5, "name": "Rebased onto real upstream xch-dev/chia-wallet-sdk main (zero conflicts); validated under Rust 1.95 (build/clippy/tests + napi/wasm/pyo3 + Sage AC3)", "status": "done"},
+    {"id": 6, "name": "Squashed to clean 5-commit layered series (crypto->addr->driver->bindings->integration)", "status": "done"},
+    {"id": 7, "name": "Scrubbed 92 GSD nomenclature refs (req-IDs + Phase/Plan/Wave) from comments/test-names; re-verified suites green", "status": "done"},
+    {"id": 8, "name": "Force-pushed scrubbed branch to fork origin/chip-0057-silent-payments (6e14ad49)", "status": "done"}
+  ],
+  "remaining_tasks": [
+    {"id": 9, "name": "Open the PR against xch-dev/chia-wallet-sdk (REQUIRES EXPLICIT USER GO — only outward-to-upstream step). Title/body drafted in chat; add a short 'CHIP-0057 status / what consumes TweakData today' paragraph first", "status": "not_started"},
+    {"id": 10, "name": "Delete local backup branches chip-0057-silent-payments-137-backup + -scrubbed-backup once satisfied", "status": "not_started"}
+  ],
+  "blockers": [
+    {"description": "Opening the PR is a user decision (outward-facing to upstream); not blocked technically", "type": "human_action", "workaround": "branch is ready and pushed to fork; open PR whenever ready"}
+  ],
+  "human_actions_pending": [
+    {"action": "Decide whether/when to open the PR against xch-dev/chia-wallet-sdk", "context": "Maintainer (Rigidity) also maintains Sage; expect questions on size (offer stacked PRs), CHIP-0057 maturity, and receive-without-transport timing", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Target xch-dev/chia-wallet-sdk as upstream, NOT Chia-Network/chia-wallet-sdk", "rationale": "Chia-Network is a stale/diverged lineage (102 commits of fork-maintenance noise); xch-dev (= Rigidity, same org as Sage + npm/wheel publisher) is canonical, only 6 commits ahead of the fork base"},
+    {"decision": "SP send is a separate chip-0057-gated Action::silent_payment_send, not folded into Action::send", "rationale": "Phase 4.2's impl Into<SendDestination> unification source-broke consumers (Sage: E0283 x4 + E0560). Keeping Action::send concrete = zero source break"},
+    {"decision": "Squash 137 commits -> 5 layered commits representing the final net diff", "rationale": "Hides internal add-then-revert churn (SendDestination); cleaner for upstream review"},
+    {"decision": "Scrub GSD requirement-IDs and Phase/Plan references from comments/test-names", "rationale": "Internal tracking nomenclature looks unprofessional/leaky to an external maintainer"},
+    {"decision": "Hardened upstream + xchdev remotes to push=no-push; never push upstream or open PR without explicit ask", "rationale": "Avoid any accidental outward-to-upstream action"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "If continuing PR work: add the CHIP-0057-status paragraph to the drafted PR body, then (on explicit user go) gh pr create --repo xch-dev/chia-wallet-sdk --base main --head kdc2000:chip-0057-silent-payments. Otherwise nothing is pending; main is clean.",
+  "context_notes": "Milestone is DONE and the PR branch is finished, validated, and pushed to the user's fork (kdc2000). The ONLY remaining step is opening the PR upstream, which is gated on an explicit user decision. Branch chip-0057-silent-payments: 5 commits on xch-dev/main, 67 files, +8314/-33, zero residue (file + comment level), clean authorship (Kevin Chmilar), all green under Rust 1.95. Backups: chip-0057-silent-payments-137-backup (pre-squash, old 4f7c8950 base) + -scrubbed-backup (current). Remotes: origin=fork (pushable), upstream=Chia-Network + xchdev=xch-dev (both push-disabled). Two consumer-upgrade notes for the eventual PR/Sage bump: `cargo update -p time` (from upstream chia-ssl 0.42.1), and FeeAction.reserved (Sage lag vs upstream baseline) — both non-SP, do NOT put in PR body."
+}
