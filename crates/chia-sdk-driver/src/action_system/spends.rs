@@ -623,10 +623,11 @@ fn sp_finish_branch(
     };
 
     // GATE 1: SilentPaymentRequiresInputBinding fires first; multi-input
-    // atomic-binding is more fundamental than key-registration.
-    // DEFERRED follow-up (see quick-260601-e6z SUMMARY): whether to filter the
-    // AssertConcurrent cycle to exactly the SP XCH-input set vs. document the
-    // constraint is an open privacy/design question, out of scope here.
+    // atomic-binding is more fundamental than key-registration. The SP path
+    // additionally emits a closed XCH-only AssertConcurrentSpend sub-cycle over
+    // exactly this input set (see end of this fn) so the receiver's
+    // standard-only SCC reconstruction reproduces input_hash even when non-XCH
+    // assets are co-spent.
     let non_ephemeral_xch_count = spends.xch.items.iter().filter(|i| !i.ephemeral).count();
     if non_ephemeral_xch_count >= 2 && !matches!(relation, Relation::AssertConcurrent) {
         return Err(DriverError::SilentPaymentRequiresInputBinding);
@@ -724,6 +725,59 @@ fn sp_finish_branch(
             .outputs
             .xch
             .push(Coin::new(p.parent_coin_id, ph, p.amount));
+    }
+
+    // SP-specific closed XCH-only AssertConcurrentSpend sub-cycle.
+    //
+    // `compute_input_hash` above binds the recipient's one-time puzzle hash to
+    // the set `S` = the non-ephemeral XCH inputs (exactly the items that built
+    // `xch_input_ids`). The receiver reconstructs that set as a strongly
+    // connected component of the AssertConcurrentSpend graph — but it builds
+    // that graph over STANDARD-PUZZLE spends only, dropping any co-spent
+    // CAT/DID/NFT coins at its Stage 1 filter.
+    //
+    // The general `emit_relation` cycle (run later in `prepare`) threads through
+    // ALL conditions-spends (XCH + CATs + DIDs + NFTs), so when a non-XCH asset
+    // is co-bundled the surviving XCH edges no longer form a closed cycle on the
+    // receiver side and the `{X1, X2, ...}` SCC — hence `input_hash` — is never
+    // reproduced. To keep multi-input detection working under co-bundled assets,
+    // emit an additional closed cycle over EXACTLY the XCH conditions-spend
+    // input set here. This is additive: the general cycle still runs, redundant
+    // `assert_concurrent_spend` conditions are harmless, and the XCH-only
+    // sub-cycle is self-contained among standard-puzzle coins so it survives the
+    // receiver's Stage 1 filter intact.
+    //
+    // Collect the (index, coin_id) of every non-ephemeral conditions-kind XCH
+    // item first (immutable pass), matching the `xch_input_ids` predicate
+    // restricted to conditions-kind (settlement-kind XCH inputs cannot carry an
+    // assert_concurrent_spend and are not part of SP sends). Then mutate in a
+    // second pass. A set of < 2 needs no cycle (single-input SP sends are
+    // detected via the receiver's Pass-1 singleton).
+    let sp_cycle_inputs: Vec<(usize, Bytes32)> = spends
+        .xch
+        .items
+        .iter()
+        .enumerate()
+        .filter(|(_, item)| !item.ephemeral && item.kind.is_conditions())
+        .map(|(idx, item)| (idx, item.asset.coin_id()))
+        .collect();
+
+    if sp_cycle_inputs.len() >= 2 {
+        let len = sp_cycle_inputs.len();
+        for (i, &(idx, _)) in sp_cycle_inputs.iter().enumerate() {
+            // Match `emit_relation`'s exact shape so the receiver's SCC
+            // reconstruction is identical: entry 0 asserts the LAST entry's
+            // coin_id; entry i (i>=1) asserts entry i-1's coin_id.
+            let predecessor = if i == 0 {
+                sp_cycle_inputs[len - 1].1
+            } else {
+                sp_cycle_inputs[i - 1].1
+            };
+
+            if let SpendKind::Conditions(spend) = &mut spends.xch.items[idx].kind {
+                spend.add_conditions(Conditions::new().assert_concurrent_spend(predecessor));
+            }
+        }
     }
 
     Ok(())
