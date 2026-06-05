@@ -20,7 +20,7 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-05-15)
 
-**Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a CHIP-0058 tweak-data source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
+**Core value:** A wallet developer can derive a silent-payment address, send XCH to one, and (with a future tweak-data transport source) detect incoming silent payments — through the same idiomatic SDK surface the SDK already uses for everything else.
 **Current focus:** Phase 09.3 — non-breaking-sp-send
 
 ## Current Position
