@@ -258,6 +258,115 @@ fn test_simulator_e2e_multi_input() -> Result<()> {
     Ok(())
 }
 
+/// Mixed-asset multi-input SP round-trip: a 2-XCH-input silent-payment send
+/// co-bundled with a non-standard (CAT) co-spend in the SAME spend bundle.
+///
+/// This is the regression guard for the co-bundled-non-XCH false-negative.
+///
+/// Detection contract under co-bundled assets: the sender's `input_hash` binds
+/// the recipient's one-time puzzle hash to the input set `S = {X1, X2}` (the two
+/// non-ephemeral XCH inputs). The receiver reconstructs `S` as a
+/// strongly-connected component of the `AssertConcurrentSpend` graph, but it
+/// builds that graph over STANDARD-PUZZLE spends only — the issued CAT coin
+/// reveals a CAT puzzle and is dropped at the receiver's Stage 1 filter.
+///
+/// Without the SP-specific closed XCH-only sub-cycle (emitted in
+/// `sp_finish_branch`), the general `emit_relation` cycle threads through the
+/// CAT node (e.g. `X1 -> CAT -> X2 -> X1`); dropping the CAT at Stage 1 leaves
+/// the surviving XCH edges open, no size>=2 SCC forms, `input_hash` over
+/// `{X1, X2}` is never reproduced, and `detections.len()` is 0 => this test
+/// FAILS. With the sub-cycle, the XCH-only inputs form a self-contained closed
+/// cycle among standard-puzzle coins that survives Stage 1 intact, the
+/// `{X1, X2}` SCC is reconstructed, and the test PASSES.
+///
+/// Approach: CAT issuance via the action system (`Action::single_issue_cat`) —
+/// the issued CAT's parent XCH spend is standard and part of the SP input
+/// cycle, but the CAT coin itself reveals a CAT puzzle and is dropped at the
+/// receiver's Stage 1. This regresses if the Task-1 fix is reverted.
+///
+/// Asserts:
+/// 1. Exactly one detection DESPITE the co-bundled CAT.
+/// 2. `label: None`, `k == 0`, `amount == 1000`.
+#[test]
+fn test_simulator_e2e_multi_input_mixed_asset() -> Result<()> {
+    let mut sim = Simulator::new();
+    let mut ctx = SpendContext::new();
+
+    // Two distinct sender key pairs / puzzle hashes / coins (=> two distinct
+    // non-ephemeral XCH SP inputs). 1_200 mojo total: 1_000 to the SP send, 1
+    // consumed by the CAT issuance, 199 returns as change.
+    let a = sim.bls(600);
+    let b = sim.bls(600);
+
+    let mnemonic = Mnemonic::parse(TV1_MNEMONIC)?;
+    let recipient = SilentPaymentKeys::from_mnemonic(&mnemonic);
+    let recipient_address = recipient.unlabeled_address(SilentPaymentNetwork::Testnet);
+    let height_before = sim.height();
+
+    let mut spends = Spends::new(a.puzzle_hash);
+    spends.add(a.coin);
+    spends.add(b.coin);
+
+    // Co-bundle a CAT issuance with the SP send so the bundle contains a
+    // non-standard co-spend that the receiver drops at Stage 1. The issued CAT
+    // consumes 1 mojo of XCH and produces the non-standard CAT coin; its parent
+    // XCH spend is standard and threaded into the general AssertConcurrent cycle.
+    let deltas = spends.apply(
+        &mut ctx,
+        &[
+            Action::single_issue_cat(None, 1),
+            Action::silent_payment_send(recipient_address, 1000, Memos::None),
+        ],
+    )?;
+
+    let pk_map = indexmap! {
+        a.puzzle_hash => a.pk,
+        b.puzzle_hash => b.pk,
+    };
+    let synthetic_public_map = indexmap! {
+        a.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(a.pk),
+        b.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(b.pk),
+    };
+    let synthetic_secret_map = indexmap! {
+        a.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(a.sk.clone()),
+        b.puzzle_hash => SyntheticSecretKey::from_synthetic_unchecked(b.sk.clone()),
+    };
+    spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
+
+    // MUST be AssertConcurrent for 2+ non-ephemeral XCH inputs.
+    spends.finish_with_keys(&mut ctx, &deltas, Relation::AssertConcurrent, &pk_map)?;
+
+    // Farm: sign with BOTH senders' SKs.
+    sim.spend_coins(ctx.take(), &[a.sk.clone(), b.sk.clone()])?;
+
+    // Extract + scan via the canonical helper + free-fn scanner.
+    let tweak_data = tweak_data_from_simulator_block(&sim, height_before);
+    let detections = scan_from_tweaks(
+        recipient.scan_sk(),
+        recipient.spend_sk(),
+        recipient.spend_pk(),
+        &tweak_data,
+        None,
+        K_MAX_DEFAULT,
+    );
+
+    // Load-bearing assertion: the {X1, X2} SCC tweak_point (input_hash over
+    // exactly the XCH input set) must be reproduced by the standard-only scanner
+    // DESPITE the co-bundled CAT.
+    assert_eq!(
+        detections.len(),
+        1,
+        "mixed-asset multi-input send must still produce exactly one detection \
+         (regression guard for the co-bundled-non-XCH false-negative)"
+    );
+    let detected = &detections[0];
+    assert!(detected.label.is_none(), "unlabeled -> label must be None");
+    assert_eq!(detected.k, 0, "first output -> k=0");
+    assert_eq!(detected.amount, 1000);
+
+    Ok(())
+}
+
 /// Labeled SP send round-trip: same flow as
 /// [`test_simulator_e2e_unlabeled`] using a labeled recipient address (`m=1`).
 /// Asserts the scanner correctly detects with `label: Some(1)` and the labeled
