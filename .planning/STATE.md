@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-15)
 Phase: 09.3
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-06-03
+Last activity: 2026-06-05 - Completed quick task 260605-av7: fix multi-input SP detection w/ co-bundled non-XCH assets
 
 Progress: [████████░░] 88%  (Phases 1, 2, 3, 4, 4.1, 4.2, 5 complete)
 
@@ -243,6 +243,7 @@ Open architectural questions to resolve at the relevant phase entry (from resear
 | 260603-c93 | Reword review findings: CHIP-0058 → future-protocol wording + drop v1 SDK-version framing across SP code/docs (prose only, 8 files) | 2026-06-03 | 69de07e3 | Done | [260603-c93-reword-review-findings-chip-0058-future-](./quick/260603-c93-reword-review-findings-chip-0058-future-/) |
 | fast | Fix DOC-STALE: SP binding test headers (napi/pyo3/wasm) cited removed src/silent_payments/e2e.rs; repoint to tests/silent_payments_e2e.rs (test_simulator_e2e_labeled). Doc-only | 2026-06-03 | 8c597fab | Done | — |
 | 260603-ilc | Clear 2 Phase-09.3 deferred binding-test failures (test-only): GUARD-03 matcher → "key not synthetic"; multi-input tweak_points 1→3 (additive model). napi/wasm/pyo3 all green | 2026-06-03 | 238e22c9 | Done | [260603-ilc-clear-two-phase-09-3-deferred-binding-te](./quick/260603-ilc-clear-two-phase-09-3-deferred-binding-te/) |
+| 260605-av7 | Fix CHIP-0057 multi-input SP detection when co-bundled with non-XCH assets: emit a closed XCH-only AssertConcurrent sub-cycle in sp_finish_branch so the receiver's standard-only SCC == the input-hash set (general emit_relation untouched); + mixed-asset multi-input e2e regression guard (verified fails-on-revert) | 2026-06-05 | 8e616915 | Done | [260605-av7-fix-chip-0057-multi-input-sp-detection-w](./quick/260605-av7-fix-chip-0057-multi-input-sp-detection-w/) |
 
 ## Session Continuity
 
