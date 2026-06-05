@@ -24,7 +24,7 @@ use chia_puzzle_types::{DeriveSynthetic, Memos};
 use chia_sdk_driver::silent_payments::{
     K_MAX_DEFAULT, SyntheticPublicKey, SyntheticSecretKey, scan_from_tweaks,
 };
-use chia_sdk_driver::{Action, Relation, SpendContext, Spends, StandardLayer};
+use chia_sdk_driver::{Action, DriverError, Relation, SpendContext, Spends, StandardLayer};
 use chia_sdk_test::silent_payments::tweak_data_from_simulator_block;
 use chia_sdk_test::{BlsPairWithCoin, Simulator};
 use chia_sdk_types::Conditions;
@@ -258,59 +258,31 @@ fn test_simulator_e2e_multi_input() -> Result<()> {
     Ok(())
 }
 
-/// Mixed-asset multi-input SP round-trip: a 2-XCH-input silent-payment send
-/// co-bundled with a non-standard (CAT) co-spend in the SAME spend bundle.
+/// Mixed-asset SP bundles are REJECTED: a silent-payment send co-bundled with a
+/// CAT issuance (a non-XCH asset spend) in the same bundle must hard-error.
+/// Enforces the XCH-only invariant — silent-payment send bundles must not
+/// co-spend CAT/DID/NFT/option coins. `finish_with_keys` returns
+/// `Err(DriverError::SilentPaymentMixedAssetBundle)` from the GATE-0 guard in
+/// `sp_finish_branch`, which fires before any derivation or key work.
 ///
-/// This is the regression guard for the co-bundled-non-XCH false-negative.
-///
-/// Detection contract under co-bundled assets: the sender's `input_hash` binds
-/// the recipient's one-time puzzle hash to the input set `S = {X1, X2}` (the two
-/// non-ephemeral XCH inputs). The receiver reconstructs `S` as a
-/// strongly-connected component of the `AssertConcurrentSpend` graph, but it
-/// builds that graph over STANDARD-PUZZLE spends only — the issued CAT coin
-/// reveals a CAT puzzle and is dropped at the receiver's Stage 1 filter.
-///
-/// Without the SP-specific closed XCH-only sub-cycle (emitted in
-/// `sp_finish_branch`), the general `emit_relation` cycle threads through the
-/// CAT node (e.g. `X1 -> CAT -> X2 -> X1`); dropping the CAT at Stage 1 leaves
-/// the surviving XCH edges open, no size>=2 SCC forms, `input_hash` over
-/// `{X1, X2}` is never reproduced, and `detections.len()` is 0 => this test
-/// FAILS. With the sub-cycle, the XCH-only inputs form a self-contained closed
-/// cycle among standard-puzzle coins that survives Stage 1 intact, the
-/// `{X1, X2}` SCC is reconstructed, and the test PASSES.
-///
-/// Approach: CAT issuance via the action system (`Action::single_issue_cat`) —
-/// the issued CAT's parent XCH spend is standard and part of the SP input
-/// cycle, but the CAT coin itself reveals a CAT puzzle and is dropped at the
-/// receiver's Stage 1. This regresses if the Task-1 fix is reverted.
-///
-/// Asserts:
-/// 1. Exactly one detection DESPITE the co-bundled CAT.
-/// 2. `label: None`, `k == 0`, `amount == 1000`.
+/// (Quick task 260605-bm5: the XCH-only invariant supersedes the earlier
+/// "make mixed-asset bundles detectable" approach — mixed-asset SP bundles are
+/// unsupported and fail loudly rather than relying on a delicate sub-cycle.)
 #[test]
-fn test_simulator_e2e_multi_input_mixed_asset() -> Result<()> {
+fn test_simulator_e2e_multi_input_mixed_asset_rejected() -> Result<()> {
     let mut sim = Simulator::new();
     let mut ctx = SpendContext::new();
-
-    // Two distinct sender key pairs / puzzle hashes / coins (=> two distinct
-    // non-ephemeral XCH SP inputs). 1_200 mojo total: 1_000 to the SP send, 1
-    // consumed by the CAT issuance, 199 returns as change.
     let a = sim.bls(600);
     let b = sim.bls(600);
-
     let mnemonic = Mnemonic::parse(TV1_MNEMONIC)?;
     let recipient = SilentPaymentKeys::from_mnemonic(&mnemonic);
     let recipient_address = recipient.unlabeled_address(SilentPaymentNetwork::Testnet);
-    let height_before = sim.height();
 
     let mut spends = Spends::new(a.puzzle_hash);
     spends.add(a.coin);
     spends.add(b.coin);
 
-    // Co-bundle a CAT issuance with the SP send so the bundle contains a
-    // non-standard co-spend that the receiver drops at Stage 1. The issued CAT
-    // consumes 1 mojo of XCH and produces the non-standard CAT coin; its parent
-    // XCH spend is standard and threaded into the general AssertConcurrent cycle.
+    // Co-bundle a CAT issuance (non-XCH asset) with the SP send.
     let deltas = spends.apply(
         &mut ctx,
         &[
@@ -319,10 +291,7 @@ fn test_simulator_e2e_multi_input_mixed_asset() -> Result<()> {
         ],
     )?;
 
-    let pk_map = indexmap! {
-        a.puzzle_hash => a.pk,
-        b.puzzle_hash => b.pk,
-    };
+    let pk_map = indexmap! { a.puzzle_hash => a.pk, b.puzzle_hash => b.pk };
     let synthetic_public_map = indexmap! {
         a.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(a.pk),
         b.puzzle_hash => SyntheticPublicKey::from_synthetic_unchecked(b.pk),
@@ -333,37 +302,11 @@ fn test_simulator_e2e_multi_input_mixed_asset() -> Result<()> {
     };
     spends.with_silent_payment_keys(synthetic_public_map, synthetic_secret_map);
 
-    // MUST be AssertConcurrent for 2+ non-ephemeral XCH inputs.
-    spends.finish_with_keys(&mut ctx, &deltas, Relation::AssertConcurrent, &pk_map)?;
-
-    // Farm: sign with BOTH senders' SKs.
-    sim.spend_coins(ctx.take(), &[a.sk.clone(), b.sk.clone()])?;
-
-    // Extract + scan via the canonical helper + free-fn scanner.
-    let tweak_data = tweak_data_from_simulator_block(&sim, height_before);
-    let detections = scan_from_tweaks(
-        recipient.scan_sk(),
-        recipient.spend_sk(),
-        recipient.spend_pk(),
-        &tweak_data,
-        None,
-        K_MAX_DEFAULT,
+    let result = spends.finish_with_keys(&mut ctx, &deltas, Relation::AssertConcurrent, &pk_map);
+    assert!(
+        matches!(result, Err(DriverError::SilentPaymentMixedAssetBundle)),
+        "mixed-asset SP bundle must be rejected, got {result:?}"
     );
-
-    // Load-bearing assertion: the {X1, X2} SCC tweak_point (input_hash over
-    // exactly the XCH input set) must be reproduced by the standard-only scanner
-    // DESPITE the co-bundled CAT.
-    assert_eq!(
-        detections.len(),
-        1,
-        "mixed-asset multi-input send must still produce exactly one detection \
-         (regression guard for the co-bundled-non-XCH false-negative)"
-    );
-    let detected = &detections[0];
-    assert!(detected.label.is_none(), "unlabeled -> label must be None");
-    assert_eq!(detected.k, 0, "first output -> k=0");
-    assert_eq!(detected.amount, 1000);
-
     Ok(())
 }
 

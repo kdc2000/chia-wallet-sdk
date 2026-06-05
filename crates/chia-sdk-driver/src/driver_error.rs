@@ -178,4 +178,14 @@ pub enum DriverError {
     #[cfg(feature = "chip-0057")]
     #[error("silent payment key not synthetic")]
     SilentPaymentKeyNotSynthetic,
+
+    /// A silent-payment send was co-bundled with one or more non-XCH asset
+    /// spends (CAT / DID / NFT / option) in the same bundle. Silent-payment
+    /// send bundles must be XCH-only; co-spending other assets in the same
+    /// bundle is not supported.
+    #[cfg(feature = "chip-0057")]
+    #[error(
+        "silent-payment sends must be XCH-only bundles; co-spending CAT/DID/NFT/option coins is not supported"
+    )]
+    SilentPaymentMixedAssetBundle,
 }
