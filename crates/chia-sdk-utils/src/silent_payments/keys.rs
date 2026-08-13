@@ -164,8 +164,8 @@ mod tests {
         "f6f31e22e0831ba5088c952625a75c74"
     );
 
-    // TV1 unlabeled mainnet address (CHIP-0057 test vector 1).
-    const TV1_MAINNET_ADDR: &str = "spxch15p85qjlmlhynz9ek3x07xtfzwkasq7q52yxr2g6jjjr66atnvp6h8t0zp5cuw5g8kspnrllhntyfdzhutqqe9az04d3y7cfnd8me9mlnyg828j5z96urn2evjvy72f7m7me3ughqsvd62zyvj5nztf6uwsfn2u2q";
+    // TV1 unlabeled mainnet address (CHIP-0057 test vector 1, v0-versioned).
+    const TV1_MAINNET_ADDR: &str = "spxch1q5p85qjlmlhynz9ek3x07xtfzwkasq7q52yxr2g6jjjr66atnvp6h8t0zp5cuw5g8kspnrllhntyfdzhutqqe9az04d3y7cfnd8me9mlnyg828j5z96urn2evjvy72f7m7me3ughqsvd62zyvj5nztf6uwsmqrz7f";
 
     fn tv1_keys_from_mnemonic() -> SilentPaymentKeys {
         let mnemonic = Mnemonic::parse(TV1_MNEMONIC).expect("BIP-39 test vector");

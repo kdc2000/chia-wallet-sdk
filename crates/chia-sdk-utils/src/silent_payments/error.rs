@@ -16,9 +16,19 @@ pub enum SilentPaymentError {
     #[error("invalid silent-payment HRP '{0}' (expected 'spxch' or 'tspxch')")]
     WrongHrp(String),
 
-    /// The decoded payload is not 96 bytes. Either too short or too long.
+    /// The decoded payload has an invalid length: a v0 payload must be exactly
+    /// 96 bytes; a v1-30 (forward-compatible) payload must be at least 96 bytes.
     #[error("invalid silent-payment payload length: expected 96 bytes, got {0}")]
     PayloadLength(usize),
+
+    /// The address carries version 31, reserved by CHIP-0057 for a
+    /// backward-incompatible upgrade. Senders MUST NOT send to it.
+    #[error("silent-payment address version 31 is reserved for a backward-incompatible upgrade")]
+    ReservedAddressVersion,
+
+    /// The address exceeds the CHIP-0057 length allowance of 1,023 characters.
+    #[error("silent-payment address too long: {0} characters (max 1023)")]
+    AddressTooLong(usize),
 
     /// One of the 48-byte pubkey halves failed `chia_bls::PublicKey::from_bytes`
     /// (e.g., not a valid compressed G1 point).
