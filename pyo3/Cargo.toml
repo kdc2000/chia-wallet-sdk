@@ -3,19 +3,23 @@ publish = false
 name = "chia-wallet-sdk-py"
 # PEP 440 local-version segment carries the SDK *content* git short-hash into the
 # built wheel's metadata so importlib.metadata.version("chia_wallet_sdk") returns
-# "0.33.0+g64588fba". This short-hash identifies the SDK source the wheel compiles
-# (commit 64588fba, "cargo fmt SP send-action files" — the latest commit touching
-# compiled source for the non-breaking SP-send action change: Action::send reverts
-# to a concrete Bytes32 puzzle-hash destination and SP send is gated behind the
-# dedicated Action::silent_payment_send action, with SendDestination deleted; this
-# is the latest compiled-content commit on top of 84ca133e/b2a77f68 which landed the
-# binding-level revert + new action); the fork's own HEAD also includes later
-# test-only commits, recorded separately in silent-payments/BUILD.md.
+# "0.33.0+g851ceb73". This short-hash identifies the SDK source the wheel compiles
+# (commit 851ceb73, "reject mixed-asset SP send bundles (XCH-only invariant)" — the
+# latest commit touching compiled source on `main`). It adds
+# DriverError::SilentPaymentMixedAssetBundle + sp_finish_branch GATE 0 (hard-error
+# when an SP send is co-bundled with any non-XCH asset), and in doing so REMOVES the
+# 8e616915 (av7) XCH-only sub-cycle: with the bundle guaranteed XCH-only, the general
+# emit_relation AssertConcurrent cycle already binds exactly the non-ephemeral XCH
+# input set the receiver reconstructs. It sits on top of 8e616915 (closed sub-cycle,
+# now superseded) and 64588fba (the prior pin). The fork's own HEAD (2e63581b) also
+# includes later docs-only commits, and a separate chip-0057-silent-payments branch
+# carries an unrelated upstream-style reorg; both are recorded in
+# silent-payments/BUILD.md and are NOT the build target.
 # The silent-payments freshness gate (tests/conftest.py) parses the +g<hash> segment
 # to prove the loaded .so matches the pinned content commit (Open Question 1
 # resolution; pyproject.toml declares dynamic=["version"], so maturin sources the
 # wheel version from this [package].version).
-version = "0.33.0+g64588fba"
+version = "0.33.0+g851ceb73"
 edition = "2024"
 
 [lib]
